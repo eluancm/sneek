@@ -8,7 +8,7 @@ FIXELF	=	python.exe fixelf.py
 CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s 
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
 LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,iosmodule.map -n
-LIBS	=	-lgcc -L. -lFS
+LIBS	=	-lgcc
 
 TARGET	=	iosmodule.elf
 OBJECTS	=	start.o gecko.o utils_asm.o memory_asm.o common.o sdhc.o ff.o sdmmc.o diskio.o FS.o main.o syscalls.o vsprintf.o string.o
