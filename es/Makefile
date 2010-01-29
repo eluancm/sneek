@@ -3,7 +3,6 @@ CC	=	$(PREFIX)gcc
 AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
 SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
-FIXELF	=	python.exe fixelf.py
 
 CFLAGS	=	-mbig-endian -fomit-frame-pointer -O2 -Wall -I. -mcpu=arm926ej-s 
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
