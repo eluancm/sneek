@@ -48,7 +48,7 @@ extern u8 *CNTMap;
 
 typedef struct {
 	u32 command;
-	u32 type;				// 11b ABORT, 10b RESUME, 01b SUSPEND, 00b NORMAL
+	u32 type;			// 11b ABORT, 10b RESUME, 01b SUSPEND, 00b NORMAL
 	u32 rep;			// 11b 48bytes Check Busy, 10b 48bytes, 01b 136bytes, 00b NONE
 	u32 arg;			// RW
 	u32 blocks;
@@ -58,21 +58,9 @@ typedef struct {
 	u32 pad0;
 } SDCommand;
 
-
-	u8 rawData[20] =
-	{
-		0x93, 0x4D, 0xB1, 0x0D,
-		0xAC, 0xFE, 0x4F, 0x41,
-		0x0D, 0x83, 0xE8, 0xE6,
-		0x45, 0x67, 0x67, 0xB6, 
-		0x8B, 0xD9, 0x1A, 0x7A, 
-	} ;
-
 static u32 *HCR;
 static u32 *SDStatus;		//0x00110001
 static u32 SDClock=0;
-
-u8 value[] = { "f00dcafe" };
 
 void iCleanUpTikTMD( void )
 {
@@ -1611,12 +1599,16 @@ int _main( int argc, char *argv[] )
 	//if( *(u32*)0x0001CCC0 == 0x4082007C )
 	//	*(u32*)0x0001CCC0 = 0x38000063;
 
-	//Region free 4.2EUR
-	//if( TitleID == 0x0000000100000002LL )
-	//{
-	//	*(u32*)0x0137DC90 = 0x4800001C;
-	//	*(u32*)0x0137E4E4 = 0x60000000;
-	//}
+	if( TitleID == 0x0000000100000002LL )
+	{
+		//Disable SD for system menu
+		if( *SDStatus == 1 )
+			*SDStatus = 2;
+
+		//Region free 4.2EUR
+		//*(u32*)0x0137DC90 = 0x4800001C;
+		//*(u32*)0x0137E4E4 = 0x60000000;
+	}
 
 	while (1)
 	{

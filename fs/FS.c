@@ -83,6 +83,10 @@ void FFS_Ioctlv(struct IPCMessage *msg)
 			{
 				*(u32*)(v[1].data) = 23;			// size is size/0x4000
 				*(u32*)(v[2].data) = 42;			// empty folders return a FileCount of 1
+			} else if( memcmp( (char*)(v[0].data), "/title/00010005", 16 ) == 0 )		// DLC
+			{
+				*(u32*)(v[1].data) = 23;			// size is size/0x4000
+				*(u32*)(v[2].data) = 42;			// empty folders return a FileCount of 1
 			} else {
 
 				*(u32*)(v[1].data) = 0;			// size is size/0x4000
@@ -103,14 +107,14 @@ void FFS_Ioctlv(struct IPCMessage *msg)
 		case 0x20:
 		{
 			u32 *data = (u32*)(v[0].data);
-			ret = disk_read( 0, (u8*)(v[1].data), (data[3]>>9)+0x2000, v[1].len>>9 );
+			ret = disk_read( 0, (u8*)(v[1].data), (data[3]>>9), v[1].len>>9 );
 		//	dbgprintf("FFS:disk_read( %d, %p, %08X, %08X )\n", 0, (u8*)(v[1].data), (data[3]>>9)+0x2000, v[1].len>>9 );
 		} break;
 		case 0x21:
 		{
 			u32 *data = (u32*)(v[0].data);
 			//dbgprintf("FFS:disk_write( %d, %p, %08X, %08X )\n", 0, (u8*)((data[6]&(~(1<<31)))), (data[3]>>9)+0x2000, data[4] );
-			ret = disk_write( 0, (u8*)((data[6]&(~(1<<31)))), (data[3]>>9)+0x2000, data[4] );
+			ret = disk_write( 0, (u8*)((data[6]&(~(1<<31)))), (data[3]>>9), data[4] );
 		} break;
 
 		default:
