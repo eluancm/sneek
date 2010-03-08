@@ -316,7 +316,7 @@ int dbgprintf( const char *fmt, ...)
 	vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	//GeckoSendBuffer( buffer );
+	GeckoSendBuffer( buffer );
 
 	heap_free( 0, buffer );
 
