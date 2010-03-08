@@ -585,15 +585,17 @@ void DIP_Ioctl( struct ipcmessage *msg )
 				ret = DI_SUCCESS;
 				memcpy( bufout, data, lenout );
 			}
+
+			PartitionSize = f.fsize;
 				
 			heap_free( 0, data );
 
 #else
 			ret = USB_Read( 0, (lenout+31)&(~31), bufout );
-#endif
-			hexdump( bufout, lenout );
-
 			dbgprintf("DIP:SlotID:%d\n", SlotID );
+#endif
+			//hexdump( bufout, lenout );
+
 
 			dbgprintf("DIP:DVDLowReadDiscID(%p):%d\n", bufout, ret );
 		} break;
@@ -974,7 +976,10 @@ void _main(void)
 	KeyID = heap_alloc_aligned( 0, sizeof( u32 ), 0x40 );
 	*KeyID = 0;
 
+#ifndef FAT
 	SlotID=0;
+#endif
+
 	DICover = 2;
 	DIStatus= 0;
 

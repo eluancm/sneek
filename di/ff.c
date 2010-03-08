@@ -270,8 +270,8 @@ FRESULT sync (	/* FR_OK: successful, FR_DISK_ERR: failed */
 			fs->fsi_flag = 0;
 		}
 		/* Make sure that no pending write process in the physical drive */
-		if (disk_ioctl(fs->drive, 0, (void*)NULL) != RES_OK)
-			res = FR_DISK_ERR;
+		//if (disk_ioctl(fs->drive, 0, (void*)NULL) != RES_OK)
+		//	res = FR_DISK_ERR;
 	}
 
 	return res;
