@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ipc.h"
 #include "string.h"
 #include "utils.h"
+#include "vsprintf.h"
 
 #define MAX_FILE		20
 #define FS_FD			0x99		// 153

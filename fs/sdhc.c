@@ -222,11 +222,11 @@ sdhc_host_found(struct sdhc_softc *sc, bus_space_tag_t iot,
 	if (hp->clkbase == 0)
 	{
 		/* The attachment driver must tell us. */
-		dbgprintf("%s: base clock frequency unknown\n", sc->sc_dev.dv_xname);
+		//dbgprintf("%s: base clock frequency unknown\n", sc->sc_dev.dv_xname);
 		goto err;
 	} else if (hp->clkbase < 10000 || hp->clkbase > 63000) {
 		/* SDHC 1.0 supports only 10-63 MHz. */
-		dbgprintf("%s: base clock frequency out of range: %u MHz\n", sc->sc_dev.dv_xname, hp->clkbase / 1000);
+		//dbgprintf("%s: base clock frequency out of range: %u MHz\n", sc->sc_dev.dv_xname, hp->clkbase / 1000);
 		goto err;
 	}
 

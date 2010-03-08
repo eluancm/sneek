@@ -490,7 +490,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			{	
 				if( (*(u16*)(v[0].data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
 				{
-					if( ES_CheckS1Conent( (u8*)(v[0].data+0x1F4+i*0x24) ) == 1 )
+					if( ES_CheckSharedContent( (u8*)(v[0].data+0x1F4+i*0x24) ) == 1 )
 						(*(u32*)(v[1].data))++;
 				} else {
 					_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(v[0].data+0x18C), *(u32*)(v[0].data+0x190), *(u32*)(v[0].data+0x1E4+i*0x24) );
@@ -517,7 +517,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			{	
 				if( (*(u16*)(v[0].data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
 				{
-					if( ES_CheckS1Conent( (u8*)(v[0].data+0x1F4+i*0x24) ) == 1 )
+					if( ES_CheckSharedContent( (u8*)(v[0].data+0x1F4+i*0x24) ) == 1 )
 					{
 						*(u32*)(v[2].data+4*count) = *(u32*)(v[0].data+0x1E4+i*0x24);
 						count++;
@@ -712,7 +712,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 					{
 						if( (*(u16*)(iTMD+0x1EA+i*0x24) & 0x8000) == 0x8000 )
 						{
-							if( ES_CheckS1Conent( (u8*)(iTMD+0x1F4+i*0x24) ) == 1 )
+							if( ES_CheckSharedContent( (u8*)(iTMD+0x1F4+i*0x24) ) == 1 )
 							{
 								SkipContent=1;
 								dbgprintf("ES:Content already installed, using fast install!\n");
@@ -975,7 +975,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			free( path );
 
-			dbgprintf("ES:DeleteTicket(%08x-%08x):%d\n", (u32)(*Title>>32), (u32)(*Title), ret );
+			dbgprintf("ES:DeleteTitleContent(%08x-%08x):%d\n", (u32)(*Title>>32), (u32)(*Title), ret );
 			free( Title );
 		} break;
 		case IOCTL_ES_DELETETICKET:
@@ -1032,7 +1032,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				{	
 					if( (*(u16*)(data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
 					{
-						if( ES_CheckS1Conent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
+						if( ES_CheckSharedContent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
 						{
 							*(u32*)(v[2].data+0x4*count) = *(u32*)(data+0x1E4+i*0x24);
 							count++;
@@ -1082,7 +1082,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				{	
 					if( (*(u16*)(data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
 					{
-						if( ES_CheckS1Conent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
+						if( ES_CheckSharedContent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
 							(*(u32*)(v[1].data))++;
 					} else {
 						_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(data+0x18C), *(u32*)(data+0x190), *(u32*)(data+0x1E4+i*0x24) );
@@ -1503,7 +1503,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			for( i=0; i<InCount+OutCount; ++i)
 			{
 				dbgprintf("data:%p len:%d(0x%X)\n", v[i].data, v[i].len, v[i].len );
-				hexdump( v[i].data, v[i].len );
+				hexdump( (u8*)(v[i].data), v[i].len );
 			}
 			dbgprintf("ES:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv);
 			while(1);

@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include "global.h"
 #include "common.h"
+#include "vsprintf.h"
 
 char *strcpy(char *, const char *);
 char *strncpy(char *, const char *, size_t);

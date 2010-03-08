@@ -12,8 +12,8 @@
 #include <stdarg.h>
 #include "syscalls.h"
 #include "gecko.h"
+#include "global.h"
 #include "string.h"
-#include "hollywood.h"
 
 static inline int isdigit(int c)
 {
@@ -292,33 +292,48 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	*str = '\0';
 	return str-buf;
 }
-int _sprintf( char *buf, const char *fmt, ... )
+int sprintf( char *astr, const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i = vsprintf(buf, fmt, args);
+	i = vsprintf(astr, fmt, args);
 	va_end(args);
 
 	return i;
 }
+
+static char buffer[1024] ALIGNED(32);
 int dbgprintf( const char *fmt, ...)
 {
 	if ( (*(vu32*)(HW_EXICTRL) & 1) == 0)
 		return 0;
 
 	va_list args;
-
-	char *buffer = (char*)heap_alloc_aligned( 0, 2048, 32 );
+	int i;
 
 	va_start(args, fmt);
-	vsprintf(buffer, fmt, args);
+	i = vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	//GeckoSendBuffer( buffer );
+	GeckoSendBuffer( buffer );
 
-	heap_free( 0, buffer );
-
-	return 1;
+	return i;
 }
+
+void fatal(const char *fmt, ...)
+{
+	va_list args;
+	char buffer[1024];
+	int i;
+
+	va_start(args, fmt);
+	i = vsprintf(buffer, fmt, args);
+	va_end(args);
+	svc_write(buffer);
+	for (;;);
+}
+
+
+

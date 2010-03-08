@@ -1,6 +1,6 @@
 /*
 
-SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
+SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
 Copyright (C) 2009-2010  crediar
 
@@ -18,35 +18,36 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
-#include "alloc.h"
-#include "vsprintf.h"
+#include "gecko.h"
 
-void *malloc( u32 size )
+void EXISendByte( char byte )
 {
-	void *ptr = heap_alloc( 0, size );
-	if( ptr == NULL )
-	{
-		dbgprintf("Malloc:%p Size:%08X FAILED\n", ptr, size );
-		while(1);
-	}
-	return ptr;
-}
-void *malloca( u32 size, u32 align )
-{
-	void *ptr = heap_alloc_aligned( 0, size, align );
-	if( ptr == NULL )
-	{
-		dbgprintf("Malloca:%p Size:%08X FAILED\n", ptr, size );
-		while(1);
-	}
-	return ptr;
-}
-void free( void *ptr )
-{
-	if( ptr != NULL )
-		heap_free( 0, ptr );
+	u32 EXI = 0xD806814;
 
-	//dbgprintf("Free:%p\n", ptr );
+loop:
+	*(vu32*)EXI			= 0xD0;
+	*(vu32*)(EXI+0x10)	= 0xB0000000 | (byte<<20);
+	*(vu32*)(EXI+0x0C)	= 0x19;
+
+	while( *(vu32*)(EXI+0x0C)&1 );
+
+	u32 loop =  *(vu32*)(EXI+0x10)&0x4000000;
+	
+	*(vu32*)EXI	= 0;
+
+	if( !loop )
+		goto loop;
+
+	return;
+}
+void GeckoSendBuffer( char *buffer )
+{
+	int i = 0;
+	while( buffer[i] != '\0' )
+	{
+		EXISendByte( buffer[i] );
+		++i;
+	}
 
 	return;
 }

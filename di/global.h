@@ -1,16 +1,17 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
-#define UINT_MAX ((unsigned int)0xffffffff)
-#define MEM2_BSS __attribute__ ((section (".bss.mem2")))
-
-
 #define DEBUG		0
-#define false		0
-#define true		1
 
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)
+
+#ifdef DEBUG
+int dbgprintf( const char *fmt, ...);
+#else
+#define dbgprintf(...) do{ } while(0);
+#endif
+#define debug_printf dbgprintf
 
 void fatal(const char *format, ...);
 
@@ -20,9 +21,6 @@ typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
-
-typedef int bool;
-typedef unsigned int sec_t;
 
 typedef signed char s8;
 typedef signed short s16;
@@ -42,8 +40,6 @@ typedef volatile signed long long vs64;
 typedef s32 size_t;
 
 typedef u32 u_int32_t;
-
-typedef s32(*ipccallback)(s32 result,void *usrdata);
 
 #define NULL ((void *)0)
 

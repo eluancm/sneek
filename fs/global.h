@@ -5,19 +5,12 @@
 #define MEM2_BSS __attribute__ ((section (".bss.mem2")))
 
 
-#define DEBUG		1
+#define DEBUG		0
 #define false		0
 #define true		1
 
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)
-
-#ifdef DEBUG
-int dbgprintf( const char *fmt, ...);
-#else
-#define dbgprintf(...) do{ } while(0);
-#endif
-#define debug_printf dbgprintf
 
 void fatal(const char *format, ...);
 

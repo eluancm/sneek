@@ -150,7 +150,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion );
 s32 ES_DIGetTicketView( u64 *TitleID, u8 *oTikView );
 s32 ES_GetOwnedTitles( u64 *Titles );
 s32 ES_GetTitles( u64 *Titles );
-s32 ES_CheckS1Conent( void *ContentHash );
+s32 ES_CheckSharedContent( void *ContentHash );
 s32 ES_GetS1ContentID( void *ContentHash );
 void iES_GetTicketView( u8 *Ticket, u8 *oTicketView );
 s32 ES_OpenContent( u64 TitleID, u32 ContentID );

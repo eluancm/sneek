@@ -236,7 +236,7 @@ s32 ISFS_GetFileStats( s32 fd, fstats *status )
 }
 s32 ISFS_Delete( const char *filepath )
 {
-	return IOS_Ioctl( FFSHandle, ISFS_IOCTL_DELETE, filepath, 0x40, NULL, 0 );
+	return IOS_Ioctl( FFSHandle, ISFS_IOCTL_DELETE, (void*)filepath, 0x40, NULL, 0 );
 }
 
 s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )

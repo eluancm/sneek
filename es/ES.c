@@ -238,6 +238,7 @@ ES_Sign_CleanUp:
 
 	DestroyKey( *Key );
 
+	free( NewCert );
 	free( issuer );
 	free( shac );
 	free( hash );
@@ -590,6 +591,7 @@ s32 ES_GetUID( u64 *TitleID, u16 *UID )
 		{
 			free( path );
 			free( size );
+			IOS_Close( fd );
 			return r;
 		}
 
@@ -599,6 +601,7 @@ s32 ES_GetUID( u64 *TitleID, u16 *UID )
 		{
 			free( path );
 			free( size );
+			IOS_Close( fd );
 			return r;
 		}
 
@@ -829,7 +832,7 @@ s32 ES_GetS1ContentID( void *ContentHash )
 	}
 	return ES_FATAL;
 }
-s32 ES_CheckS1Conent( void *ContentHash )
+s32 ES_CheckSharedContent( void *ContentHash )
 {
 	if( *CNTMapDirty )
 	{
@@ -870,7 +873,7 @@ s32 ES_AddTitleFinish( void *TMD )
 		if( ((*(vu16*)(TMD+0x1EA+i*0x24)) & 0x8000) == 0x8000 )
 		{
 			//move to shared1
-			switch( ES_CheckS1Conent( (u8*)(TMD+0x1F4+i*0x24) ) )
+			switch( ES_CheckSharedContent( (u8*)(TMD+0x1F4+i*0x24) ) )
 			{
 				case 0:	// Content not yet in shared1 oh-shi
 				{
@@ -918,7 +921,7 @@ s32 ES_AddTitleFinish( void *TMD )
 					ISFS_Delete( path );
 					break;
 				default:
-					dbgprintf("ES_CheckS1Conent(): failed! \"/shared1/content.map\" missing!\n");
+					dbgprintf("ES_CheckSharedContent(): failed! \"/shared1/content.map\" missing!\n");
 					break;
 			}
 		} else {
@@ -1183,6 +1186,8 @@ s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD )
 	if( r < 0 )
 	{
 		dbgprintf("sha1():%d\n", r );
+		free( SHA1i );
+		free( hash );
 		free( Object );
 		IOS_Close( in );
 		IOS_Close( out );
@@ -1515,7 +1520,6 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	u8 *TMD_Data = NANDLoadFile( path, size );
 	if( TMD_Data == NULL )
 	{
-		free( size );
 		free( path );
 		return *size;
 	}
@@ -1538,7 +1542,6 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	if( TIK_Data == NULL )
 	{
 		free( TMD_Data );
-		free( size );
 		free( path );
 		return *size;
 	}

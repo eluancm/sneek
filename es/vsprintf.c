@@ -9,10 +9,7 @@
  * Wirzenius wrote this portably, Torvalds fucked it up :-)
  */
 
-#include <stdarg.h>
-#include "syscalls.h"
-#include "gecko.h"
-#include "string.h"
+#include "vsprintf.h"
 
 static inline int isdigit(int c)
 {

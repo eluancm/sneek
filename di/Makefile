@@ -4,32 +4,37 @@ AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
 SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
 
-CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s 
+CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
 LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,iosmodule.map -n
 LIBS	=	-lgcc
 
 TARGET	=	iosmodule.elf
-OBJECTS	=	start.o utils_asm.o memory_asm.o common.o sdhc.o ff.o sdmmc.o diskio.o FS.o main.o syscalls.o vsprintf.o string.o
+OBJECTS	=	start.o main.o syscalls.o utils_asm.o gecko.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
 
 .PHONY: FORCE
 
 $(TARGET) : iosmodule.ld $(OBJECTS)
+	@echo  "LD	$@"
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
-	@$(SSTRIP) $@
+	@echo @$(SSTRIP) $@
 
 %.o : %.s
+	@echo  "AS	$@"
 	@$(CC) $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -x assembler-with-cpp -o $@ $<
 
 %.o : %.c
+	@echo  "CC	$@"
 	@$(CC) $(CFLAGS) -c -o $@ $<
 
 %.d: %.c
+	@echo  "DEP	$@"
 	@set -e; $(CC) -M $(CFLAGS) $< \
 		| sed 's?\($*\)\.o[ :]*?\1.o $@ : ?g' > $@; \
 		[ -s $@ ] || rm -f $@
 
 %.d: %.S
+	@echo	"DEP	$@"
 	@touch $@
 
 -include $(OBJECTS:.o=.d)

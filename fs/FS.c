@@ -408,10 +408,10 @@ void FFS_Ioctl(struct IPCMessage *msg)
 
 u32 FS_CheckHandle( s32 fd )
 {
-	if( fd < 0 && fd >= MAX_FILE)
+	if( fd < 0 || fd >= MAX_FILE)
 	{
 #ifdef EDEBUG
-		dbgprintf("FFS:Handle is invalid! %d < 0 && %d >= %d!\n", fd, fd, MAX_FILE);
+		dbgprintf("FFS:Handle is invalid! %d < 0 || %d >= %d!\n", fd, fd, MAX_FILE);
 #endif
 		return 0;
 	}

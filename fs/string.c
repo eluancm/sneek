@@ -6,6 +6,7 @@
 
 #include "string.h"
 #include "gecko.h"
+#include "vsprintf.h"
 
 size_t strnlen(const char *s, size_t count)
 {
