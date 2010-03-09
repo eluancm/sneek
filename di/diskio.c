@@ -30,12 +30,17 @@ u8 *buffer = (u8*)0x00001400;
 
 DSTATUS disk_initialize (BYTE drv)
 {
+	udelay( 50000 );
+
 	dbgprintf("DIP: Initializing TinyEHCI...\n");
 	tiny_ehci_init();
 
 	dbgprintf("DIP: Discovering EHCI devices...\n");
-	ehci_discover();
-	dbgprintf("DIP: Discovery complete...\n");
+
+	while( ehci_discover() == -ENODEV )
+		udelay( 4000 );
+
+	dbgprintf("done\n");
 	
 	s32 r = USBStorage_Init();
 	
