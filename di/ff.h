@@ -39,7 +39,7 @@
 /  performance and code efficiency. */
 
 
-#define _FS_READONLY	0
+#define _FS_READONLY	1
 /* Setting _FS_READONLY to 1 defines read only configuration. This removes
 /  writing functions, f_write, f_sync, f_unlink, f_mkdir, f_chmod, f_rename,
 /  f_truncate and useless f_getfree. */
@@ -55,7 +55,7 @@
 /   3: f_lseek is removed in addition to level 2. */
 
 
-#define	_FS_TINY	1
+#define	_FS_TINY	0
 /* When _FS_TINY is set to 1, FatFs uses the sector buffer in the file system
 /  object instead of the sector buffer in the individual file object for file
 /  data transfer. This reduces memory consumption 512 bytes each file object. */

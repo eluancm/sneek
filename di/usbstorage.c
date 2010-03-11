@@ -652,7 +652,7 @@ static int ums_init_done = 0;
 s32 USBStorage_Init(void)
 {
         int i;
-        debug_printf("usbstorage init %d\n", ums_init_done);
+        //debug_printf("usbstorage init %d\n", ums_init_done);
         if(ums_init_done)
           return 0;
         ums_init_done = 1;

@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ehci.h"
 #include "gecko.h"
 #include "dip.h"
+#include "alloc.h"
 
 //#define FAT
 
@@ -259,7 +260,7 @@ u32 USB_EncryptedRead( u64 Offset, unsigned int Length, void *buffer )
 		//	DIP_Fatal( "USB_EncryptedRead", __LINE__, __FILE__, r, "aes_decrypt failed");
 		//}
 
-		if( AOffset || (((vu32)buffer+BufferOff)&0x3F) )
+		if( AOffset || (((u32)buffer+BufferOff)&0x3F) )
 		{
 			r = aes_decrypt_( *KeyID, enc+0x3D0, enc+0x400, 0x7c00, data );
 		//	dbgprintf("DIP:aes_decrypt_( %d, %p, %p, %08X, %p ):%d\n", KeyID, enc+0x3D0, enc+0x400, 0x7c00, data, r );
@@ -296,8 +297,8 @@ u32 USB_EncryptedRead( u64 Offset, unsigned int Length, void *buffer )
 			ReadSize = Size;
 	}
 
-	heap_free( heapid, enc );
-	heap_free( heapid, data );
+	free( enc );
+	free( data );
 
 	return DI_SUCCESS;
 }
@@ -339,13 +340,13 @@ void DIP_Ioctl( struct ipcmessage *msg )
 			ret = DI_FATAL;
 			while( f_readdir( &d, &FInfo ) == FR_OK )
 			{
-				if( count == *(vu32*)(bufin+4) )
+				if( count == *(u32*)(bufin+4) )
 				{
 					//build path
 					sprintf( GamePath, "/games/%s/", FInfo.fname );
 					dbgprintf("%s\n", GamePath );
 
-					char *str = (char*)heap_alloc_aligned( heapid, 32,32 );
+					char *str = malloca( 32, 32 );
 					sprintf( str, "%spart.bin", GamePath );
 
 					if( f_open( &f, str, FA_READ ) == FR_OK )
@@ -357,7 +358,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 						ret = DI_FATAL;
 					}
 
-					heap_free( heapid, str );
+					free( str );
 					break;
 				}
 				count++;
@@ -376,7 +377,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 			}
 			heap_free( heapid, mem );
 #endif
-			dbgprintf("DIP:DVDSelectGame(%d):%d\n", *(vu32*)(bufin+4), ret );
+			dbgprintf("DIP:DVDSelectGame(%d):%d\n", *(u32*)(bufin+4), ret );
 		} break;
 		case 0x96:
 		case DVD_REPORTKEY:
@@ -392,20 +393,20 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case 0x95:		// 0x20 out
 		{
-			*(vu32*)bufout = DIStatus;
+			*(u32*)bufout = DIStatus;
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", DIStatus, ret );
 		} break;
 		case 0x7A:		// 0x20 out
 		{
-			*(vu32*)bufout = DICover;
+			*(u32*)bufout = DICover;
 			ret = DI_SUCCESS;
 			//dbgprintf("DIP:DVDLowPrepareCoverRegister( %08X ):%d\n", DICover, ret );
 		} break;
 		case 0x86:		// 0 out
 		{
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowClearCoverInterrupt():%d\n", ret);
+			//dbgprintf("DIP:DVDLowClearCoverInterrupt():%d\n", ret);
 		} break;
 		case DVD_GETCOVER:	// 0x88 - Cover is always closed
 		{
@@ -434,23 +435,23 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_GET_ERROR:	// 0xE0
 		{
-			*(vu32*)bufout = error; 
+			*(u32*)bufout = error; 
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowGetError( %08X ):%d\n", error, ret );
 		} break;
 		case 0x8E:
 		{
-			if( (*(vu8*)(bufin+4)) == 0 )
+			if( (*(u8*)(bufin+4)) == 0 )
 				EnableVideo( 1 );
 			else
 				EnableVideo( 0 );
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(vu32*)(bufin+4), ret);
+			dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_LOW_READ:	// 0x71
 		{
-			if( *(vu32*)(bufin+8) > PartitionSize )
+			if( *(u32*)(bufin+8) > f.fsize )
 			{
 				ret = DI_ERROR;
 				error = 0x00052100;
@@ -460,50 +461,50 @@ void DIP_Ioctl( struct ipcmessage *msg )
 				{
 #ifdef FAT
 					s32 r=0;
-					r = f_lseek( &f, ((*(vu32*)(bufin+8))<<2) );
+					r = f_lseek( &f, ((*(u32*)(bufin+8))<<2) );
 					if( r != FR_OK )
 					{
 						dbgprintf("f_lseek():%d\n", r);
 						ret = DI_FATAL;
 					} else {
-						r = f_read( &f, bufout, ((*(vu32*)(bufin+4))+31)&(~31), &read );
+						r = f_read( &f, bufout, ((*(u32*)(bufin+4))+31)&(~31), &read );
 						if( r != FR_OK )
 						{
 							dbgprintf("f_read():%d\n", r);
 							ret = DI_FATAL;
 						} else {
-							if( read < *(vu32*)(bufin+4) )
+							if( read < *(u32*)(bufin+4) )
 							{
-								dbgprintf("f_read(): %d < %d\n", read < *(vu32*)(bufin+4));
+								dbgprintf("f_read(): %d < %d\n", read < *(u32*)(bufin+4));
 								ret = DI_FATAL;
 							} else
 								ret = DI_SUCCESS;
 						}
 					}
 #else
-					ret = USB_EncryptedRead( (*(vu32*)(bufin+8)), *(vu32*)(bufin+4), bufout );
+					ret = USB_EncryptedRead( (*(u32*)(bufin+8)), *(u32*)(bufin+4), bufout );
 #endif
 				} else {
 					DIP_Fatal("DVDLowread", __LINE__, __FILE__, 64, "Partition not opened!");
 				}
 			}
-			dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(vu32*)(bufin+8), *(vu32*)(bufin+4), bufout, ret );
+			dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_UNENCRYPTED:
 		{
-			if( *(vu32*)(bufin+8) > 0x46090000 )
+			if( *(u32*)(bufin+8) > 0x46090000 )
 			{
 				ret = DI_ERROR;
 				error = 0x00052100;
 
 			} else {
 #ifdef FAT
-				switch( *(vu32*)(bufin+8) )
+				switch( *(u32*)(bufin+8) )
 				{
 					case 0x00:
 					{
 						f_lseek( &f, 0 );
-						if( f_read( &f, bufout, *(vu32*)(bufin+4), &read ) != FR_OK )
+						if( f_read( &f, bufout, *(u32*)(bufin+4), &read ) != FR_OK )
 							ret = DI_FATAL;
 						else 
 							ret = DI_SUCCESS;
@@ -511,7 +512,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 					case 0x08:		// 0x20
 					{
 						f_lseek( &f, 0x20 );
-						if( f_read( &f, bufout, *(vu32*)(bufin+4), &read ) != FR_OK )
+						if( f_read( &f, bufout, *(u32*)(bufin+4), &read ) != FR_OK )
 							ret = DI_FATAL;
 						else 
 							ret = DI_SUCCESS;
@@ -519,61 +520,55 @@ void DIP_Ioctl( struct ipcmessage *msg )
 					case 0x10000:		// 0x40000
 					{
 						memset( bufout, 0, lenout );
-						*(vu32*)(bufout)	= 1;				// one partition
-						*(vu32*)(bufout+4)	= 0x40020>>2;		// partition table info
+						*(u32*)(bufout)		= 1;				// one partition
+						*(u32*)(bufout+4)	= 0x40020>>2;		// partition table info
 						ret = DI_SUCCESS;
 					} break;
 					case 0x10008:		// 0x40020
 					{
 						memset( bufout, 0, lenout );
-						*(vu32*)(bufout)	= 0x03E00000;		// partition offset
-						*(vu32*)(bufout+4)	= 0x00000000;		// partition type
+						*(u32*)(bufout)		= 0x03E00000;		// partition offset
+						*(u32*)(bufout+4)	= 0x00000000;		// partition type
 						ret = DI_SUCCESS;
 					} break;
 					case 0x00013800:		// 0x4E000
 					{
 						memset( bufout, 0, lenout );
 
-						*(vu32*)(bufout)		= 2;			// 0 = JAP, 1 = USA, 2 = EUR, 4 = KOR
-						*(vu32*)(bufout+0x1FFC)	= 0xC3F81A8E;
+						*(u32*)(bufout)			= 1;			// 0 = JAP, 1 = USA, 2 = EUR, 4 = KOR
+						*(u32*)(bufout+0x1FFC)	= 0xC3F81A8E;
 
 						ret = DI_SUCCESS;
 					} break;
 					default:
 						dbgprintf("DIP:unexpected read offset!\n");
-						dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(vu32*)(bufin+8), *(vu32*)(bufin+4), bufout, ret );
+						dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 						while(1);
 					break;
 				}
 #else
-				ret = USB_Read( *(vu32*)(bufin+8)<<2, ((*(vu32*)(bufin+4))+31)&(~31), bufout );
+				ret = USB_Read( *(u32*)(bufin+8)<<2, ((*(u32*)(bufin+4))+31)&(~31), bufout );
 
 				//patch out update partition!
-				if( *(vu32*)(bufin+8) == 0x00010000 )
+				if( *(u32*)(bufin+8) == 0x00010000 )
 				{
-					*(vu32*)bufout = 1;
-					PartitionTableOffset = *(vu32*)(bufout+4);
+					*(u32*)bufout = 1;
+					PartitionTableOffset = *(u32*)(bufout+4);
 
-				} else if ( (*(vu32*)(bufin+8) == PartitionTableOffset) && (PartitionTableOffset != 0)  ) {
+				} else if ( (*(u32*)(bufin+8) == PartitionTableOffset) && (PartitionTableOffset != 0)  ) {
 
-					*(vu32*)(bufout) = *(vu32*)(bufout+8); 
-					*(vu32*)(bufout+4) = 0; 
+					*(u32*)(bufout) = *(u32*)(bufout+8); 
+					*(u32*)(bufout+4) = 0; 
 				}
 #endif
 			}
 
-			dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(vu32*)(bufin+8), *(vu32*)(bufin+4), bufout, ret );
+			dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_DISCID:
 		{
-			s32 r = DIResetAssert();
-			dbgprintf("DIResetAssert():%d\n", r);
-			udelay(0x0C);
-			r = DIResetDeAssert();
-			dbgprintf("DIResetDeAssert():%d\n", r);
-
 #ifdef FAT
-			u8 *data = heap_alloc_aligned( 0, 0x40, 0x40 );
+			u8 *data = malloca( 0x40, 0x40 );
 
 			f_lseek( &f, 0 );
 			ret = f_read( &f, data, lenout, &read );
@@ -586,15 +581,17 @@ void DIP_Ioctl( struct ipcmessage *msg )
 				memcpy( bufout, data, lenout );
 			}
 
-			PartitionSize = f.fsize;
+			PartitionSize = f.fsize>>2;
+
+			dbgprintf("DIP:Set partition size to:%d\n", (u64)(PartitionSize)<<2 );
 				
-			heap_free( 0, data );
+			free( data );
 
 #else
 			ret = USB_Read( 0, (lenout+31)&(~31), bufout );
 			dbgprintf("DIP:SlotID:%d\n", SlotID );
 #endif
-			//hexdump( bufout, lenout );
+			hexdump( bufout, lenout );
 
 
 			dbgprintf("DIP:DVDLowReadDiscID(%p):%d\n", bufout, ret );
@@ -628,13 +625,13 @@ void DIP_Ioctl( struct ipcmessage *msg )
 			Partition = 0;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowReset( %d, %08X, %08X ):%d\n", *(vu32*)(bufin+4), DICover, DIStatus, ret);
+			dbgprintf("DIP:DVDLowReset( %d, %08X, %08X ):%d\n", *(u32*)(bufin+4), DICover, DIStatus, ret);
 		} break;
 		case DVD_SET_MOTOR:
 		{
 			Motor = 0;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(vu32*)(bufin+4), *(vu32*)(bufin+8), ret);
+			dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(u32*)(bufin+4), *(u32*)(bufin+8), ret);
 		} break;
 		case DVD_CLOSE_PARTITION:
 		{
@@ -645,7 +642,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		case DVD_READ_BCA:
 		{
 			memset32( (u32*)bufout, 0, 0x40 );
-			*(vu32*)(bufout+0x30) = 0x00000001;
+			*(u32*)(bufout+0x30) = 0x00000001;
 
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowReadBCA():%d\n", ret );
@@ -713,7 +710,7 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 					break;
 				}
 
-				((u32*)buffer)[0x04] = (vu32)TIK;			//0x10
+				((u32*)buffer)[0x04] = (u32)TIK;			//0x10
 				((u32*)buffer)[0x05] = 0x2a4;				//0x14
 				sync_before_read(TIK, 0x2a4);
 
@@ -737,7 +734,7 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 					break;
 				} 
 
-				((u32*)buffer)[0x06] = (vu32)TMD;		//0x18
+				((u32*)buffer)[0x06] = (u32)TMD;		//0x18
 				((u32*)buffer)[0x07] = fp.fsize;		//0x1C
 				sync_before_read(TMD, asize);
 
@@ -765,7 +762,7 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 					break;
 				}
 
-				((u32*)buffer)[0x00] = (vu32)CRT;		//0x00
+				((u32*)buffer)[0x00] = (u32)CRT;		//0x00
 				((u32*)buffer)[0x01] = 0xA00;			//0x04
 				sync_before_read(CRT, 0xA00);
 
@@ -828,13 +825,13 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 			sync_after_write(CRT, PI.CertChainSize);
 
 #endif
-			((u32*)buffer)[0x02] = (vu32)NULL;			//0x08
+			((u32*)buffer)[0x02] = (u32)NULL;			//0x08
 			((u32*)buffer)[0x03] = 0;					//0x0C
 
 			//out
-			((u32*)buffer)[0x08] = (vu32)KeyID;			//0x20
+			((u32*)buffer)[0x08] = (u32)KeyID;			//0x20
 			((u32*)buffer)[0x09] = 4;					//0x24
-			((u32*)buffer)[0x0A] = (vu32)hashes;		//0x28
+			((u32*)buffer)[0x0A] = (u32)hashes;			//0x28
 			((u32*)buffer)[0x0B] = 20;					//0x2C
 
 			sync_before_read(buffer, 0x40);
@@ -844,7 +841,7 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 
 			s32 r = ios_ioctlv( ESHandle, 0x1C, 4, 2, buffer );
 			dbgprintf("ios_ioctlv( %d, %02X, %d, %d, %p ):%d\n", ESHandle, 0x1C, 4, 2, buffer, r );
-			//IOS_Close( ESHandle );
+			IOS_Close( ESHandle );
 
 			dbgprintf("KeyID:%d\n", *KeyID );
 
@@ -939,13 +936,15 @@ void _main(void)
 		ThreadCancel( 0, 0x77 );
 	}
 
-	fres = f_open( &f, "/games/SMNP/part.bin", FA_READ );
-	sprintf( GamePath, "/games/SMNP/" );
+	fres = f_open( &f, "/games/SMNE/part.bin", FA_READ );
+	sprintf( GamePath, "/games/SMNE/" );
 
-	dbgprintf("f_open():%d\n", fres );
 
 	if( fres != FR_OK )
+	{
+		DIP_Fatal("main()",__LINE__,__FILE__, fres, "Failed to open part.bin!");
 		while(1);
+	}
 
 #else
 
@@ -973,7 +972,7 @@ void _main(void)
 
 	error = 0;
 
-	KeyID = heap_alloc_aligned( 0, sizeof( u32 ), 0x40 );
+	KeyID = malloca( sizeof( u32 ), 0x40 );
 	*KeyID = 0;
 
 #ifndef FAT

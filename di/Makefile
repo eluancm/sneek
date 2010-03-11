@@ -10,7 +10,7 @@ LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,ios
 LIBS	=	-lgcc
 
 TARGET	=	iosmodule.elf
-OBJECTS	=	start.o main.o syscalls.o utils_asm.o gecko.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
+OBJECTS	=	start.o alloc.o diskio.o ff.o main.o syscalls.o utils_asm.o gecko.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
 
 .PHONY: FORCE
 

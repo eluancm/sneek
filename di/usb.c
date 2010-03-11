@@ -8,7 +8,7 @@
 
 static  s32 __usb_getdesc(struct ehci_device * fd, u8 *buffer, u8 type, u8 index, u8 size)
 {
-        printk("usb_get desc %X %X %p\n",type,index,buffer);
+        //printk("usb_get desc %X %X %p\n",type,index,buffer);
 	return __usb_control_message(fd, USB_ENDPOINT_IN ,USB_REQ_GETDESCRIPTOR, (type << 8) | index, 0, size, buffer, NULL, NULL);
 }
 

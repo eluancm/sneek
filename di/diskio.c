@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "diskio.h"
 #include "string.h"
 #include "ehci.h"
+#include "alloc.h"
 
 #ifndef MEM2_BSS
 #define MEM2_BSS
@@ -60,14 +61,16 @@ DSTATUS disk_status (BYTE drv)
 
 DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 {
-	int i;
-	(void)drv;
-	for (i = 0; i < count; i++)
+	u32 *buffer = malloca( count*512, 0x40 );
+
+	if( USBStorage_Read_Sectors( sector, count, buffer ) != 1 )
 	{
-		if (USBStorage_Read_Sectors( sector+i, 1, buffer) != 1)
-			return RES_ERROR;
-		memcpy(buff + i * 512, buffer, 512);
+		dbgprintf("DIP: Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
+		return RES_ERROR;
 	}
+
+	memcpy( buff, buffer, count*512 );
+	free( buffer );
 
 	return RES_OK;
 }
@@ -75,14 +78,15 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 {
 	int i;
+	u32 *buffer = malloca( count*512, 0x40 );
+	memcpy( buffer, buff, count*512 );
 
-	for (i = 0; i < count; i++)
+	if( USBStorage_Write_Sectors( sector, count, buffer ) != 1 )
 	{
-		memcpy(buffer, buff + i * 512, 512);
-
-		if(USBStorage_Write_Sectors(sector + i, 1, buffer) != 1)
-			return RES_ERROR;
+		dbgprintf("DIP: Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
+		return RES_ERROR;
 	}
+	free( buffer );
 
 	return RES_OK;
 }
