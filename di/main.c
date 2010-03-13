@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "dip.h"
 #include "alloc.h"
 
-//#define FAT
+#define FAT
 
 #ifdef FAT
 
@@ -451,7 +451,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_LOW_READ:	// 0x71
 		{
-			if( *(u32*)(bufin+8) > f.fsize )
+			if( *(u32*)(bufin+8) > PartitionSize )
 			{
 				ret = DI_ERROR;
 				error = 0x00052100;
@@ -488,6 +488,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 					DIP_Fatal("DVDLowread", __LINE__, __FILE__, 64, "Partition not opened!");
 				}
 			}
+
 			dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_UNENCRYPTED:
@@ -520,22 +521,26 @@ void DIP_Ioctl( struct ipcmessage *msg )
 					case 0x10000:		// 0x40000
 					{
 						memset( bufout, 0, lenout );
+
 						*(u32*)(bufout)		= 1;				// one partition
 						*(u32*)(bufout+4)	= 0x40020>>2;		// partition table info
+
 						ret = DI_SUCCESS;
 					} break;
 					case 0x10008:		// 0x40020
 					{
 						memset( bufout, 0, lenout );
+
 						*(u32*)(bufout)		= 0x03E00000;		// partition offset
 						*(u32*)(bufout+4)	= 0x00000000;		// partition type
+
 						ret = DI_SUCCESS;
 					} break;
 					case 0x00013800:		// 0x4E000
 					{
 						memset( bufout, 0, lenout );
 
-						*(u32*)(bufout)			= 1;			// 0 = JAP, 1 = USA, 2 = EUR, 4 = KOR
+						*(u32*)(bufout)			= 0x00000002;			// 0 = JAP, 1 = USA, 2 = EUR, 4 = KOR
 						*(u32*)(bufout+0x1FFC)	= 0xC3F81A8E;
 
 						ret = DI_SUCCESS;
@@ -568,7 +573,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		case DVD_READ_DISCID:
 		{
 #ifdef FAT
-			u8 *data = malloca( 0x40, 0x40 );
+			u8 *data = malloca( (lenout+31)&(~31), 0x40 );
 
 			f_lseek( &f, 0 );
 			ret = f_read( &f, data, lenout, &read );
@@ -580,11 +585,7 @@ void DIP_Ioctl( struct ipcmessage *msg )
 				ret = DI_SUCCESS;
 				memcpy( bufout, data, lenout );
 			}
-
-			PartitionSize = f.fsize>>2;
-
-			dbgprintf("DIP:Set partition size to:%d\n", (u64)(PartitionSize)<<2 );
-				
+			
 			free( data );
 
 #else
@@ -598,34 +599,13 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_RESET:
 		{
-			if( DIResetCheck()<<24 )
-			{
-				s32 r = DIResetAssert();
-				dbgprintf("DIResetAssert():%d\n", r);
-				udelay(0x0C);
-				r = DIResetDeAssert();
-				dbgprintf("DIResetDeAssert():%d\n", r);
-
-				DIStatus &= ~0x54;
-				DIStatus |=  0x10;
-
-				DIStatus &= ~0x54;
-				DIStatus |=  0x04;
-
-				DIStatus &= ~0x54;
-				DIStatus |=  0x08;
-
-				DIStatus &= ~0x54;
-				DIStatus |=  0x02;
-
-				DICover &= ~0x04;
-				DICover &= ~0x02;
-			}
+			DIStatus = 0x00;
+			DICover  = 0x00;
 
 			Partition = 0;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowReset( %d, %08X, %08X ):%d\n", *(u32*)(bufin+4), DICover, DIStatus, ret);
+			dbgprintf("DIP:DVDLowReset( %d ):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_SET_MOTOR:
 		{
@@ -738,6 +718,8 @@ void DIP_Ioctlv(struct ipcmessage *msg)
 				((u32*)buffer)[0x07] = fp.fsize;		//0x1C
 				sync_before_read(TMD, asize);
 
+				PartitionSize = (u32)((*(u64*)(TMD+0x1EC)) >> 2 );
+				dbgprintf("DIP:Set partition size to:%08X%08X\n", (((u64)PartitionSize)<<2)&0xFFFFFFFF00000000, PartitionSize&0xFFFFFFFF );
 
 				if( v[3].data != NULL )
 				{
