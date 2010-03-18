@@ -15,7 +15,7 @@ Copyright (C) 2009		John Kelley <wiidev@kelley.ca>
 #include "utils.h"
 #include "start.h"
 #include "hollywood.h"
-#include "sdhcvar.h"
+#include "sdhc.h"
 #include "string.h"
 #include "memory.h"
 #include "gecko.h"
@@ -33,7 +33,6 @@ Copyright (C) 2009		John Kelley <wiidev@kelley.ca>
 #define PPC_BOOT_FILE "/bootmii/ppcboot.elf"
 
 FATFS fatfs;
-static u8 buf[128*16] MEM2_BSS ALIGNED(64);
 
 u32 _main(void *base)
 {
@@ -50,8 +49,10 @@ u32 _main(void *base)
 	gecko_printf("Configuring caches and MMU...\n");
 	mem_initialize();
 
-	gecko_printf("IOSflags: %08x %08x %08x\n", read32(0xffffff00), read32(0xffffff04), read32(0xffffff08));
-	gecko_printf("          %08x %08x %08x\n", read32(0xffffff0c), read32(0xffffff10), read32(0xffffff14));
+	gecko_printf("IOSflags: %08x %08x %08x\n",
+		read32(0xffffff00), read32(0xffffff04), read32(0xffffff08));
+	gecko_printf("          %08x %08x %08x\n",
+		read32(0xffffff0c), read32(0xffffff10), read32(0xffffff14));
 
 	irq_initialize();
 	irq_enable(IRQ_TIMER);
@@ -78,29 +79,30 @@ u32 _main(void *base)
 	gecko_printf("Mounting SD...\n");
 	fres = f_mount(0, &fatfs);
 
-	if (read32(0x0d800190) & 2) {
-		gecko_printf("GameCube compatibility mode detected...\n");
-		vector = boot2_run(1, 0x101);
-		goto shutdown;
-	}
+	//if (read32(0x0d800190) & 2)
+	//{
+	//	gecko_printf("GameCube compatibility mode detected...\n");
+		vector = boot2_run(1, 2);
+	//	goto shutdown;
+	//}
 
-	if(fres != FR_OK) {
-		gecko_printf("Error %d while trying to mount SD\n", fres);
-		panic2(0, PANIC_MOUNT);
-	}
+	//if(fres != FR_OK)
+	//{
+	//	gecko_printf("Error %d while trying to mount SD\n", fres);
+	//	panic2(0, PANIC_MOUNT);
+	//}
 
-	gecko_printf("Trying to boot:" PPC_BOOT_FILE "\n");
+	//gecko_printf("Trying to boot:" PPC_BOOT_FILE "\n");
 
-	res = powerpc_boot_file(PPC_BOOT_FILE);
-	if(res < 0) {
-		gecko_printf("Failed to boot PPC: %d\n", res);
-		gecko_printf("Continuing anyway\n");
-	}
+	//res = powerpc_boot_file(PPC_BOOT_FILE);
+	//if(res < 0) {
+	//	gecko_printf("Failed to boot PPC: %d\n", res);
+	//	gecko_printf("Continuing anyway\n");
+	//}
 
-	gecko_printf("Going into IPC mainloop...\n");
-	vector = ipc_process_slow();
-	//vector = boot2_run(1,2);
-	gecko_printf("IPC mainloop done!\n");
+	//gecko_printf("Going into IPC mainloop...\n");
+	//vector = ipc_process_slow();
+	//gecko_printf("IPC mainloop done!\n");
 	gecko_printf("Shutting down IPC...\n");
 	ipc_shutdown();
 

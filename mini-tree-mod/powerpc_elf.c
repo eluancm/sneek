@@ -29,8 +29,6 @@ extern u8 __mem2_area_start[];
 
 #define PHDR_MAX 10
 
-#define phys(x) ((x)&(~0x80000000))
-
 static int _check_physaddr(u32 addr) {
 	if ((addr >= PPC_MEM2_START) && (addr <= PPC_MEM2_END))
 		return 2;
@@ -111,76 +109,7 @@ int powerpc_boot_file(const char *path)
 	u16 count = elfhdr.e_phnum;
 	Elf32_Phdr *phdr = phdrs;
 
-
-//typedef struct {
-//	unsigned int offsetText[7];
-//	unsigned int offsetData[11];
-//	unsigned int addressText[7];
-//	unsigned int addressData[11];
-//	unsigned int sizeText[7];
-//	unsigned int sizeData[11];
-//	unsigned int addressBSS;
-//	unsigned int sizeBSS;
-//	unsigned int entrypoint;
-//} dolhdr;
-//
-//
-//	dolhdr hdr;
-//
-//	f_lseek( &fd, 0 );
-//	f_read( &fd, &hdr, sizeof(dolhdr), &read );
-//	if( hdr.offsetText[0] != 0x100 )
-//	{
-//		gecko_printf("This is not a dol!\n");
-//		return -104;
-//	}
-
 	powerpc_hang();
-
-	//gecko_printf("Text Sections:\n" );
-
-	//int i=0;
-	//int r =0;
-	//for (i = 0; i < 6; i++)
-	//{
-	//	if( hdr.sizeText[i] && hdr.addressText[i] && hdr.offsetText[i] )
-	//	{
-	//		if( f_lseek( &fd, hdr.offsetText[i] ) != FR_OK )
-	//		{
-	//			gecko_printf("Channel:Launch->ISFS_Seek(%d) Failed: %d\n", hdr.offsetText[i], r );
-	//			return -11;
-	//		}
-	//		if( f_read( &fd, (void*)(phys(hdr.addressText[i])), hdr.sizeText[i], &read ) != FR_OK )
-	//		{
-	//			gecko_printf("Channel:Launch->ISFS_Read(%d) Failed: %d\n", hdr.sizeText[i], r );
-	//			return -12;
-	//		}
-
-	//		gecko_printf("\t%08x\t\t%08x\t\t%08x\t\t\n", hdr.offsetText[i], phys(hdr.addressText[i]), hdr.sizeText[i]);
-	//	}
-	//}
-
-	//gecko_printf("\nData Sections:\n" );
-
-	//for (i = 0; i <= 10; i++)
-	//{
-	//	if( hdr.sizeData[i] && hdr.addressData[i] && hdr.offsetData[i] )
-	//	{
-	//		if( f_lseek( &fd, hdr.offsetData[i] ) != FR_OK )
-	//		{
-	//			gecko_printf("Channel:Launch->ISFS_Seek(%d) Failed: %d\n", hdr.offsetData[i], r );
-	//			return -13;
-	//		}
-	//		if( f_read( &fd, (void*)(phys(hdr.addressData[i])), hdr.sizeData[i], &read ) != FR_OK  )
-	//		{
-	//			gecko_printf("Channel:Launch->ISFS_Read(%d) Failed: %d\n", hdr.sizeData[i], r );
-	//			return -14;
-	//		}
-
-	//		gecko_printf("\t%08x\t\t%08x\t\t%08x\t\t\n", hdr.offsetData[i], phys(hdr.addressData[i]), hdr.sizeData[i] );
-	//	}
-	//}
-
 
 	while (count--) {
 		if (phdr->p_type != PT_LOAD) {
@@ -210,7 +139,6 @@ int powerpc_boot_file(const char *path)
 	dc_flushall();
 
 	gecko_printf("ELF load done, booting PPC...\n");
-	//powerpc_upload_stub(hdr.entrypoint);
 	powerpc_upload_stub(elfhdr.e_entry);
 	powerpc_reset();
 	gecko_printf("PPC booted!\n");

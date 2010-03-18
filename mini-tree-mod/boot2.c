@@ -179,50 +179,40 @@ int boot2_load(int copy)
 	valid_blocks = 0;
 
 	// find the best blockmap
-	for(block=BOOT2_START; block<=BOOT2_END; block++)
-	{
+	for(block=BOOT2_START; block<=BOOT2_END; block++) {
 		page = (block+1)*BLOCK_SIZE - 1;
 		nand_read_page(page, sector_buf, ecc_buf);
 		nand_wait();
 		// boot1 doesn't actually do this, but it's probably a good idea to try to correct 1-bit errors anyway
-		if(nand_correct(page, sector_buf, ecc_buf) < 0)
-		{
+		if(nand_correct(page, sector_buf, ecc_buf) < 0) {
 			gecko_printf("boot2 map candidate page 0x%x is uncorrectable, trying anyway\n", page);
 		}
 		mapno = find_valid_map(maps);
-		if(mapno >= 0)
-		{
-			gecko_printf("found valid boot2 blockmap at page 0x%x, submap %d, generation %d\n", page, mapno, maps[mapno].generation);
-			if(maps[mapno].generation >= good_blockmap.generation)
-			{
+		if(mapno >= 0) {
+			gecko_printf("found valid boot2 blockmap at page 0x%x, submap %d, generation %d\n",
+				page, mapno, maps[mapno].generation);
+			if(maps[mapno].generation >= good_blockmap.generation) {
 				memcpy(&good_blockmap, &maps[mapno], sizeof(boot2blockmap));
 				found = 1;
 			}
 		}
 	}
 
-	if(!found)
-	{
+	if(!found) {
 		gecko_printf("no valid boot2 blockmap found!\n");
 		return -1;
 	}
 
 	// traverse the blockmap and make a list of the actual boot2 blocks, in order
-	if(copy == 0)
-	{
-		for(block=BOOT2_START; block<=BOOT2_END; block++)
-		{
-			if(good_blockmap.blocks[block] == 0x00)
-			{
+	if(copy == 0) {
+		for(block=BOOT2_START; block<=BOOT2_END; block++) {
+			if(good_blockmap.blocks[block] == 0x00) {
 				boot2_blocks[valid_blocks++] = block;
 			}
 		}
-	} else if(copy == 1)
-	{
-		for(block=BOOT2_END; block>=BOOT2_START; block--)
-		{
-			if(good_blockmap.blocks[block] == 0x00)
-			{
+	} else if(copy == 1) {
+		for(block=BOOT2_END; block>=BOOT2_START; block--) {
+			if(good_blockmap.blocks[block] == 0x00) {
 				boot2_blocks[valid_blocks++] = block;
 			}
 		}
@@ -288,8 +278,7 @@ int boot2_load(int copy)
 		(u32)boot2_tmd.boot_content.size, boot2_content_size);
 
 	// read content
-	if(read_to(hdr->data_offset + boot2_content_size) < 0)
-	{
+	if(read_to(hdr->data_offset + boot2_content_size) < 0) {
 		gecko_printf("error while reading boot2 content");
 		return -1;
 	}
@@ -301,15 +290,12 @@ int boot2_load(int copy)
 	return 0;
 }
 
-void boot2_init(void)
-{
+void boot2_init(void) {
 	boot2_copy = -1;
 	boot2_initialized = 0;
-	if(boot2_load(0) < 0)
-	{
+	if(boot2_load(0) < 0) {
 		gecko_printf("failed to load boot2 copy 0, trying copy 1...\n");
-		if(boot2_load(1) < 0)
-		{
+		if(boot2_load(1) < 0) {
 			gecko_printf("failed to load boot2 copy 1!\n");
 			return;
 		}
@@ -329,59 +315,33 @@ static u32 match[] = {
 static u32 patch[] = {
 	0xBC024708,
 	0x10001,
-	0x48415858,
+	0x4a4f4449,
 };
 
-static u8 ISFSFormat[] =
-{
-    0x46, 0x9F, 0x68, 0x48,
-	0xF7, 0xFD, 0xFF, 0x5A,
-	0x1C, 0x04, 0xE1, 0x06,
-	0x69, 0x2B, 0x2B, 0x1B,
-};
-
-static u8 ISFSFormatPatch[] =
-{
-    0x46, 0x9F, 0x68, 0x48,
-	0x20, 0x00, 0x20, 0x00,
-	0x1C, 0x04, 0xE1, 0x06,
-	0x69, 0x2B, 0x2B, 0x1B,
-};
-
-static u8 Boot2Start[] =
-{
-    0x7F, 0x45, 0x4C, 0x46,
-	0x01, 0x02, 0x01, 0x61,
-	//0x01, 0x00, 0x00, 0x00,
-	//0x00, 0x00, 0x00, 0x00, 
- //   0x00, 0x02, 0x00, 0x28,
-	//0x00, 0x00, 0x00, 0x01,
-	//0xFF, 0xFF, 0x00, 0x00,
-	//0x00, 0x00, 0x00, 0x34, 
- //   0x00, 0x00, 0x00, 0x00,
-	//0x00, 0x00, 0x06, 0x06,
-	//0x00, 0x34, 0x00, 0x20,
-	//0x00, 0x0F, 0x00, 0x00, 
- //   0x00, 0x00, 0x00, 0x00,
-	//0x00, 0x00, 0x00, 0x06,
-	//0x00, 0x00, 0x00, 0x34,
-	//0x13, 0x4C, 0x00, 0x00, 
- //   0x13, 0x4C, 0x00, 0x00,
-	//0x00, 0x00, 0x01, 0xE0,
-	//0x00, 0x00, 0x01, 0xE0,
-	//0x00, 0xF0, 0x00, 0x00, 
- //   0x00, 0x00, 0x00, 0x04,
-	//0x00, 0x00, 0x00, 0x04,
-	//0x00, 0x00, 0x02, 0x14, 
-} ;
-
-static u8 swi[] =
+static u8 swi_v2[] =
 {
 	0xFF, 0xFF, 0x18, 0x90,
 };
-static u8 swipatch[] =
+static u8 swi_v4[] =
+{
+	0xFF, 0xFF, 0x1D, 0x60,
+};
+static u8 swi_v70[] =
+{
+	0xFF, 0xFF, 0x1F, 0x20,
+};
+
+static u8 swipatch_v2[] =
 {
 	0xFF, 0xFF, 0x69, 0xF4,
+};
+static u8 swipatch_v4[] =
+{
+	0xFF, 0xFF, 0x79, 0xB4,
+};
+static u8 swipatch_v70[] =
+{
+	0xFF, 0xFF, 0x7B, 0x98,
 };
 
 static u8 EXISendBuffer[] =
@@ -400,31 +360,9 @@ static u8 rawData[] =
 	0x46, 0x72,
 	0x1C, 0x01,
 	0x20, 0x05,
-	0xDF, 0xAB,
-	0x47, 0x10,	
-	0x46, 0x72, 
 };
-static u8 Crashme[] =
-{
-    0x05, 0x1B,
-	0x47, 0x18, 
 
-} ;
-
-static u8 CrashmePattern[] =
-{
-    0x1E, 0x07,
-	0xD0, 0x06,
-	0x1C, 0x3B,
-	0x33, 0x68,
-	0xD1, 0x3D,
-	0xF0, 0x06,
-	0xF8, 0x7C, 
-} ;
-
-
-u32 boot2_run(u32 tid_hi, u32 tid_lo)
-{
+u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 	u8 *ptr;
 	u32 i, num_matches=0;
 	ioshdr *hdr;
@@ -434,28 +372,52 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo)
 
 	gecko_printf("booting boot2 with title %08x-%08x\n", tid_hi, tid_lo);
 	mem_protect(1, (void *)0x11000000, (void *)0x13FFFFFF);
-	aes_reset();
-	aes_set_iv(boot2_iv);
-	aes_set_key(boot2_key);
-	aes_decrypt(boot2_content, (void *)0x11000000, boot2_content_size / 16, 0);
+
+	FIL f;
+
+	if( f_open( &f, "/boot2.bin", FA_READ ) == FR_OK )
+	{
+		unsigned int read;
+		int fres = f_read( &f, (void*)0x11000000, f.fsize, &read );
+		gecko_printf("f_read( %p, %p, %d, %d):%d\n", &f, (void*)0x11000000, f.fsize, read, fres );
+		f_close( &f );
+	}/* else {
+		gecko_printf("Loading internal boot2...\n");
+		aes_reset();
+		aes_set_iv(boot2_iv);
+		aes_set_key(boot2_key);
+		aes_decrypt(boot2_content, (void *)0x11000000, boot2_content_size / 16, 0);
+	}*/
 
 	hdr = (ioshdr *)0x11000000;
 	ptr = (u8 *)0x11000000 + hdr->hdrsize + hdr->loadersize;
 
-	for( i = 0; i < sizeof(boot2); ++i )
-	{
-		//if( memcmp(ptr+i, match, sizeof(match) ) == 0)
-		//{
-		//	num_matches++;
-		//	memcpy(ptr+i, patch, sizeof(patch));
-		//	gecko_printf("Found TitleID @%08x\n", (u32)ptr+i);
-		//}
 
-		if( memcmp(ptr+i, swi, sizeof(swi) ) == 0)
+	for (i = 0; i < sizeof(boot2); i += 1)
+	{
+		if (memcmp(ptr+i, match, sizeof(match)) == 0) {
+			num_matches++;
+			memcpy(ptr+i, patch, sizeof(patch));
+			gecko_printf("patched data @%08x\n", (u32)ptr+i);
+		}
+
+		if( memcmp(ptr+i, swi_v2, sizeof(swi_v2) ) == 0)
 		{
 			num_matches++;
-			memcpy(ptr+i, swipatch, sizeof(swipatch));
-			gecko_printf("Found SWI offset @%08x\n", (u32)ptr+i);
+			memcpy(ptr+i, swipatch_v2, sizeof(swipatch_v2));
+			gecko_printf("Found SWI v2 offset @%08x\n", (u32)ptr+i);
+		}
+		if( memcmp(ptr+i, swi_v4, sizeof(swi_v4) ) == 0)
+		{
+			num_matches++;
+			memcpy(ptr+i, swipatch_v4, sizeof(swipatch_v4));
+			gecko_printf("Found SWI v4 offset @%08x\n", (u32)ptr+i);
+		}
+		if( memcmp(ptr+i, swi_v70, sizeof(swi_v70) ) == 0)
+		{
+			num_matches++;
+			memcpy(ptr+i, swipatch_v70, sizeof(swipatch_v70));
+			gecko_printf("Found SWI v70 offset @%08x\n", (u32)ptr+i);
 		}
 
 		if( memcmp(ptr+i, rawData, sizeof(rawData)) == 0)
@@ -464,36 +426,13 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo)
 			memcpy(ptr+i, EXISendBuffer, sizeof(EXISendBuffer));
 			gecko_printf("Found Syscall @%08x\n", (u32)ptr+i);
 		}
-
-		if( memcmp(ptr+i, Boot2Start, sizeof(Boot2Start)) == 0)
-		{
-			FIL f;
-			if( f_open( &f, "boot2.bin", FA_READ) == FR_OK )
-			{
-				u32 read=0;
-				f_lseek( &f, 0x334 );
-				f_read( &f, (char*)(ptr+i), f.fsize-0x334, &read );
-				gecko_printf("Found boot2 start @%08x (%d)\n", (u32)ptr+i, read);
-				f_close( &f );
-				num_matches++;
-			}
-		}
-
-		//if( memcmp(ptr+i, CrashmePattern, sizeof(CrashmePattern)) == 0)
-		//{
-		//	num_matches++;
-		//	memcpy(ptr+i, Crashme, sizeof(Crashme));
-		//	gecko_printf("Found Crashme @%08x\n", (u32)ptr+i);
-		//}
-
-		
-
 	}
 
+	gecko_printf("HdrSize:%04X LdrSize:%04X\n", hdr->hdrsize, hdr->loadersize );
 
-	/*if( num_matches != 4 )
-	{*/
-		gecko_printf("Wrong number of patches (matched %d times, expected 5), panicking\n", num_matches);
+	//if (num_matches != 1)
+	//{
+	//	gecko_printf("Wrong number of patches (matched %d times, expected 1), panicking\n", num_matches);
 	//	panic2(0, PANIC_PATCHFAIL);
 	//}
 	

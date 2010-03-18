@@ -260,12 +260,10 @@ int nand_correct(u32 pageno, void *data, void *ecc)
 	int uncorrectable = 0;
 	int corrected = 0;
 	
-	for(i=0;i<4;i++)
-	{
+	for(i=0;i<4;i++) {
 		u32 syndrome = *ecc_read ^ *ecc_calc; //calculate ECC syncrome
 		// don't try to correct unformatted pages (all FF)
-		if ((*ecc_read != 0xFFFFFFFF) && syndrome)
-		{
+		if ((*ecc_read != 0xFFFFFFFF) && syndrome) {
 			if(!((syndrome-1)&syndrome)) {
 				// single-bit error in ECC
 				corrected++;
@@ -292,7 +290,7 @@ int nand_correct(u32 pageno, void *data, void *ecc)
 	if(uncorrectable)
 		return NAND_ECC_UNCORRECTABLE;
 	if(corrected)
-		return NAND_ECC_UNCORRECTABLE;//NAND_ECC_CORRECTED;
+		return NAND_ECC_CORRECTED;
 	return NAND_ECC_OK;
 }
 
