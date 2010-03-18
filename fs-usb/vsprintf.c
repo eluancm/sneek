@@ -12,8 +12,8 @@
 #include <stdarg.h>
 #include "syscalls.h"
 #include "gecko.h"
+#include "global.h"
 #include "string.h"
-#include "hollywood.h"
 
 static inline int isdigit(int c)
 {
@@ -292,13 +292,13 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	*str = '\0';
 	return str-buf;
 }
-int _sprintf( char *buf, const char *fmt, ... )
+int sprintf( char *astr, const char *fmt, ...)
 {
 	va_list args;
 	int i;
 
 	va_start(args, fmt);
-	i = vsprintf(buf, fmt, args);
+	i = vsprintf(astr, fmt, args);
 	va_end(args);
 
 	return i;

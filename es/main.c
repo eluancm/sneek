@@ -1534,7 +1534,6 @@ s32 RegisterDevices( void )
 	return queueid;
 }
 
-
 int _main( int argc, char *argv[] )
 {
 	thread_set_priority( 0, 0x79 );
@@ -1563,7 +1562,6 @@ int _main( int argc, char *argv[] )
 	{
 		ThreadCancel( 0, 0x77 );
 	}
-
 	s32 Timer = timer_create( 0, 0, queueid, 0xDEADDEAD );
 	dbgprintf("ES:Timer:%d\n", Timer );
 

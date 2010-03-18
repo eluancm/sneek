@@ -204,13 +204,13 @@ syscall_34:
 	.long 0xe6000690
 	bx lr
 
-	.global syscall_3f
-syscall_3f:
+	.global sync_before_read
+sync_before_read:
 	.long 0xe60007f0
 	bx lr
 
-	.global syscall_40
-syscall_40:
+	.global sync_after_write
+sync_after_write:
 	.long 0xe6000810
 	bx lr
 

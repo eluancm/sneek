@@ -310,9 +310,9 @@ int dbgprintf( const char *fmt, ...)
 	//	f_write( &f, buffer, strlen(buffer), &read );  
 	//	f_close( &f);
 	//}
-	GeckoSendBuffer( buffer );
+	//GeckoSendBuffer( buffer );
 
-	//svc_write(buffer);
+	svc_write(buffer);
 
 	return i;
 }

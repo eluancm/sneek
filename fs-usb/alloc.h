@@ -18,24 +18,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
-#ifndef __DI_STRUCT_H__
-#define __DI_STRUCT_H__
-
-#include "global.h"
-#include "string.h"
 #include "syscalls.h"
-#include "global.h"
-#include "ipc.h"
-#include "common.h"
-#include "alloc.h"
 
-
-// error codes
-#define DI_SUCCESS		0
-
-// DI ioctl's
-#define IOCTL_DVDLOWENABLEVIDEO	0x8E
-
-s32 DVDLowEnableVideo( u32 Mode );
-
-#endif
+void *malloc( u32 size );
+void *malloca( u32 size, u32 align );
+void free( void *ptr );

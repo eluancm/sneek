@@ -129,8 +129,8 @@ void syscall_3c(void);
 void syscall_3d(void);
 void syscall_3e(void);
 
-#define sync_before_read(a, b) syscall_3f(a, b)
-void syscall_3f(void *ptr, int len);
+#define sync_before_read(a, b) sync_before_read(a, b)
+void sync_before_read(void *ptr, int len);
 
 void sync_after_write(void *ptr, int len);
 

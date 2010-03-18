@@ -22,7 +22,7 @@ PHDRS
 
 	code PT_LOAD AT ( 0x13A10000 ) ;
 	ram PT_LOAD AT ( 0x13A19000 ) ;
-	stk PT_LOAD AT ( 0x13A5F1C4 ) ;
+	stk PT_LOAD AT ( 0x13A5F1EC ) ;
 }
 
 SECTIONS
@@ -65,7 +65,7 @@ SECTIONS
 		*(.data.*)
 		*(.gnu.linkonce.d*)
 		. = ALIGN(4);
-	} >code :code
+	} >ram :ram
 
 	.bss :
 	{

@@ -106,11 +106,11 @@ void syscall_30(int device );
 #define irq_enable(a) syscall_34(a)
 int syscall_34(int device);
 
-#define sync_before_read(a, b) syscall_3f(a, b)
-void syscall_3f(void *ptr, int len);
+#define sync_before_read(a, b) sync_before_read(a, b)
+void sync_before_read(void *ptr, int len);
 
-#define sync_after_write(a, b) syscall_40(a, b)
-void syscall_40(void *ptr, int len);
+#define sync_after_write(a, b) sync_after_write(a, b)
+void sync_after_write(void *ptr, int len);
 
 
 #define DebugPrint(a) syscall_4b(a)

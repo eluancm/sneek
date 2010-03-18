@@ -1,6 +1,6 @@
 /*
 
-SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
+SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
 Copyright (C) 2009-2010  crediar
 
@@ -18,24 +18,36 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
-#ifndef __DI_STRUCT_H__
-#define __DI_STRUCT_H__
+#include "gecko.h"
 
-#include "global.h"
-#include "string.h"
-#include "syscalls.h"
-#include "global.h"
-#include "ipc.h"
-#include "common.h"
-#include "alloc.h"
+void EXISendByte( char byte )
+{
+	u32 EXI = 0xD806814;
 
+loop:
+	*(vu32*)EXI			= 0xD0;
+	*(vu32*)(EXI+0x10)	= 0xB0000000 | (byte<<20);
+	*(vu32*)(EXI+0x0C)	= 0x19;
 
-// error codes
-#define DI_SUCCESS		0
+	while( *(vu32*)(EXI+0x0C)&1 );
 
-// DI ioctl's
-#define IOCTL_DVDLOWENABLEVIDEO	0x8E
+	u32 loop =  *(vu32*)(EXI+0x10)&0x4000000;
+	
+	*(vu32*)EXI	= 0;
 
-s32 DVDLowEnableVideo( u32 Mode );
+	if( !loop )
+		goto loop;
 
-#endif
+	return;
+}
+void GeckoSendBuffer( char *buffer )
+{
+	int i = 0;
+	while( buffer[i] != '\0' )
+	{
+		EXISendByte( buffer[i] );
+		++i;
+	}
+
+	return;
+}

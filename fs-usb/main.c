@@ -1,6 +1,6 @@
 /*
 
-SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
+SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
 Copyright (C) 2009-2010  crediar
 
@@ -22,20 +22,78 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "syscalls.h"
 #include "global.h"
 #include "ipc.h"
-#include "diskio.h"
 #include "ff.h"
-#include "sdhcvar.h"
 #include "FS.h"
 
+
 FATFS fatfs;
-int verbose = 0;
-u32 base_offset=0;
+static FIL f;
+static u8 GamePath[64];
+
 static char Heap[0x100] ALIGNED(32);
 void *QueueSpace = NULL;
 int QueueID = 0;
 int HeapID=0;
+int tiny_ehci_init(void);
+int ehc_loop(void);
+
+int verbose=0;
 
 #undef DEBUG
+
+void udelay(int us)
+{
+	u8 heap[0x10];
+	u32 msg;
+	s32 mqueue = -1;
+	s32 timer = -1;
+
+	mqueue = mqueue_create(heap, 1);
+	if(mqueue < 0)
+		goto out;
+	timer = timer_create(us, 0, mqueue, 0xbabababa);
+	if(timer < 0)
+		goto out;
+	mqueue_recv(mqueue, &msg, 0);
+	
+out:
+	if(timer > 0)
+		timer_destroy(timer);
+	if(mqueue > 0)
+		mqueue_destroy(mqueue);
+}
+
+#define ALIGN_FORWARD(x,align) \
+	((typeof(x))((((u32)(x)) + (align) - 1) & (~(align-1))))
+
+#define ALIGN_BACKWARD(x,align) \
+	((typeof(x))(((u32)(x)) & (~(align-1))))
+
+static char ascii(char s)
+{
+  if(s < 0x20) return '.';
+  if(s > 0x7E) return '.';
+  return s;
+}
+
+void hexdump(void *d, int len)
+{
+  u8 *data;
+  int i, off;
+  data = (u8*)d;
+  for (off=0; off<len; off += 16) {
+    dbgprintf("%08x  ",off);
+    for(i=0; i<16; i++)
+      if((i+off)>=len) dbgprintf("   ");
+      else dbgprintf("%02x ",data[off+i]);
+
+    dbgprintf(" ");
+    for(i=0; i<16; i++)
+      if((i+off)>=len) dbgprintf(" ");
+      else dbgprintf("%c",ascii(data[off+i]));
+    dbgprintf("\n");
+  }
+}
 
 s32 RegisterDevices( void )
 {
@@ -69,20 +127,20 @@ s32 RegisterDevices( void )
 
 	return QueueID;
 }
-int _main( int argc, char *argv[] )
+
+char __aeabi_unwind_cpp_pr0[0];
+void _main(void)
 {
+	s32 ret=0;
+	struct IPCMessage *CMessage=NULL;
+
 	thread_set_priority( 0, 0x58 );
 
 #ifdef DEBUG
-	dbgprintf("$IOSVersion: FFS-SD: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
+	dbgprintf("$IOSVersion: FFS-USB: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
 #else
-	dbgprintf("$IOSVersion: FFS-SD: %s %s 64M Release$\n", __DATE__, __TIME__ );
+	dbgprintf("$IOSVersion: FFS-USB: %s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
-
-
-	int fres=0;
-	s32 ret=0;
-	struct IPCMessage *CMessage=NULL;
 
 	//dbgprintf("FFS:Heap Init...");
 	HeapID = heap_create(Heap, sizeof Heap);
@@ -95,15 +153,13 @@ int _main( int argc, char *argv[] )
 		ThreadCancel( 0, 0x77 );
 	}
 
-	sdhc_init();
-
 	//dbgprintf("FFS:Mounting SD...\n");
-	fres = f_mount(0, &fatfs);
+	ret = f_mount(0, &fatfs);
 	//dbgprintf("FFS:f_mount():%d\n", fres);
 
-	if(fres != FR_OK)
+	if(ret != FR_OK)
 	{
-		dbgprintf("FFS:Error %d while trying to mount SD\n", fres);
+		dbgprintf("FFS:Error %d while trying to mount SD\n", ret );
 		ThreadCancel( 0, 0x77 );
 	}
 

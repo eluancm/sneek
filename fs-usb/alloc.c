@@ -18,24 +18,35 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
-#ifndef __DI_STRUCT_H__
-#define __DI_STRUCT_H__
-
-#include "global.h"
-#include "string.h"
-#include "syscalls.h"
-#include "global.h"
-#include "ipc.h"
-#include "common.h"
 #include "alloc.h"
+#include "vsprintf.h"
 
+void *malloc( u32 size )
+{
+	void *ptr = heap_alloc( 0, size );
+	if( ptr == NULL )
+	{
+		dbgprintf("Malloc:%p Size:%08X FAILED\n", ptr, size );
+		while(1);
+	}
+	return ptr;
+}
+void *malloca( u32 size, u32 align )
+{
+	void *ptr = heap_alloc_aligned( 0, size, align );
+	if( ptr == NULL )
+	{
+		dbgprintf("Malloca:%p Size:%08X FAILED\n", ptr, size );
+		while(1);
+	}
+	return ptr;
+}
+void free( void *ptr )
+{
+	if( ptr != NULL )
+		heap_free( 0, ptr );
 
-// error codes
-#define DI_SUCCESS		0
+	//dbgprintf("Free:%p\n", ptr );
 
-// DI ioctl's
-#define IOCTL_DVDLOWENABLEVIDEO	0x8E
-
-s32 DVDLowEnableVideo( u32 Mode );
-
-#endif
+	return;
+}

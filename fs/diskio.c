@@ -16,17 +16,17 @@ Copyright (C) 2008, 2009	Haxx Enterprises <bushing@gmail.com>
 
 DSTATUS disk_initialize( BYTE drv )
 {
-	if (sdmmc_check_card(SDMMC_DEFAULT_DEVICE) == SDMMC_NO_CARD)
+	if (sdmmc_check_card() == SDMMC_NO_CARD)
 		return STA_NOINIT;
 
-	sdmmc_ack_card(SDMMC_DEFAULT_DEVICE);
+	sdmmc_ack_card();
 	return disk_status(drv);
 }
 
 DSTATUS disk_status( BYTE drv )
 {
 	(void)drv;
-	if (sdmmc_check_card(SDMMC_DEFAULT_DEVICE) == SDMMC_INSERTED)
+	if (sdmmc_check_card() == SDMMC_INSERTED)
 		return 0;
 	else
 		return STA_NODISK;
@@ -36,7 +36,7 @@ DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 {
 	u8 *buffer = (u8*)heap_alloc_aligned( 0, count*512, 0x40 );
 
-	if(sdmmc_read( SDMMC_DEFAULT_DEVICE, sector, count, buffer )<0)
+	if(sdmmc_read( sector, count, buffer )<0)
 		return -1;
 
 	_ahbMemFlush( 9 );
@@ -55,7 +55,7 @@ DRESULT disk_write( BYTE drv, const BYTE *buff, DWORD sector, BYTE count )
 
 	_ahbMemFlush( 0xA );
 
-	if(sdmmc_write( SDMMC_DEFAULT_DEVICE, sector, count, buffer )<0)
+	if(sdmmc_write( sector, count, buffer )<0)
 		return -1;
 
 	heap_free( 0, buffer );

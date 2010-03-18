@@ -8,7 +8,7 @@ __stack_size = 32;
 MEMORY {
 
 	code		: ORIGIN = 0x20100000,	LENGTH = 0xAFFF
-	ram			: ORIGIN = 0x2010C000,	LENGTH = 0xBFFF
+	ram			: ORIGIN = 0x2010D000,	LENGTH = 0xCFFF
 	table		: ORIGIN = 0x100,		LENGTH = 16K
 }
 
@@ -20,7 +20,7 @@ PHDRS
 	table PT_LOAD PHDRS AT ( 0x0 ) FLAGS ( 0 );
 
 	code PT_LOAD AT ( 0x139F0000 ) ;
-	ram PT_LOAD AT ( 0x139FC000 ) ;
+	ram PT_LOAD AT ( 0x139FD000 ) ;
 }
 
 SECTIONS

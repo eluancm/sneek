@@ -316,8 +316,8 @@ syscall_3e:
 	.long 0xe60007d0
 	bx lr
 
-	.global syscall_3f
-syscall_3f:
+	.global sync_before_read
+sync_before_read:
 	.long 0xe60007f0
 	bx lr
 
