@@ -590,8 +590,6 @@ void DIP_Ioctl( struct ipcmessage *msg )
 		{
 			*(u32*)bufout = DIStatus;
 
-			//u32 status = DI_STATUS;
-
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", *(u32*)bufout, ret );
 		} break;
@@ -605,23 +603,17 @@ void DIP_Ioctl( struct ipcmessage *msg )
 				ChangeDisc = 0;
 			}
 
-			//u32 status = DI_COVER;
-
 			ret = DI_SUCCESS;
 			//dbgprintf("DIP:DVDLowPrepareCoverRegister( %08X ):%d\n", *(u32*)bufout, ret );
 		} break;
 		case 0x86:			// 0 out
 		{
-			DI_COVER = DI_COVER | 4;
-
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowClearCoverInterrupt():%d\n", ret);
 		} break;
 		case DVD_GETCOVER:	// 0x88
 		{
 			*(u32*)bufout = DICover;
-
-			//u32 status = DI_COVER;
 
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowGetCoverStatus( %08X ):%d\n", *(u32*)bufout, ret );

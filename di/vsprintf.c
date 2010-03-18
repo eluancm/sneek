@@ -317,7 +317,8 @@ int dbgprintf( const char *fmt, ...)
 	i = vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	GeckoSendBuffer( buffer );
+	//GeckoSendBuffer( buffer );
+	svc_write( buffer );
 
 	return i;
 }

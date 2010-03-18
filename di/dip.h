@@ -10,27 +10,6 @@
 #include "gecko.h"
 #include "alloc.h"
 
-#define	DI_BASE			0x0D806000
-
-#define DI_STATUS		*(vu32*)(DI_BASE)
-#define DI_COVER		*(vu32*)(DI_BASE+0x04)
-
-#define DI_CMD0			*(vu32*)(DI_BASE+0x08)
-#define DI_CMD1			*(vu32*)(DI_BASE+0x0C)
-#define DI_CMD2			*(vu32*)(DI_BASE+0x10)
-
-#define DI_DMA_ADR		*(vu32*)(DI_BASE+0x14)
-#define DI_DMA_LEN		*(vu32*)(DI_BASE+0x18)
-
-#define DI_CR			*(vu32*)(DI_BASE+0x1C)
-#define DI_IMM			*(vu32*)(DI_BASE+0x20)
-
-#define DMA_READ		3
-#define IMM_READ		1
-
-s32 InitRegisters( void );
-s32 DIReadDiscID( void );
-
 enum opcodes
 {
 	DVD_IDENTIFY			= 0x12,

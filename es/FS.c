@@ -74,10 +74,10 @@ s32 ISFS_Init( void )
 	s32 r = ISFS_GetStats( stats );
 	dbgprintf("ES:ISFS_GetStats():%d\n", r );
 
-	heap_free( 0, stats );
+	free(stats );
 
-	u32 *num = (u32*)heap_alloc_aligned( 0, 4, 32 );
-	char *path = heap_alloc_aligned( 0, 0x70, 0x40 );
+	u32 *num = (u32*)malloca( 4, 32 );
+	char *path = malloca( 0x70, 0x40 );
 
 	_sprintf( path, "/sys" );
 	r = ISFS_ReadDir( path, NULL, num );
@@ -149,14 +149,14 @@ s32 ISFS_Init( void )
 		dbgprintf("ES:ISFS_CreateFile(\"%s\"):%d\n", path, r );
 	}
 
-	heap_free( 0, num );
-	heap_free( 0, path );
+	free(num );
+	free(path );
 
 	return 0;
 }
 s32 ISFS_CreateFile( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGroup, u8 PermOther )
 {
-	isfs_cb *param = (isfs_cb*)heap_alloc_aligned( 0, sizeof(isfs_cb), 32 );
+	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
 	memcpy8( param->fsattr.filepath, FileName, strlen(FileName)+1 );
@@ -168,13 +168,13 @@ s32 ISFS_CreateFile( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermG
 
 	s32 r = IOS_Ioctl( FFSHandle, ISFS_IOCTL_CREATEFILE, &param->fsattr, sizeof(param->fsattr), NULL, 0 );
 
-	heap_free( 0, param );
+	free( param );
 
 	return r;
 }
 s32 ISFS_CreateDir( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGroup, u8 PermOther )
 {
-	isfs_cb *param = (isfs_cb*)heap_alloc_aligned( 0, sizeof(isfs_cb), 32 );
+	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
 	memcpy8( param->fsattr.filepath, FileName, strlen(FileName)+1 );
@@ -186,7 +186,7 @@ s32 ISFS_CreateDir( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGr
 
 	s32 r = IOS_Ioctl( FFSHandle, ISFS_IOCTL_CREATEDIR, &param->fsattr, sizeof(param->fsattr), NULL, 0 );
 
-	heap_free( 0, param );
+	free(param );
 
 	return r;
 }
@@ -198,7 +198,7 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 {
 	if( name_list == NULL )
 	{
-		vector *v = (vector*)heap_alloc_aligned( 0, sizeof(vector)*2, 0x40 );
+		vector *v = (vector*)malloca( sizeof(vector)*2, 0x40 );
 
 		v[0].data = (u32)filepath;
 		v[0].len  = sizeof( char * );
@@ -207,11 +207,11 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 
 		s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_READDIR, 1, 1, v );
 
-		heap_free( 0, v );
+		free(v );
 
 		return r;
 	} else {
-		vector *v = (vector*)heap_alloc_aligned( 0, sizeof(vector)*2, 0x40 );
+		vector *v = (vector*)malloca( sizeof(vector)*2, 0x40 );
 
 		v[0].data = (u32)filepath;
 		v[0].len  = sizeof( char * );
@@ -225,7 +225,7 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 
 		s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_READDIR, 2, 2, v );
 
-		heap_free( 0, v );
+		free(v );
 
 		return r;
 	}
@@ -241,7 +241,7 @@ s32 ISFS_Delete( const char *filepath )
 
 s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 {
-	isfs_cb *param = (isfs_cb*)heap_alloc_aligned( 0, sizeof(isfs_cb), 32 );
+	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
 	memcpy8( param->filepath, filepath, strlen(filepath)+1 );
@@ -256,17 +256,32 @@ s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 	s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_GETUSAGE, 1, 2, param->fsusage.vector );
 
 	if( usage1 != NULL )
-		*usage1 = param->fsusage.usage1;
-	if( usage2 != NULL )
-		*usage2 = param->fsusage.usage2;
+	{
+		if( ((u32)(usage1)&3) == 0 )
+		{
+			*usage1 = param->fsusage.usage1;
+		} else {
+			dbgprintf("ES:Warning unaligned memory access:%p\n", usage1 );
+		}
+	}
 
-	heap_free( 0, param );
+	if( usage2 != NULL )
+	{
+		if( ((u32)(usage2)&3) == 0 )
+		{
+			*usage2 = param->fsusage.usage2;
+		} else {
+			dbgprintf("ES:Warning unaligned memory access:%p\n", usage2 );
+		}
+	}
+
+	free( param );
 
 	return r;
 }
 s32 ISFS_Rename(const char *filepathOld,const char *filepathNew )
 {
-	isfs_cb *param = (isfs_cb*)heap_alloc_aligned( 0, sizeof(isfs_cb), 32 );
+	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
 	memcpy8( param->filepath, filepathOld, strlen(filepathOld)+1 );
@@ -274,7 +289,7 @@ s32 ISFS_Rename(const char *filepathOld,const char *filepathNew )
 
 	s32 r = IOS_Ioctl( FFSHandle, ISFS_IOCTL_RENAME, param->filepath, (ISFS_MAXPATH<<1), NULL, 0 );
 
-	heap_free( 0, param );
+	free( param );
 
 	return r;
 }

@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "common.h"
 #include "syscalls.h"
 #include "vsprintf.h"
+#include "alloc.h"
 
 typedef struct _fstats
 {

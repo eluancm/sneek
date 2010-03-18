@@ -2,7 +2,6 @@ PREFIX	=	$(DEVKITARM)/bin/arm-eabi-
 CC	=	$(PREFIX)gcc
 AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
-SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
 
 CFLAGS	=	-mbig-endian -fomit-frame-pointer -O2 -Wall -I. -mcpu=arm926ej-s 
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
@@ -17,7 +16,6 @@ OBJECTS	=	start.o common.o alloc.o gecko.o DI.o FS.o ES.o NAND.o main.o syscalls
 $(TARGET) : esmodule.ld $(OBJECTS)
 	@echo  "LD	$@"
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
-	@$(SSTRIP) $@
 
 %.o : %.s
 	@echo  "AS	$@"
