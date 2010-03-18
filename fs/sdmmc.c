@@ -176,9 +176,9 @@ void sdmmc_needs_discover(void)
 
 	card.cid = MMC_R1(cmd.c_resp);
 	resp = (u8 *)cmd.c_resp;
-	dbgprintf("CID: mid=%02x name='%c%c%c%c%c%c%c' prv=%d.%d psn=%02x%02x%02x%02x mdt=%d/%d\n", resp[14], 
-		resp[13],resp[12],resp[11],resp[10],resp[9],resp[8],resp[7], resp[6], resp[5] >> 4, resp[5] & 0xf, 
-		resp[4], resp[3], resp[2], resp[0] & 0xf, 2000 + (resp[0] >> 4));
+	//dbgprintf("CID: mid=%02x name='%c%c%c%c%c%c%c' prv=%d.%d psn=%02x%02x%02x%02x mdt=%d/%d\n", resp[14], 
+	//	resp[13],resp[12],resp[11],resp[10],resp[9],resp[8],resp[7], resp[6], resp[5] >> 4, resp[5] & 0xf, 
+	//	resp[4], resp[3], resp[2], resp[0] & 0xf, 2000 + (resp[0] >> 4));
 		
 	DPRINTF(2, ("sdmmc: SD_SEND_RELATIVE_ADDRESS\n"));
 	memset8(&cmd, 0, sizeof(cmd));
