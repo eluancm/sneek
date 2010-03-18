@@ -1,3 +1,4 @@
+export WIIDEV=$(DEVKITARM)
 include starlet.mk
 
 ASFLAGS += -D_LANGUAGE_ASSEMBLY
@@ -22,12 +23,12 @@ all: $(TARGET_BIN)
 main.o: main.c git_version.h
 
 $(TARGET_BIN): $(TARGET) $(ELFLOADER) 
-	@echo  "MAKEBIN	$@"
+	@echo  "MAKEBIN $@"
 	@$(MAKEBIN) $(ELFLOADER) $< $@
 
 upload: $(TARGET_BIN)
 	@$(WIIDEV)/bin/bootmii -a $<
-	
+        
 git_version.h:
 	@echo "  GITVER    $@"
 	@echo 'const char git_version[] = "'`./describesimple.sh`'";' > git_version.h
@@ -40,4 +41,3 @@ $(ELFLOADER):
 myclean:
 	-rm -f $(TARGET_BIN) git_version.h
 	$(MAKE) -C elfloader clean
-
