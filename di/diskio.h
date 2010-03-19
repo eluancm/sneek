@@ -21,6 +21,10 @@
 #define _USE_IOCTL	1
 
 #include "integer.h"
+#include "string.h"
+#include "ehci.h"
+#include "alloc.h"
+#include "tiny_ehci_glue.h"
 
 /* Status of Disk Functions */
 typedef BYTE	DSTATUS;

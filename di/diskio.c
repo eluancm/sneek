@@ -19,13 +19,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include "diskio.h"
-#include "string.h"
-#include "ehci.h"
-#include "alloc.h"
 
-#ifndef MEM2_BSS
-#define MEM2_BSS
-#endif
 
 u8 *buffer = (u8*)0x00001400;
 
@@ -77,7 +71,6 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 
 DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 {
-	int i;
 	u32 *buffer = malloca( count*512, 0x40 );
 	memcpy( buffer, buff, count*512 );
 

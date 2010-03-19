@@ -12,11 +12,12 @@ size_t strnlen(const char *, size_t);
 char *strchr(const char *s, int c);
 void *memset(void *, int, size_t);
 
-extern void memcpy(void *dst, void *src, u32 size);
+extern void memcpy(void *dst, const void *src, u32 size);
 
 //void *memcpy(void *, const void *, size_t);
 //void *memcpy(void *, const void *, size_t);
 //void *memcpy(void *, const void *, size_t);
 int memcmp(const void *s1, const void *s2, size_t n);
+int sprintf( char *astr, const char *fmt, ...);
 
 #endif

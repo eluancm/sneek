@@ -1,7 +1,8 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
-#define DEBUG		0
+#define DEBUG
+#define FILEMODE
 
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)

@@ -63,4 +63,5 @@ struct ipcmessage
 #define IOS_SEEK				0x05
 #define IOS_IOCTL				0x06
 #define IOS_IOCTLV				0x07
+
 #endif

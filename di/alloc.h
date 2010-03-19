@@ -20,6 +20,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "syscalls.h"
 
+void HeapInit( void );
+void *halloc( u32 size );
+void *halloca( u32 size, u32 align );
+void hfree( void *ptr );
+
 void *malloc( u32 size );
 void *malloca( u32 size, u32 align );
 void free( void *ptr );

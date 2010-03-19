@@ -21,22 +21,59 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "alloc.h"
 #include "vsprintf.h"
 
-void *malloc( u32 size )
+int HeapID;
+
+void HeapInit( void )
 {
-	void *ptr = heap_alloc( 0, size );
+	HeapID = HeapCreate( (void*)0x13600000, 0x18000 );
+}
+void *halloc( u32 size )
+{
+	void *ptr = HeapAlloc( HeapID, size );
 	if( ptr == NULL )
 	{
-		dbgprintf("Malloc:%p Size:%08X FAILED\n", ptr, size );
+		dbgprintf("Halloc: Size:%08X FAILED\n", size );
+		while(1);
+	}
+	return ptr;
+}
+void *halloca( u32 size, u32 align )
+{
+	void *ptr = HeapAllocAligned( HeapID, size, align );
+	if( ptr == NULL )
+	{
+		dbgprintf("Halloca: Size:%08X FAILED\n", size );
+		while(1);
+	}
+	return ptr;
+}
+void hfree( void *ptr )
+{
+	if( ptr != NULL )
+		HeapFree( HeapID, ptr );
+
+	//dbgprintf("Free:%p\n", ptr );
+
+	return;
+}
+
+
+void *malloc( u32 size )
+{
+	void *ptr = HeapAlloc( 0, size );
+	if( ptr == NULL )
+	{
+		dbgprintf("Malloc: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;
 }
 void *malloca( u32 size, u32 align )
 {
-	void *ptr = heap_alloc_aligned( 0, size, align );
+	void *ptr = HeapAllocAligned( 0, size, align );
 	if( ptr == NULL )
 	{
-		dbgprintf("Malloca:%p Size:%08X FAILED\n", ptr, size );
+		dbgprintf("Malloca: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;
@@ -44,7 +81,7 @@ void *malloca( u32 size, u32 align )
 void free( void *ptr )
 {
 	if( ptr != NULL )
-		heap_free( 0, ptr );
+		HeapFree( 0, ptr );
 
 	//dbgprintf("Free:%p\n", ptr );
 

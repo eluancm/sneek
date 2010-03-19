@@ -17,20 +17,11 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
-#include "string.h"
-#include "syscalls.h"
 
-#include "ehci_types.h"
-#include "utils.h"
+#include "tiny_ehci_glue.h"
+
 #define static
 #define inline extern
-
-
-#define readl(a) (*((volatile u32*)(a)))
-#define writel(v,a) do{*((volatile u32*)(a))=(v);}while(0)
-#define ehci_dbg(a...) debug_printf(a)
-#define printk(a...) debug_printf(a)
-#define get_timer()  (*(((volatile u32*)0x0D800010)))
 
 
 void BUG(void)
@@ -60,12 +51,6 @@ extern u32 __ram_start_virt__;
 
 extern u32 ios_thread_stack;
 
-#define cpu_to_le32(a) swab32(a)
-#define le32_to_cpu(a) swab32(a)
-#define cpu_to_le16(a) swab16(a)
-#define le16_to_cpu(a) swab16(a)
-#define cpu_to_be32(a) (a)
-#define be32_to_cpu(a) (a)
 void print_hex_dump_bytes(char *header,int prefix,u8 *buf,int len)
 {
         int i;

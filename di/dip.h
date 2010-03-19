@@ -1,5 +1,5 @@
-#ifndef _DIP
-#define _DIP
+#ifndef _DIP_
+#define _DIP_
 
 #include "string.h"
 #include "syscalls.h"
@@ -9,6 +9,12 @@
 #include "ehci.h"
 #include "gecko.h"
 #include "alloc.h"
+#include "ff.h"
+#include "vsprintf.h"
+
+#define DI_SUCCESS	1
+#define DI_ERROR	2
+#define DI_FATAL	64
 
 enum opcodes
 {
@@ -39,8 +45,67 @@ enum opcodes
 	DVD_READ_GAMEINFO		= 0x30,
 };
 
-#define DI_SUCCESS	1
-#define DI_ERROR	2
-#define DI_FATAL	64
+
+#ifdef FILEMODE
+
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			u32 Type		:8;
+			u32 NameOffset	:24;
+		};
+		u32 TypeName;
+	};
+	union
+	{
+		struct		// File Entry
+		{
+			u32 FileOffset;
+			u32 FileLength;
+		};
+		struct		// Dir Entry
+		{
+			u32 ParentOffset;
+			u32 NextOffset;
+		};
+		u32 entry[2];
+	};
+} FEntry;
+
+typedef struct
+{
+	u64 Offset;
+	u32 Size;
+	FIL File;
+} FileCache;
+
+#define FILECACHE_MAX	10
+
+#endif
+
+typedef struct
+{
+	u8 *data;
+	u32 len;
+} vector;
+
+typedef struct
+{
+	u32 TMDSize;
+	u32 TMDOffset;
+	u32	CertChainSize;
+	u32 CertChainOffset;
+	u32 H3TableOffset;
+	u32	DataOffset;
+	u32 DataSize;
+} PartitionInfo;
+
+int DIP_Ioctl( struct ipcmessage * );
+int DIP_Ioctlv( struct ipcmessage * );
+s32 DVDSelectGame( int SlotID );
+void DIP_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 
 #endif

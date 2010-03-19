@@ -303,6 +303,32 @@ int sprintf( char *astr, const char *fmt, ...)
 
 	return i;
 }
+static char ascii(char s)
+{
+  if(s < 0x20) return '.';
+  if(s > 0x7E) return '.';
+  return s;
+}
+
+void hexdump(void *d, int len)
+{
+  u8 *data;
+  int i, off;
+  data = (u8*)d;
+  for (off=0; off<len; off += 16) {
+    dbgprintf("%08x  ",off);
+    for(i=0; i<16; i++)
+      if((i+off)>=len) dbgprintf("   ");
+      else dbgprintf("%02x ",data[off+i]);
+
+    dbgprintf(" ");
+    for(i=0; i<16; i++)
+      if((i+off)>=len) dbgprintf(" ");
+      else dbgprintf("%c",ascii(data[off+i]));
+    dbgprintf("\n");
+  }
+}
+
 
 static char buffer[1024] ALIGNED(32);
 int dbgprintf( const char *fmt, ...)
@@ -318,7 +344,7 @@ int dbgprintf( const char *fmt, ...)
 	va_end(args);
 
 	//GeckoSendBuffer( buffer );
-	svc_write( buffer );
+	OSReport( buffer );
 
 	return i;
 }
@@ -332,7 +358,7 @@ void fatal(const char *fmt, ...)
 	va_start(args, fmt);
 	i = vsprintf(buffer, fmt, args);
 	va_end(args);
-	svc_write(buffer);
+	OSReport(buffer);
 	for (;;);
 }
 
