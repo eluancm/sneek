@@ -91,7 +91,7 @@ typedef struct {
 	u32 file_pos;
 } FDStat;
 
-
+void FS_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 void FFS_Ioctl(struct IPCMessage *msg);
 void FFS_Ioctlv(struct IPCMessage *msg);
 u32 FS_CheckHandle( s32 fd );

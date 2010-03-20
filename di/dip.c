@@ -25,7 +25,16 @@ static u32 PartitionSize ALIGNED(32);
 static u32 DIStatus ALIGNED(32);
 static u32 DICover ALIGNED(32);
 static u32 ChangeDisc ALIGNED(32);
-static u32 Region ALIGNED(32) = 2;
+u32 Region ALIGNED(32) = 2;
+
+char *RegionStr[] = {
+	"JAP",
+	"USA",
+	"EUR",
+	"KOR",
+	"ASN",
+	"LTN",
+};
 
 static char GamePath[64];
 static u32 *KeyID ALIGNED(32);
@@ -113,10 +122,25 @@ s32 DVDSelectGame( int SlotID )
 			free( str );
 
 			//create slot.bin
-			if( f_open( &f, "/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) == FR_OK )
+			switch( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) )
 			{
-				f_write( &f, &SlotID, sizeof(u32), &read );
-				f_close( &f );
+				case FR_OK:
+				{
+					f_write( &f, &SlotID, sizeof(u32), &read );
+					f_close( &f );
+				} break;
+				case FR_NO_PATH:	//Folder sneek doesn't exit!
+				case FR_NO_FILE:
+				{
+					f_mkdir("/sneek");
+					if( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) == FR_OK )
+					{
+						f_write( &f, &SlotID, sizeof(u32), &read );
+						f_close( &f );
+					}
+				} break;
+				default:
+					break;
 			}
 
 			//Init cache
@@ -168,6 +192,28 @@ s32 DVDSelectGame( int SlotID )
 
 			free( str );
 
+			//create slot.bin
+			switch( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) )
+			{
+				case FR_OK:
+				{
+					f_write( &f, &SlotID, sizeof(u32), &read );
+					f_close( &f );
+				} break;
+				case FR_NO_PATH:	//Folder sneek doesn't exit!
+				case FR_NO_FILE:
+				{
+					f_mkdir("/sneek");
+					if( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) == FR_OK )
+					{
+						f_write( &f, &SlotID, sizeof(u32), &read );
+						f_close( &f );
+					}
+				} break;
+				default:
+					break;
+			}
+
 			return DI_SUCCESS;
 		}
 		count++;
@@ -179,13 +225,13 @@ s32 DVDSelectGame( int SlotID )
 
 void DIP_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
 {
-	dbgprintf("************FATAL ERROR************\n");
+	dbgprintf("************ DI FATAL ERROR ************\n");
 	dbgprintf("Function :%s\n", name );
 	dbgprintf("line     :%d\n", line );
 	dbgprintf("file     :%s\n", file );
 	dbgprintf("error    :%d\n", error );
 	dbgprintf("%s\n", msg );
-	dbgprintf("************FATAL ERROR************\n");
+	dbgprintf("************ DI FATAL ERROR ************\n");
 
 	while(1);
 }

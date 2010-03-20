@@ -31,7 +31,18 @@ typedef struct
 	u32 data;
 	u32 len;
 } vector;
+void FS_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
+{
+	dbgprintf("\n\n************ FS FATAL ERROR ************\n");
+	dbgprintf("Function :%s\n", name );
+	dbgprintf("line     :%d\n", line );
+	dbgprintf("file     :%s\n", file );
+	dbgprintf("error    :%d\n", error );
+	dbgprintf("%s\n", msg );
+	dbgprintf("************ FS FATAL ERROR ************\n");
 
+	while(1);
+}
 void FFS_Ioctlv(struct IPCMessage *msg)
 {
 	u32 InCount		= msg->ioctlv.argc_in;

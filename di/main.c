@@ -29,6 +29,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ff.h"
 #include "dip.h"
 
+extern u32 Region;
+extern char *RegionStr;
+
 void udelay(int us)
 {
 	u8 heap[0x10];
@@ -108,7 +111,7 @@ void _main(void)
 	}
 
 	FIL fi;
-	if( f_open( &fi, "/slot.bin", FA_READ ) == FR_OK )
+	if( f_open( &fi, "/sneek/slot.bin", FA_READ ) == FR_OK )
 	{
 		u32 slot,read;
 
@@ -121,6 +124,23 @@ void _main(void)
 	} else {
 		ret = DVDSelectGame( 0 );
 		dbgprintf("DIP:DVDSelectGame():%d\n", ret );
+	}
+
+	if( f_open( &fi, "/sneek/region.bin", FA_READ ) == FR_OK )
+	{
+		u32 read;
+
+		f_read( &fi, &Region, sizeof(u32), &read );
+		f_close( &fi );
+
+		if( Region > LTN )
+			Region = USA;
+
+		dbgprintf("DIP:Region set to:%d\n", Region );
+
+	} else {
+		Region=1;
+		dbgprintf("DIP:No region.bin found, set region to USA\n" );
 	}
 
 	while (1)

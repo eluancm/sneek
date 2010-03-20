@@ -21,8 +21,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ES.h"
 #include "DI.h"
 
-//#define USBHAX
-
 u32 *KeyID=NULL;
 
 static u8 *DITicket=NULL;
@@ -31,6 +29,18 @@ static u8  *CNTMap=NULL;
 static u32 *CNTSize=NULL;
 static u32 *CNTMapDirty=NULL;
 
+void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
+{
+	dbgprintf("\n\n************ ES FATAL ERROR ************\n");
+	dbgprintf("Function :%s\n", name );
+	dbgprintf("line     :%d\n", line );
+	dbgprintf("file     :%s\n", file );
+	dbgprintf("error    :%d\n", error );
+	dbgprintf("%s\n", msg );
+	dbgprintf("************ ES FATAL ERROR ************\n");
+
+	while(1);
+}
 s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 {
 	char *path = (char*)malloca( 0x40, 32 );
@@ -1396,6 +1406,19 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	dbgprintf("ES:ContentCount:%d\n", *(u16*)(TMD_Data+0x1DE) );
 
+	//Check if di.bin is present
+
+	u32 LoadDI=0;
+
+	_sprintf( path, "/di.bin" );
+	u8 *difile = NANDLoadFile( path, size );
+	if( difile != NULL )
+	{
+		free( difile );
+		LoadDI=1;
+		dbgprintf("ES:Found di.bin\n");
+	}
+
 	s32 r=0;
 	int i;
 	for( i=0; i < *(u16*)(TMD_Data+0x1DE); ++i )
@@ -1407,13 +1430,12 @@ s32 ES_LoadModules( u32 KernelVersion )
 		//Skip SD module
 		if( 4 == *(u16*)(TMD_Data+0x1E8+0x24*i) )
 			continue;
-#ifdef USBHAX
+
 		//Load special DI module
-		if( 1 == *(u16*)(TMD_Data+0x1E8+0x24*i) )
+		if( 1 == *(u16*)(TMD_Data+0x1E8+0x24*i) && LoadDI )
 		{
 			_sprintf( path, "/di.bin" );
 		} else {
-#endif
 			//check if shared!
 			if( ((*(u16*)(TMD_Data+0x1EA+i*0x24)) & 0x8000) == 0x8000 )
 			{
@@ -1433,9 +1455,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 			} else {
 				_sprintf( path, "/title/00000001/%08x/content/%08x.app", KernelVersion, *(u32*)(TMD_Data+0x1E4+0x24*i) );
 			}
-#ifdef USBHAX
 		}
-#endif
 		dbgprintf("ES:Loaded Module(%d):\"%s\" ", i, path );
 		r = LoadModule( path );
 		dbgprintf("ret:%d\n", r );

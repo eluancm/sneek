@@ -9,7 +9,7 @@ LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,esmodule.ld,-Map,esmo
 LIBS	=	-lgcc
 
 TARGET	=	esmodule.elf
-OBJECTS	=	start.o common.o alloc.o gecko.o DI.o FS.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
+OBJECTS	=	start.o font.o common.o alloc.o gecko.o DI.o FS.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
 
 .PHONY: FORCE
 
@@ -18,6 +18,10 @@ $(TARGET) : esmodule.ld $(OBJECTS)
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
 
 %.o : %.s
+	@echo  "AS	$@"
+	@$(CC) $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -x assembler-with-cpp -o $@ $<
+
+%.o : %.S
 	@echo  "AS	$@"
 	@$(CC) $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -x assembler-with-cpp -o $@ $<
 

@@ -25,6 +25,7 @@
 #include "ehci.h"
 #include "alloc.h"
 #include "tiny_ehci_glue.h"
+#include "dip.h"
 
 /* Status of Disk Functions */
 typedef BYTE	DSTATUS;

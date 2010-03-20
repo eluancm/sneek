@@ -129,6 +129,7 @@ typedef struct
 
 } TileMetaData;
 
+void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 s32 ES_LoadModules( u32 KernelVersion );
 s32 ES_LaunchSYS( u64 *TitleID );
 s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD );

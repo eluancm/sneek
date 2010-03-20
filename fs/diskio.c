@@ -36,8 +36,10 @@ DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 {
 	u8 *buffer = (u8*)heap_alloc_aligned( 0, count*512, 0x40 );
 
-	if(sdmmc_read( sector, count, buffer )<0)
-		return -1;
+	if( sdmmc_read( sector, count, buffer ) < 0 )
+	{
+		FS_Fatal( "disk_read()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
+	}
 
 	_ahbMemFlush( 9 );
 	memcpy( buff, buffer, count*512 );
@@ -55,8 +57,10 @@ DRESULT disk_write( BYTE drv, const BYTE *buff, DWORD sector, BYTE count )
 
 	_ahbMemFlush( 0xA );
 
-	if(sdmmc_write( sector, count, buffer )<0)
-		return -1;
+	if( sdmmc_write( sector, count, buffer ) < 0 )
+	{
+		FS_Fatal( "disk_write()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
+	}
 
 	heap_free( 0, buffer );
 

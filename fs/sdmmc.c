@@ -343,7 +343,8 @@ int sdmmc_read(u32 blk_start, u32 blk_count, void *data)
 	cmd.c_flags = SCF_RSP_R1 | SCF_CMD_READ;
 	sdhc_exec_command(card.handle, &cmd);
 
-	if (cmd.c_error) {
+	if (cmd.c_error)
+	{
 		dbgprintf("sdmmc: MMC_READ_BLOCK_MULTIPLE failed with %d\n", cmd.c_error);
 		return -1;
 	}
@@ -351,8 +352,6 @@ int sdmmc_read(u32 blk_start, u32 blk_count, void *data)
 
 	return 0;
 }
-
-#ifndef LOADER
 int sdmmc_write(u32 blk_start, u32 blk_count, void *data)
 {
 	struct sdmmc_command cmd;
@@ -370,7 +369,7 @@ int sdmmc_write(u32 blk_start, u32 blk_count, void *data)
 	}
 
 	if (card.new_card == 1) {
-		dbgprintf("sdmmc: new card inserted but not acknowledged yet.\n");
+		dbgprintf("FS:sdmmc: new card inserted but not acknowledged yet.\n");
 		return -1;
 	}
 
@@ -387,8 +386,9 @@ int sdmmc_write(u32 blk_start, u32 blk_count, void *data)
 	cmd.c_flags = SCF_RSP_R1;
 	sdhc_exec_command(card.handle, &cmd);
 
-	if (cmd.c_error) {
-		dbgprintf("sdmmc: MMC_READ_BLOCK_MULTIPLE failed with %d\n", cmd.c_error);
+	if (cmd.c_error) 
+	{
+		dbgprintf("FS:sdmmc: MMC_READ_BLOCK_MULTIPLE failed with %d\n", cmd.c_error);
 		return -1;
 	}
 	DPRINTF(2, ("sdmmc: MMC_WRITE_BLOCK_MULTIPLE done\n"));
@@ -412,37 +412,4 @@ int sdmmc_get_sectors(void)
 	
 	return card.num_sectors;
 }
-#endif
 
-#ifdef CAN_HAZ_IPC
-void sdmmc_ipc(volatile ipc_request *req)
-{
-	int ret;
-	switch (req->req) {
-	case IPC_SDMMC_ACK:
-		ret = sdmmc_ack_card();
-		ipc_post(req->code, req->tag, 1, ret);
-		break;
-	case IPC_SDMMC_READ:
-		ret = sdmmc_read(req->args[0], req->args[1], (void *)req->args[2]);
-		dc_flushrange((void *)req->args[2],
-				req->args[1]*SDMMC_DEFAULT_BLOCKLEN);
-		ipc_post(req->code, req->tag, 1, ret);
-		break;
-	case IPC_SDMMC_WRITE:
-		dc_invalidaterange((void *)req->args[2],
-				req->args[1]*SDMMC_DEFAULT_BLOCKLEN);
-		ret = sdmmc_write(req->args[0],	req->args[1], (void *)req->args[2]);
-		ipc_post(req->code, req->tag, 1, ret);
-		break;
-	case IPC_SDMMC_STATE:
-		ipc_post(req->code, req->tag, 1,
-				sdmmc_check_card());
-		break;
-	case IPC_SDMMC_SIZE:
-		ipc_post(req->code, req->tag, 1,
-				sdmmc_get_sectors());
-		break;
-	}
-}
-#endif

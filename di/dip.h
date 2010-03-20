@@ -65,6 +65,16 @@ enum opcodes
 	DVD_READ_GAMEINFO		= 0x30,
 };
 
+enum GameRegion 
+{
+	JAP=0,
+	USA,
+	EUR,
+	KOR,
+	ASN,
+	LTN,
+};
+
 
 #ifdef FILEMODE
 

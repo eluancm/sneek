@@ -4,7 +4,7 @@ AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
 SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
 
-CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb
+CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
 LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,iosmodule.map -n
 LIBS	=	-lgcc
@@ -20,6 +20,10 @@ $(TARGET) : iosmodule.ld $(OBJECTS)
 	@echo @$(SSTRIP) $@
 
 %.o : %.s
+	@echo  "AS	$@"
+	@$(CC) $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -x assembler-with-cpp -o $@ $<
+
+%.o : %.S
 	@echo  "AS	$@"
 	@$(CC) $(CFLAGS) -D_LANGUAGE_ASSEMBLY -c -x assembler-with-cpp -o $@ $<
 
