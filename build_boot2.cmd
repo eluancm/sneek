@@ -12,7 +12,11 @@ make
 cd ..\di
 make clean
 make
+cd ..\mini-tree-mod
+make clean
+make
 cd ..
+
 echo Patching..
 copy es\esmodule.elf .
 copy fs\iosmodule.elf sdfsmodule.elf 
