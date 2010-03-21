@@ -7,29 +7,25 @@ make -C di clean all
 make -C mini-tree-mod clean all
 
 echo Patching..
-copy es\esmodule.elf .
-copy fs\iosmodule.elf sdfsmodule.elf 
-copy fs-usb\iosmodule.elf usbfsmodule.elf
-copy di\iosmodule.elf dimodule.elf
 
 echo Patching for SNEEK
 echo IOSKPatch: SD (with di) 
 IOSKpatch\IOSKPatch 0000000E 0000000E-TMP -s -d > NUL
 echo elfins: Creating boot2_di.bin (SDCard as NAND, with DI module support)
-ELFIns\elfins 0000000E-TMP boot2_di.bin esmodule.elf sdfsmodule.elf > NUL
+ELFIns\elfins 0000000E-TMP boot2_di.bin es\esmodule.elf fs\iosmodule.elf > NUL
 
 echo IOSKPatch: SD (no di) 
 IOSKpatch\IOSKPatch 0000000E 0000000E-TMP -s > NUL
 echo elfins: Creating boot2_sd.bin (SDCard as NAND)
-ELFIns\elfins 0000000E-TMP boot2_sd.bin esmodule.elf sdfsmodule.elf > NUL
+ELFIns\elfins 0000000E-TMP boot2_sd.bin es\esmodule.elf fs\iosmodule.elf > NUL
 
 echo Patching for UNEEK
 echo IOSKPatch: USB (no di) 
-IOSKpatch\IOSKPatch 0000000E 0000000E-TMPU -u > NUL
+IOSKpatch\IOSKPatch 0000000E 0000000E-TMP -u > NUL
 echo elfins: Creating boot2_usb.bin (USB as NAND)
-ELFIns\elfins 0000000E-TMPU boot2_usb.bin esmodule.elf usbfsmodule.elf > NUL
+ELFIns\elfins 0000000E-TMP boot2_usb.bin es\esmodule.elf fs-usb\iosmodule.elf > NUL
 
 echo elfins: Creating di.bin
-ELFIns\elfins 00000001 di.bin dimodule.elf > NUL
+ELFIns\elfins 00000001 di.bin di\iosmodule.elf > NUL
 
-del *.elf 0000000E-TMP 0000000E-TMPU
+del 0000000E-TMP
