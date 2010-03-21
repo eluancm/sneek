@@ -14,6 +14,8 @@ OBJECTS	=	start.o gecko.o utils_asm.o memory_asm.o common.o sdhc.o ff.o sdmmc.o 
 
 .PHONY: FORCE
 
+all: $(TARGET)
+
 $(TARGET) : iosmodule.ld $(OBJECTS)
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@
 	@$(SSTRIP) $@

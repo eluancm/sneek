@@ -13,6 +13,8 @@ OBJECTS	=	start.o font.o common.o alloc.o gecko.o DI.o FS.o ES.o NAND.o main.o s
 
 .PHONY: FORCE
 
+all: $(TARGET)
+
 $(TARGET) : esmodule.ld $(OBJECTS)
 	@echo  "LD	$@"
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@

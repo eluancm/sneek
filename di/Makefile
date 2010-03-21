@@ -14,6 +14,8 @@ OBJECTS	=	start.o dip.o alloc.o diskio.o ff.o main.o syscalls.o utils_asm.o geck
 
 .PHONY: FORCE
 
+all: $(TARGET)
+
 $(TARGET) : iosmodule.ld $(OBJECTS)
 	@echo  "LD	$@"
 	@$(LD) $(LDFLAGS) $(OBJECTS) $(LIBS) -o $@

@@ -1,21 +1,10 @@
 @echo off
 echo Building..
-cd es
-make clean
-make
-cd ..\fs
-make clean
-make
-cd ..\fs-usb
-make clean
-make
-cd ..\di
-make clean
-make
-cd ..\mini-tree-mod
-make clean
-make
-cd ..
+make -C es clean all
+make -C fs clean all
+make -C fs-usb clean all
+make -C di clean all
+make -C mini-tree-mod clean all
 
 echo Patching..
 copy es\esmodule.elf .
