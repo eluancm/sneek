@@ -1429,7 +1429,10 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 		//Skip SD module
 		if( 4 == *(u16*)(TMD_Data+0x1E8+0x24*i) )
-			continue;
+		{
+			if( ISFS_IsUSB() == FS_ENOENT2 )
+				continue;
+		}
 
 		//Load special DI module
 		if( 1 == *(u16*)(TMD_Data+0x1E8+0x24*i) && LoadDI )

@@ -71,6 +71,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define	IOCTL_GETUSAGE   0x0C
 #define	IOCTL_SHUTDOWN   0x0D
 
+#define IOCTL_IS_USB	   30
+
 #define SEEK_SET	0
 #define SEEK_CUR	1
 #define SEEK_END	2

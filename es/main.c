@@ -1829,13 +1829,6 @@ s32 RegisterDevices( void )
 #endif
 	if( ret < 0 )
 		return ret;
-	
-	ret = device_register("/dev/sdio", queueid );
-#ifdef DEBUG
-	dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
-#endif
-	if( ret < 0 )
-		return ret;
 
 	return queueid;
 }
@@ -1888,6 +1881,17 @@ int _main( int argc, char *argv[] )
 
 	ret = ISFS_Init();
 	dbgprintf("ES:ISFS_Init():%d\n", ret );
+
+	if( ISFS_IsUSB() == FS_ENOENT2 )
+	{
+		dbgprintf("ES:Found FS-SD\n");
+		ret = device_register("/dev/sdio", queueid );
+#ifdef DEBUG
+		dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
+#endif
+	} else {
+		dbgprintf("ES:Found FS-USB\n");
+	}
 
 	ES_BootSystem( &TitleID, &KernelVersion );
 

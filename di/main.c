@@ -134,13 +134,13 @@ void _main(void)
 		f_close( &fi );
 
 		if( Region > LTN )
-			Region = USA;
+			Region = EUR;
 
 		dbgprintf("DIP:Region set to:%d\n", Region );
 
 	} else {
-		Region=1;
-		dbgprintf("DIP:No region.bin found, set region to USA\n" );
+		Region=EUR;
+		dbgprintf("DIP:No region.bin found, set region to EUR\n" );
 	}
 
 	while (1)

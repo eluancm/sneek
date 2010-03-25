@@ -294,3 +294,7 @@ s32 ISFS_Rename(const char *filepathOld,const char *filepathNew )
 	return r;
 }
 
+s32 ISFS_IsUSB( void )
+{
+	return IOS_Ioctl( FFSHandle, ISFS_IS_USB, NULL, 0, NULL, 0 );
+}

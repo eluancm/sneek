@@ -359,7 +359,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		case 0x86:			// 0 out
 		{
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowClearCoverInterrupt():%d\n", ret);
+			//dbgprintf("DIP:DVDLowClearCoverInterrupt():%d\n", ret);
 		} break;
 		case DVD_GETCOVER:	// 0x88
 		{

@@ -102,6 +102,8 @@ typedef struct {
 #define ISFS_IOCTL_GETUSAGE			12
 #define ISFS_IOCTL_SHUTDOWN			13
 
+#define ISFS_IS_USB					30
+
 typedef s32 (*isfscallback)(s32 result,void *usrdata);
 
 s32 ISFS_Init( void );
@@ -113,5 +115,6 @@ s32 ISFS_CreateDir( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGr
 s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 );
 s32 ISFS_Rename(const char *filepathOld,const char *filepathNew);
 s32 ISFS_GetStats( void *stats );
+s32 ISFS_IsUSB( void );
 
 #endif

@@ -149,6 +149,10 @@ void FFS_Ioctl(struct IPCMessage *msg)
 
 	switch(msg->ioctl.command)
 	{
+		case IOCTL_IS_USB:
+		{
+			ret = FS_SUCCESS;
+		} break;
 		case IOCTL_NANDSTATS:
 		{
 			if( lenout < 0x1C )
