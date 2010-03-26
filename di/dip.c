@@ -85,7 +85,7 @@ s32 DVDSelectGame( int SlotID )
 		{
 			//build path
 			sprintf( GamePath, "/games/%s/", FInfo.fname );
-			dbgprintf("%s\n", GamePath );
+			dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
 
 			free( FSTable );
 
@@ -114,10 +114,10 @@ s32 DVDSelectGame( int SlotID )
 				while(1);
 			}
 
-			ApploaderSize = f.fsize;
+			ApploaderSize = f.fsize >> 2;
 			f_close( &f );
 		
-			dbgprintf("DIP:apploader size:%08X\n", ApploaderSize );
+			dbgprintf("DIP:apploader size:%08X\n", ApploaderSize<<2 );
 
 			free( str );
 
@@ -268,13 +268,16 @@ int DIP_Ioctl( struct ipcmessage *msg )
 					char *LPath = malloca( 128, 32 );
 					//build path
 					sprintf( LPath, "/games/%s/sys/boot.bin", FInfo.fname );
-					dbgprintf("%s\n", LPath );
 
 					if( f_open( &f, LPath, FA_READ ) == FR_OK )
 					{
-						f_read( &f, (u8*)(*(u32*)(bufin+4)), 0x100, &read );
+						f_read( &f, *(u32*)(bufin+4), 0x100, &read );
+
+						if( *(u32*)(bufin+4) == read )
+							ret = DI_SUCCESS;
+
 						f_close( &f );
-						ret = DI_SUCCESS;
+						
 					} else {
 						ret = DI_FATAL;
 					}
@@ -284,7 +287,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				}
 				count++;
 			}
-			dbgprintf("DIP:DVDReadGameInfo(%d):%d\n", *(u32*)(bufin), ret );
+			dbgprintf("DIP:DVDReadGameInfo(%d:%p):%d\n", *(u32*)(bufin), *(u32*)(bufin+4), ret );
 		} break;
 		case DVD_INSERT_DISC:
 		{
@@ -414,9 +417,11 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				if( Partition )
 				{
 #ifdef FILEMODE
-					u32 ReadOffset = (*(u32*)(bufin+8)) << 2;
+					u32 ReadOffset = *(u32*)(bufin+8);
 
-					if( ReadOffset < 0x440 )
+					//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X\n", ReadOffset, *(u32*)(bufin+4) );
+
+					if( ReadOffset < 0x110 )	// 0x440
 					{
 						char *str = malloca( 32, 32 );
 						sprintf( str, "%ssys/boot.bin", GamePath );
@@ -426,31 +431,31 @@ int DIP_Ioctl( struct ipcmessage *msg )
 							ret = DI_FATAL;
 						} else {
 							dbgprintf("DIP:[boot.bin] Offset:%08X Size:%08X\n", ReadOffset, *(u32*)(bufin+4) );
-							f_lseek( &f, ReadOffset );
+
+							//read requested data
+							f_lseek( &f, ReadOffset<<2 );
 							f_read( &f, bufout, *(u32*)(bufin+4), &read );
 
+							//Read DOL/FST offset/sizes for later usage
 							f_lseek( &f, 0x0420 );
 							f_read( &f, &DolOffset, 4, &read );
 							f_lseek( &f, 0x0424 );
 							f_read( &f, &FSTableOffset, 4, &read );
 
-							DolOffset<<=2;
-							FSTableOffset<<=2;
-
 							DolSize = FSTableOffset - DolOffset;
 
-							dbgprintf("DIP:FSTableOffset:%08X\n", FSTableOffset );
-							dbgprintf("DIP:DolOffset:    %08X\n", DolOffset );
-							dbgprintf("DIP:DolSize:      %08X\n", DolSize );
+							dbgprintf("DIP:FSTableOffset:%08X\n", FSTableOffset<<2 );
+							dbgprintf("DIP:DolOffset:    %08X\n", DolOffset<<2 );
+							dbgprintf("DIP:DolSize:      %08X\n", DolSize<<2 );
 
 							f_close( &f );
 							ret = DI_SUCCESS;
 
 						}
 
-					} else if( ReadOffset < 0x2440 )
+					} else if( ReadOffset < 0x910 )	// 0x2440
 					{
-						ReadOffset -= 0x440;
+						ReadOffset -= 0x110;
 
 						char *str = malloca( 32, 32 );
 						sprintf( str, "%ssys/bi2.bin", GamePath );
@@ -460,15 +465,15 @@ int DIP_Ioctl( struct ipcmessage *msg )
 							ret = DI_FATAL;
 						} else {
 							dbgprintf("DIP:[bi2.bin] Offset:%08X Size:%08X\n", ReadOffset, *(u32*)(bufin+4) );
-							f_lseek( &f, ReadOffset );
+							f_lseek( &f, ReadOffset<<2 );
 							f_read( &f, bufout, *(u32*)(bufin+4), &read );
 							f_close( &f );
 							ret = DI_SUCCESS;
 						}
 
-					} else if( ReadOffset < 0x2440+ApploaderSize )
+					} else if( ReadOffset < 0x910+ApploaderSize )	// 0x2440
 					{
-						ReadOffset -= 0x2440;
+						ReadOffset -= 0x910;
 
 						char *str = malloca( 32, 32 );
 						sprintf( str, "%ssys/apploader.img", GamePath );
@@ -478,7 +483,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 							ret = DI_FATAL;
 						} else {
 							dbgprintf("DIP:[apploader.img] Offset:%08X Size:%08X\n", ReadOffset, *(u32*)(bufin+4) );
-							f_lseek( &f, ReadOffset );
+							f_lseek( &f, ReadOffset<<2 );
 							f_read( &f, bufout, *(u32*)(bufin+4), &read );
 							f_close( &f );
 							ret = DI_SUCCESS;
@@ -495,12 +500,12 @@ int DIP_Ioctl( struct ipcmessage *msg )
 							ret = DI_FATAL;
 						} else {
 							dbgprintf("DIP:[main.dol] Offset:%08X Size:%08X\n", ReadOffset, *(u32*)(bufin+4) );
-							f_lseek( &f, ReadOffset );
+							f_lseek( &f, ReadOffset<<2 );
 							f_read( &f, bufout, *(u32*)(bufin+4), &read );
 							f_close( &f );
 							ret = DI_SUCCESS;
 						}
-					} else if( ReadOffset < FSTableOffset+FSTableSize )
+					} else if( ReadOffset < FSTableOffset+(FSTableSize>>2) )
 					{
 						ReadOffset -= FSTableOffset;
 
@@ -512,7 +517,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 							ret = DI_FATAL;
 						} else {
 							dbgprintf("DIP:[fst.bin] Offset:%08X Size:%08X\n", ReadOffset, *(u32*)(bufin+4) );
-							f_lseek( &f, ReadOffset );
+							f_lseek( &f, (u64)ReadOffset<<2 );
 							f_read( &f, bufout, *(u32*)(bufin+4), &read );
 							f_close( &f );
 							ret = DI_SUCCESS;
@@ -529,8 +534,8 @@ int DIP_Ioctl( struct ipcmessage *msg )
 
 							if( ReadOffset >= FC[i].Offset && ReadOffset < FC[i].Offset + FC[i].Size )
 							{
-								//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, ((*(u32*)(bufin+8))<<2)-(FC[i].Offset), ((*(u32*)(bufin+4))+31)&(~31) );
-								f_lseek( &FC[i].File, ((*(u32*)(bufin+8))<<2)-(FC[i].Offset) );
+								//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, ReadOffset-FC[i].Offset, *(u32*)(bufin+4) );
+								f_lseek( &FC[i].File, (u64)(ReadOffset-FC[i].Offset) << 2 );
 								f_read( &FC[i].File, bufout, ((*(u32*)(bufin+4))+31)&(~31), &read );
 								ret = DI_SUCCESS;
 								break;
@@ -570,7 +575,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 								if( level > 15 )	// something is wrong!
 									break;
 							} else {
-								if( ReadOffset >= (fe[i].FileOffset << 2) && ReadOffset < (fe[i].FileOffset << 2) + fe[i].FileLength )
+								if( ReadOffset >= fe[i].FileOffset && ReadOffset < fe[i].FileOffset + (fe[i].FileLength>>2) )
 								{
 									//dbgprintf("Found Entry:%X file:%s FCEntry:%d\n", i,  FSTable + NameOff + fe[i].NameOffset, FCEntry );
 
@@ -601,12 +606,12 @@ int DIP_Ioctl( struct ipcmessage *msg )
 										ret = DI_FATAL;
 									} else {
 
-										FC[FCEntry].Size = fe[i].FileLength;
-										FC[FCEntry].Offset = (u64)(fe[i].FileOffset)<<2;
+										FC[FCEntry].Size	= fe[i].FileLength>>2;
+										FC[FCEntry].Offset	= fe[i].FileOffset;
 
-										dbgprintf("DIP:[%s] Offset:%08X Size:%08X\n", Path, ((*(u32*)(bufin+8))<<2)-(fe[i].FileOffset << 2), ((*(u32*)(bufin+4))+31)&(~31) );
-										f_lseek( &FC[FCEntry].File, ((*(u32*)(bufin+8))<<2)-(fe[i].FileOffset << 2) );
-										f_read( &FC[FCEntry].File, bufout, ((*(u32*)(bufin+4))+31)&(~31), &read );
+										dbgprintf("DIP:[%s] Offset:%08X Size:%08X\n", Path, (ReadOffset-fe[i].FileOffset), ((*(u32*)(bufin+4))+31)&(~31) );
+										f_lseek( &FC[FCEntry].File, (ReadOffset-fe[i].FileOffset) << 2 );
+										f_read(  &FC[FCEntry].File, bufout, ((*(u32*)(bufin+4))+31)&(~31), &read );
 										
 										FCEntry++;
 

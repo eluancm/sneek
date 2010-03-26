@@ -107,7 +107,7 @@ typedef struct
 
 typedef struct
 {
-	u64 Offset;
+	u32 Offset;
 	u32 Size;
 	FIL File;
 } FileCache;
