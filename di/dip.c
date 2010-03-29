@@ -418,7 +418,6 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				{
 #ifdef FILEMODE
 					u32 ReadOffset = *(u32*)(bufin+8);
-
 					//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X\n", ReadOffset, *(u32*)(bufin+4) );
 
 					if( ReadOffset < 0x110 )	// 0x440
@@ -653,7 +652,11 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			}
 
 			if( ret != DI_SUCCESS )
+			{
+				ret = DI_ERROR;
+				error = 0x00052100;
 				dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
+			}
 		} break;
 		case DVD_READ_UNENCRYPTED:
 		{

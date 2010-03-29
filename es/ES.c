@@ -23,6 +23,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 u32 *KeyID=NULL;
 
+u16 TitleVersion;
+
 static u8 *DITicket=NULL;
 
 static u8  *CNTMap=NULL;
@@ -132,11 +134,13 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		}
 
 		IOSVersion = *(u32*)(data+0x188);
+		TitleVersion = *(u16*)(data+0x1DC);
 
 		free( data );
 	}
 
 	dbgprintf("ES:IOSVersion:%d\n", IOSVersion );
+	dbgprintf("ES:TitleVersion:%d\n", TitleVersion );
 
 	//Load TMD of the requested IOS and build KernelVersion
 	_sprintf( path, "/title/00000001/%08x/content/title.tmd", IOSVersion );

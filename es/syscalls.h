@@ -45,16 +45,11 @@ void syscall_0f(int device, int queue, int message);
 
 void syscall_10(void);
 
-#define timer_create( time, dummy, myqueue, message) syscall_11(time, dummy, myqueue, message)
-int syscall_11(int time, int dummy, int mqueue, int message);
-
-#define timer_restart( TimerID, b ) syscall_12( TimerID, b )
-s32 syscall_12( u32 TimerID, u32 b);
-void syscall_13(void);
-
-#define timer_destroy(a) syscall_14(a)
-void syscall_14(int timer);
-void syscall_15(void);
+int  TimerCreate(int Time, int Dummy, int MessageQueue, int Message );
+void TimerRestart( int TimerID, int Dummy, int Time );
+void TimerStop( int TimerID );
+void TimerDestroy( int TimerID );
+int  TimerNow( int TimerID );
 
 #define heap_create(a, b) syscall_16(a, b)
 int syscall_16(void *ptr, int len);

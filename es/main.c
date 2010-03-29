@@ -29,10 +29,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "alloc.h"
 #include "font.h"
 #include "DI.h"
+#include "GCPad.h"
 
 int verbose = 0;
 u32 base_offset=0;
-static char heap[0x100] ALIGNED(32);
 void *queuespace=NULL;
 int queueid = 0;
 int heapid=0;
@@ -42,6 +42,7 @@ int FFSHandle=0;
 
 static u32 SkipContent ALIGNED(32);
 static u64 TitleID ALIGNED(32);
+extern u16 TitleVersion;
 static u32 KernelVersion ALIGNED(32);
 static u8 *iTMD=NULL;			//used for information during title import
 static u8 *iTIK=NULL;			//used for information during title import
@@ -73,300 +74,12 @@ char *RegionStr[] = {
 	"LTN",
 };
 
-enum GCPad
-{
-	PAD_BUTTON_LEFT	=(1<<16),
-	PAD_BUTTON_RIGHT=(1<<17),
-	PAD_BUTTON_DOWN	=(1<<18),
-	PAD_BUTTON_UP	=(1<<19),
-
-	PAD_BUTTON_A	=(1<<24),
-	PAD_BUTTON_B	=(1<<25),
-	PAD_BUTTON_X	=(1<<26),
-	PAD_BUTTON_Y	=(1<<27),
-	PAD_BUTTON_START=(1<<28),
-};
-
 static u32 *HCR;
 static u32 *SDStatus;		//0x00110001
 static u32 SDClock=0;
 
 #define MENU_POS_X 20
 #define MENU_POS_Y 80
-
-void *FBnuke( void *ptr )
-{
-	int i,j,f;
-	int ShowMenu=0;
-	int SLock=0;
-	int PosY=0;
-	int Pong=0,BallX=180,BallY=320,BallVX=-2,BallVY=-2;
-	int Slot = 0;
-	int PadX=20, PadY=0;
-
-	u32 FB[3] = {0,0,0};
-
-	dbgprintf("thread running!\n");
-
-	//Wait for FB to be set
-	while( (*(vu32*)0x01699430) != 1);
-
-	u32 GameCount = 0;
-	u32 CoverStatus = 0;
-	u8 *GameInfo = malloca( 0x100, 32 );
-
-	DVDGetGameCount( &GameCount );
-	DVDReadGameInfo( Slot, GameInfo );
-
-	DVDLowPrepareCoverRegister( &CoverStatus );
-
-	if( Region > LTN )
-		Region = JAP;
-	
-	while( 1 )
-	{
-		FrameBuffer = (*(vu32*)0x01699448) & 0x7FFFFFFF;
-		u32 Buttons = *(vu32*)0xD806404;
-		u32 Stick   = *(vu32*)0xD806408;
-
-		if( (Buttons&PAD_BUTTON_START) && SLock == 0 )
-		{
-			ShowMenu ^= 1;
-			Pong = 0;
-			if(ShowMenu)
-			{
-				*(vu32*)0x133DFB0 = 0x4BFFFFFC;
-
-				udelay( 5000 );
-
-				for( i=0; i<3; ++i)
-				{
-					if( FB[i] )
-					{
-						memset32( (u32*)(FB[i]), 0x10801080, 320*480*4 );
-					}
-				}
-			}
-			SLock = 1;
-		}
-		if( (Buttons&PAD_BUTTON_RIGHT) && SLock == 0 )
-		{
-			switch( PosY )
-			{
-				case 2:
-				{
-					if( Slot+1 < GameCount )
-						Slot++;
-					else
-						Slot = 0;
-
-					DVDReadGameInfo( Slot, GameInfo );
-				} break;
-			}
-			SLock = 1;
-		} else if( (Buttons&PAD_BUTTON_LEFT) && SLock == 0 )
-		{
-			switch( PosY )
-			{
-				case 2:
-				{
-					if( Slot > 0 )
-						Slot--;
-					else
-						Slot = GameCount-1;
-
-					DVDReadGameInfo( Slot, GameInfo );
-				} break;
-			}
-			SLock = 1;
-		} 
-		if( (Buttons&PAD_BUTTON_DOWN) && (SLock == 0 || Pong) )
-		{
-			for( i=0; i<3; ++i)
-				if( FB[i] )
-					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*PosY, "  " );
-
-			if( Pong )
-			{
-				if( PadY < 480-8*3 )
-				{
-					for( i=0; i<3; ++i)
-						if( FB[i] )
-						{
-							PrintFormat( FB[i], PadX, PadY+16*0, " " );
-							PrintFormat( FB[i], PadX, PadY+16*1, " " );
-							PrintFormat( FB[i], PadX, PadY+16*2, " " );
-						}
-
-					PadY+=8;
-				}
-
-			} else {
-				if( PosY < 4 )
-					PosY++;
-				else
-					PosY=0;
-			}
-
-			SLock = 1;
-		}
-		if( (Buttons&PAD_BUTTON_UP) && (SLock == 0 || Pong) )
-		{
-			for( i=0; i<3; ++i)
-				if( FB[i] )
-					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*PosY, "  " );
-
-			if( Pong )
-			{
-				if( PadY > 0 )
-				{
-					for( i=0; i<3; ++i)
-						if( FB[i] )
-						{
-							PrintFormat( FB[i], PadX, PadY+16*0, " " );
-							PrintFormat( FB[i], PadX, PadY+16*1, " " );
-							PrintFormat( FB[i], PadX, PadY+16*2, " " );
-						}
-
-					PadY-=8;
-				}
-
-			} else {
-
-				if( PosY > 0 )
-					PosY--;
-				else
-					PosY = 4;
-			}
-
-			SLock = 1;
-		}
-		if( (Buttons&PAD_BUTTON_A) && SLock == 0 )
-		{
-			switch( PosY )
-			{
-				case 2:
-				{
-					DVDSelectGame( Slot );
-				} break;
-				case 3:
-				{
-					if( CoverStatus&1 )
-						DVDInsertDisc();
-					else
-						DVDEjectDisc();
-
-					DVDLowPrepareCoverRegister( &CoverStatus );
-				} break;
-				case 4:
-				{
-					Pong = 1;
-
-					for( i=0; i<3; ++i)
-						if( FB[i] )
-							memset32( (u32*)(FB[i]), 0x10801080, 320*480*4 );		
-				} break;
-			}
-			SLock = 1;
-		}
-
-		if( Pong )
-		{
-			for( i=0; i<3; ++i)
-				if( FB[i] )
-					PrintFormat( FB[i], BallX, BallY, " " );
-
-			BallX += BallVX;
-			BallY += BallVY;
-
-			//check against pad
-
-			if( BallX > PadX && BallX < PadX + 8 )
-			{
-				if( BallY > PadY && BallY < PadY + 8*3 )
-				{
-					BallVX *= -1;
-					BallVY *= -1;
-				}
-			}
-
-			if( BallX < 0 )
-				BallVX = 2;
-			if( BallX > 300 )
-				BallVX = -2;
-
-			if( BallY < 0 )
-				BallVY = 2;
-			if( BallY > 460 )
-				BallVY = -2;
-		}
-
-		for( i=0; i<3; i++)
-		{
-			if( FB[i] == 0 )	//add a new entry
-			{
-				//check if we already know this address
-				f=0;
-				for( j=0; j<i; ++j )
-				{
-					if( FrameBuffer == FB[j] )	// already known!
-					{
-						f=1;
-						break;
-					}
-				}
-				if( !f && FrameBuffer )	// add new entry
-				{
-					FB[i] = FrameBuffer;
-					dbgprintf("DIP:Added new FB[%d]:%08X\n", i, FrameBuffer );
-				}
-			}
-
-			if( FB[i] != 0 && ShowMenu )
-			{
-				if( Pong )
-				{
-					PrintFormat( FB[i], BallX, BallY, "O" );
-
-					PrintFormat( FB[i], PadX, PadY+16*0, "I" );
-					PrintFormat( FB[i], PadX, PadY+16*1, "I" );
-					PrintFormat( FB[i], PadX, PadY+16*2, "I" );
-					
-				} else {
-
-					PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s %s", __TIME__, __DATE__ );
-
-					PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*1, "Region:%s", RegionStr[Region] );
-					PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*2, "Installed Games:%d", GameCount );
-					PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*3, "Current Game:%s", GameInfo+0x20 );
-
-					if( CoverStatus&1 )
-						PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*4, "Insert Disc" );
-					else						
-						PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*4, "Eject Disc " );
-
-					PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*5, "Play pong" );
-
-					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*PosY, "->" );
-				}
-				
-				sync_after_write( (u32*)(FB[i]), 320*480*4 );
-			}
-		}
-
-		if( ( Buttons&0x1F3F0000 ) == 0 )
-			SLock = 0;
-
-		if( ShowMenu == 0 )
-			*(vu32*)0x133DFB0 = 0x481FDB19;
-		else {
-			if( Pong )
-				udelay( 2 );
-		}
-
-	}
-}
-
 
 void iCleanUpTikTMD( void )
 {
@@ -1819,20 +1532,6 @@ void ES_Ioctlv( struct ipcmessage *msg )
 	mqueue_ack( (void *)msg, ret);
 
 }
-s32 RegisterDevices( void )
-{
-	queueid = mqueue_create( queuespace, 2 );
-
-	s32 ret = device_register("/dev/es", queueid );
-#ifdef DEBUG
-	dbgprintf("ES:DeviceRegister(\"/dev/es\"):%d QueueID:%d\n", ret, queueid );
-#endif
-	if( ret < 0 )
-		return ret;
-
-	return queueid;
-}
-
 int _main( int argc, char *argv[] )
 {
 	thread_set_priority( 0, 0x79 );
@@ -1847,21 +1546,20 @@ int _main( int argc, char *argv[] )
 
 	KernelVersion = *(vu32*)0x00003140;
 
-	int queueid=0;
 	s32 ret=0;
 	struct ipcmessage *message=NULL;
 
-	dbgprintf("ES:Heap Init...");
-	heapid = heap_create( heap, 0x100 );
-	queuespace = heap_alloc( heapid, 0x20);
-	dbgprintf("ok\n");
+	u8 MessageHeap[0x10];
+	u32 MessageQueue=0xFFFFFFFF;
 
-	queueid = RegisterDevices();
-	if( queueid < 0 )
-	{
-		ThreadCancel( 0, 0x77 );
-	}
-	s32 Timer = timer_create( 0, 0, queueid, 0xDEADDEAD );
+	dbgprintf("ES:Heap Init...");
+
+	MessageQueue = mqueue_create( MessageHeap, 1 );
+
+	device_register( "/dev/es", MessageQueue );
+
+	s32 Timer = TimerCreate( 0, 0, MessageQueue, 0xDEADDEAD );
+
 	dbgprintf("ES:Timer:%d\n", Timer );
 
 	u32 pid = GetPID();
@@ -1885,7 +1583,7 @@ int _main( int argc, char *argv[] )
 	if( ISFS_IsUSB() == FS_ENOENT2 )
 	{
 		dbgprintf("ES:Found FS-SD\n");
-		ret = device_register("/dev/sdio", queueid );
+		ret = device_register("/dev/sdio", MessageQueue );
 #ifdef DEBUG
 		dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
 #endif
@@ -1913,24 +1611,168 @@ int _main( int argc, char *argv[] )
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
 
-		//Region free 4.2EUR
-		//*(u32*)0x0137DC90 = 0x4800001C;
-		//*(u32*)0x0137E4E4 = 0x60000000;
+		if( TitleVersion == 482 )
+		{
+			//Region free 4.2EUR
+			*(u32*)0x0137DC90 = 0x4800001C;
+			*(u32*)0x0137E4E4 = 0x60000000;
 
-		//LoadFont( "/font.bin" );
-
-		//u8 *stk = malloca( 0x100, 32 );
-		//u32 id = thread_create( FBnuke, 0x20, stk, 0x100, 0, 1 );
-		//thread_continue( id );
-
+			LoadFont( "/font.bin" );
+			TimerRestart( Timer, 0, 10000 );
+		}
 	}
+
+	int i=0,j=0,f=0;
+	int ShowMenu=0;
+	int SLock=0;
+	int PosY=0;
+	int Slot = 0;
+
+	u32 FB[3] = {0,0,0};
+	u32 GameUpdate = 1;
+	u32 *GameCount = malloca( sizeof(u32), 32 );
+	u8 *GameInfo = malloca( 0x100, 32 );
+	GCPadStatus GCPad;
 
 	while (1)
 	{
-		ret = mqueue_recv( queueid, (void *)&message, 0);
+		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
 		if( ret != 0 )
 		{
-			dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", queueid, ret);
+			dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", MessageQueue, ret);
+			return 0;
+		}
+	
+		if( (u32)message == 0xDEADDEAD )
+		{
+			TimerStop( Timer );
+
+			if( *(vu32*)0x01699430 == 1 )
+			{
+				if( GameUpdate )
+				{
+					DVDGetGameCount( GameCount );
+					DVDReadGameInfo( Slot, GameInfo );
+
+					for( i=0; i<3; ++i)
+					{
+						if( FB[i] )
+						{
+							memset32( (u32*)(FB[i]) + (MENU_POS_Y+16*1)*320, 0x10801080, 640*32 );
+						}
+					}
+
+					GameUpdate = 0;
+				}
+
+				FrameBuffer = (*(vu32*)0x01699448) & 0x7FFFFFFF;
+
+				memcpy32( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
+
+				if( GCPad.Start && SLock == 0 )
+				{
+					ShowMenu ^= 1;
+					if(ShowMenu)
+					{
+						*(vu32*)0x133DFB0 = 0x4BFFFFFC;
+
+						udelay( 8000 );
+
+						for( i=0; i<3; ++i)
+						{
+							if( FB[i] )
+							{
+								memset32( (u32*)(FB[i]), 0x10801080, 320*480*4 );
+							}
+						}
+					}
+					SLock = 1;
+				}
+
+				if( GCPad.A && SLock == 0 )
+				{
+					switch( PosY )
+					{
+						case 0:
+						{
+							DVDSelectGame( Slot );
+						};
+					}
+					SLock = 1;
+				}
+				if( GCPad.Left && SLock == 0 )
+				{
+					switch( PosY )
+					{
+						case 0:
+						{
+							if( Slot > 0 )
+								Slot--;
+							else
+								Slot=*GameCount-1;
+
+							GameUpdate = 1;
+						} break;
+					}
+					SLock = 1;
+				} else if( GCPad.Right && SLock == 0 )
+				{
+					switch( PosY )
+					{
+						case 0:
+						{
+							if( Slot < *GameCount )
+								Slot++;
+							else
+								Slot=0;
+
+							GameUpdate = 1;
+						} break;
+					}
+					SLock = 1;
+				}
+
+				for( i=0; i<3; i++)
+					{
+						if( FB[i] == 0 )	//add a new entry
+						{
+							//check if we already know this address
+							f=0;
+							for( j=0; j<i; ++j )
+							{
+								if( FrameBuffer == FB[j] )	// already known!
+								{
+									f=1;
+									break;
+								}
+							}
+							if( !f && FrameBuffer && FrameBuffer < 0x01800000 )	// add new entry
+							{
+								FB[i] = FrameBuffer;
+								dbgprintf("ES:Added new FB[%d]:%08X\n", i, FrameBuffer );
+							}
+						}
+
+						if( FB[i] != 0 && ShowMenu )
+						{
+							PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s %s\t\t%s", __TIME__, __DATE__, RegionStr[Region] );
+
+							PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*0, "Installed Games:%d", *GameCount );
+
+							PrintFormat( FB[i], (320/2)-(strlen(GameInfo+0x20)*8/2), MENU_POS_Y+16*1, "%.100s", GameInfo+0x20 );
+							
+							sync_after_write( (u32*)(FB[i]), 320*480*4 );
+						}
+					}
+
+				if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 )
+					SLock = 0;
+
+				if( ShowMenu == 0 )
+					*(vu32*)0x133DFB0 = 0x481FDB19;
+			}
+
+			TimerRestart( Timer, 0, 10000 );
 			continue;
 		}
 	

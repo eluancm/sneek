@@ -86,28 +86,28 @@ syscall_10:
 	.long 0xe6000210
 	bx lr
 
-	.global syscall_11
-syscall_11:
+	.global TimerCreate
+TimerCreate:
 	.long 0xe6000230
 	bx lr
 
-	.global syscall_12
-syscall_12:
+	.global TimerRestart
+TimerRestart:
 	.long 0xe6000250
 	bx lr
 
-	.global syscall_13
-syscall_13:
+	.global TimerStop
+TimerStop:
 	.long 0xe6000270
 	bx lr
 
-	.global syscall_14
-syscall_14:
+	.global TimerDestroy
+TimerDestroy:
 	.long 0xe6000290
 	bx lr
 
-	.global syscall_15
-syscall_15:
+	.global TimerNow
+TimerNow:
 	.long 0xe60002b0
 	bx lr
 

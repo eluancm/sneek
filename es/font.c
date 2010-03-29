@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include "font.h"
-u32* fontfx;
+u32* fontfx=NULL;
 
 void PrintChar( u32 FrameBuffer, int xx, int yy, char c )
 {
@@ -53,6 +53,9 @@ void PrintString( u32 FrameBuffer, int x, int y, char *str )
 }
 void PrintFormat( u32 FrameBuffer, int x, int y, const char *str, ... )
 {
+	if( fontfx == NULL )
+		return;
+
 	char *astr = (char*)malloc( 2048 );
 	memset32( astr, 0, 2048 );
 
@@ -75,6 +78,8 @@ void LoadFont( char *str )
 	{
 		dbgprintf("ES:Couldn't open:\"%s\":%d\n", str, *size );
 	}
+
+	free( size );
 
 	//FIL f;
 	//f_open( &f, str, FA_READ );
