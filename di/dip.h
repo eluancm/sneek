@@ -36,6 +36,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define DI_ERROR	2
 #define DI_FATAL	64
 
+enum disctypes
+{
+	DISC_REV	= 0,
+	DISC_DOL	= 1,
+	DISC_INV	= 2,
+};
+
 enum opcodes
 {
 	DVD_IDENTIFY			= 0x12,
@@ -57,6 +64,7 @@ enum opcodes
 	DVD_READ_BCA			= 0xDA,
 	DVD_GET_ERROR			= 0xE0,
 	DVD_SET_MOTOR			= 0xE3,
+	DVD_SET_AUDIO_BUFFER	= 0xE4,
 
 	DVD_SELECT_GAME			= 0x23,
 	DVD_GET_GAMECOUNT		= 0x24,

@@ -134,13 +134,13 @@ void _main(void)
 		f_close( &fi );
 
 		if( Region > LTN )
-			Region = EUR;
+			Region = JAP;
 
 		dbgprintf("DIP:Region set to:%d\n", Region );
 
 	} else {
-		Region=EUR;
-		dbgprintf("DIP:No region.bin found, set region to EUR\n" );
+		Region=JAP;
+		dbgprintf("DIP:No region.bin found, set region to %d\n", Region );
 	}
 
 	while (1)
@@ -161,7 +161,7 @@ void _main(void)
 					//dbgprintf("DIP:IOS_Open(\"%s\"):%d\n", IPCMessage->open.device, 24 );
 					MessageQueueAck( IPCMessage, 24 );
 				} else {
-					dbgprintf("DIP:IOS_Open(\"%s\"):%d\n", IPCMessage->open.device, -6 );
+					//dbgprintf("DIP:IOS_Open(\"%s\"):%d\n", IPCMessage->open.device, -6 );
 					MessageQueueAck( IPCMessage, -6 );
 				}
 				

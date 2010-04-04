@@ -1532,6 +1532,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 	mqueue_ack( (void *)msg, ret);
 
 }
+
 int _main( int argc, char *argv[] )
 {
 	thread_set_priority( 0, 0x79 );
@@ -1605,20 +1606,50 @@ int _main( int argc, char *argv[] )
 	//if( *(u32*)0x0001CCC0 == 0x4082007C )
 	//	*(u32*)0x0001CCC0 = 0x38000063;
 
+	u32 *GameCount = malloca( sizeof(u32), 32 );
+
+	u32 FBOffset	= 0;
+	u32 FBEnable	= 0;
+	u32 SysFreeze	= 0;
+	u32 SysFreezeBL	= 0;
+
 	if( TitleID == 0x0000000100000002LL )
 	{
 		//Disable SD for system menu
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
 
-		if( TitleVersion == 482 )
+		switch( TitleVersion )
 		{
-			//Region free 4.2EUR
-			*(u32*)0x0137DC90 = 0x4800001C;
-			*(u32*)0x0137E4E4 = 0x60000000;
+			case 482:
+			{
+				//Disc Region free hack
+				*(u32*)0x0137DC90 = 0x4800001C;
+				*(u32*)0x0137E4E4 = 0x60000000;
 
-			LoadFont( "/font.bin" );
-			TimerRestart( Timer, 0, 10000 );
+				LoadFont( "/font.bin" );
+				TimerRestart( Timer, 0, 10000 );
+
+				FBOffset	= 0x01699448;
+				FBEnable	= 0x01699430;
+				SysFreeze	= 0x0133DFB0;
+				SysFreezeBL	= 0x481FDB19;
+
+			} break;
+			case 481:
+			{
+				//Disc Region free hack
+				*(u32*)0x0137DBE8 = 0x4800001C;
+				*(u32*)0x0137E43C = 0x60000000;
+
+				LoadFont( "/font.bin" );
+				TimerRestart( Timer, 0, 10000 );
+
+				FBOffset	= 0x016975A8;
+				FBEnable	= 0x01697590;
+				SysFreeze	= 0x0133DF40;
+				SysFreezeBL	= 0x481FDA8D;
+			} break;
 		}
 	}
 
@@ -1630,7 +1661,6 @@ int _main( int argc, char *argv[] )
 
 	u32 FB[3] = {0,0,0};
 	u32 GameUpdate = 1;
-	u32 *GameCount = malloca( sizeof(u32), 32 );
 	u8 *GameInfo = malloca( 0x100, 32 );
 	GCPadStatus GCPad;
 
@@ -1647,7 +1677,7 @@ int _main( int argc, char *argv[] )
 		{
 			TimerStop( Timer );
 
-			if( *(vu32*)0x01699430 == 1 )
+			if( *(vu32*)FBEnable == 1 )
 			{
 				if( GameUpdate )
 				{
@@ -1665,7 +1695,7 @@ int _main( int argc, char *argv[] )
 					GameUpdate = 0;
 				}
 
-				FrameBuffer = (*(vu32*)0x01699448) & 0x7FFFFFFF;
+				FrameBuffer = (*(vu32*)FBOffset) & 0x7FFFFFFF;
 
 				memcpy32( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
 
@@ -1674,7 +1704,7 @@ int _main( int argc, char *argv[] )
 					ShowMenu ^= 1;
 					if(ShowMenu)
 					{
-						*(vu32*)0x133DFB0 = 0x4BFFFFFC;
+						*(vu32*)SysFreeze = 0x4BFFFFFC;
 
 						udelay( 8000 );
 
@@ -1759,7 +1789,10 @@ int _main( int argc, char *argv[] )
 
 							PrintFormat( FB[i], MENU_POS_X+16, MENU_POS_Y+16*0, "Installed Games:%d", *GameCount );
 
-							PrintFormat( FB[i], (320/2)-(strlen(GameInfo+0x20)*8/2), MENU_POS_Y+16*1, "%.100s", GameInfo+0x20 );
+							if( *(vu32*)(GameInfo+0x1C) == 0xc2339f3d )
+								PrintFormat( FB[i], (320/2)-(strlen(GameInfo+0x20)*7/2), MENU_POS_Y+16*1, "%.100s (GC)", GameInfo+0x20 );
+							else
+								PrintFormat( FB[i], (320/2)-(strlen(GameInfo+0x20)*7/2), MENU_POS_Y+16*1, "%.100s (Wii)", GameInfo+0x20 );
 							
 							sync_after_write( (u32*)(FB[i]), 320*480*4 );
 						}
@@ -1769,7 +1802,7 @@ int _main( int argc, char *argv[] )
 					SLock = 0;
 
 				if( ShowMenu == 0 )
-					*(vu32*)0x133DFB0 = 0x481FDB19;
+					*(vu32*)SysFreeze = SysFreezeBL;
 			}
 
 			TimerRestart( Timer, 0, 10000 );

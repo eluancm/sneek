@@ -25,7 +25,7 @@ u8 *buffer = (u8*)0x00001400;
 
 DSTATUS disk_initialize (BYTE drv)
 {
-	//udelay( 50000 );
+	udelay( 50000 );
 
 	dbgprintf("DIP: Initializing TinyEHCI...\n");
 	tiny_ehci_init();
