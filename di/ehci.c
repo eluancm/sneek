@@ -214,13 +214,11 @@ static int ehci_init(void)
 }
 
 /* fill a qtd, returning how much of the buffer we were able to queue up */
-static int
-qtd_fill(struct ehci_qtd *qtd, dma_addr_t buf,
-		  size_t len, int token, int maxpacket)
+static int qtd_fill( struct ehci_qtd *qtd, dma_addr_t buf, size_t len, int token, int maxpacket)
 {
 	int	i, count;
 	u64	addr = buf;
-        //ehci_dbg("fill qtd with dma %X len %X\n",buf,len);
+	//ehci_dbg("fill qtd with dma %X len %X\n",buf,len);
 	/* one buffer entry per 4K ... first might be short or unaligned */
 	qtd->hw_buf[0] = cpu_to_hc32( (u32)addr);
 	qtd->hw_buf_hi[0] = 0;
@@ -266,42 +264,50 @@ qtd_fill(struct ehci_qtd *qtd, dma_addr_t buf,
  */
 static void qh_end_transfer (void)
 {
-        struct ehci_qtd	*qtd;
-        struct ehci_qh	*qh = ehci->asyncqh;
-        u32 token;
-        int error = 0;
-        for(qtd = qh->qtd_head; qtd; qtd = qtd->next){
-                token = hc32_to_cpu( qtd->hw_token);
-                if (likely (QTD_PID (token) != 2))
-                        qtd->urb->actual_length += qtd->length - QTD_LENGTH (token);
-                if (!(qtd->length ==0 && ((token & 0xff)==QTD_STS_HALT)) &&
-                    (token & QTD_STS_HALT)) {
-                        ehci_dbg("\nqtd error!:");
-                        if (token & QTD_STS_BABBLE) {
-                                /* FIXME "must" disable babbling device's port too */
-                                ehci_dbg(" BABBLE");
-                        }  
-                        if (token & QTD_STS_MMF) {
-                                /* fs/ls interrupt xfer missed the complete-split */
-                                ehci_dbg(" missed micro frame");
-                        }
-                        if (token & QTD_STS_DBE) {
-                                ehci_dbg(" databuffer error");
-                        }
-                        if (token & QTD_STS_XACT) {
-                                ehci_dbg(" wrong ack");
-                        }
-                        if (QTD_CERR (token)==0)
-                                ehci_dbg(" toomany errors");
-                        ehci_dbg("\n");
-                        error = -1;
-                }
+    struct ehci_qtd	*qtd;
+    struct ehci_qh	*qh = ehci->asyncqh;
+    u32 token;
+    int error = 0;
+    for(qtd = qh->qtd_head; qtd; qtd = qtd->next)
+	{
+        token = hc32_to_cpu( qtd->hw_token);
+        if (likely (QTD_PID (token) != 2))
+                qtd->urb->actual_length += qtd->length - QTD_LENGTH (token);
+
+        if (!(qtd->length ==0 && ((token & 0xff)==QTD_STS_HALT)) &&  (token & QTD_STS_HALT))
+		{
+            ehci_dbg("\nqtd error!:");
+            if (token & QTD_STS_BABBLE)
+			{
+                    /* FIXME "must" disable babbling device's port too */
+                    ehci_dbg(" BABBLE");
+            }  
+            if (token & QTD_STS_MMF)
+			{
+                    /* fs/ls interrupt xfer missed the complete-split */
+                    ehci_dbg(" missed micro frame");
+            }
+            if (token & QTD_STS_DBE)
+			{
+                    ehci_dbg(" databuffer error");
+            }
+            if (token & QTD_STS_XACT)
+			{
+                    ehci_dbg(" wrong ack");
+            }
+            if (QTD_CERR (token)==0)
+                    ehci_dbg(" toomany errors");
+
+            ehci_dbg("\n");
+            error = -1;
         }
-        if(error){
-                dump_qh(ehci->asyncqh);
-                qtd->urb->actual_length = error;
-        }
-        ehci->qtd_used = 0;
+    }
+    if(error)
+	{
+        dump_qh(ehci->asyncqh);
+        qtd->urb->actual_length = error;
+    }
+    ehci->qtd_used = 0;
 }
 
 /*
@@ -426,185 +432,179 @@ struct ehci_qtd *qh_urb_transaction (
         qtd->hw_token |= cpu_to_hc32( QTD_IOC);
 	return head;
 }
- int ehci_do_urb (
-        struct ehci_device *dev,
-	struct ehci_urb	*urb)
+int ehci_do_urb ( struct ehci_device *dev, struct ehci_urb	*urb)
 {
-        struct ehci_qh		*qh;
-        struct ehci_qtd *qtd;
-        u32			info1 = 0, info2 = 0;
-	int			is_input;
-	int			maxp = 0;
-        int retval;
+	struct ehci_qh *qh;
+	struct ehci_qtd *qtd;
+	u32 info1 = 0, info2 = 0;
+	int is_input;
+	int maxp = 0;
+	int retval;
 
-        //ehci_dbg ("do urb %X %X  ep %X\n",urb->setup_buffer,urb->transfer_buffer,urb->ep);
-        if(urb->ep==0) //control message
-                urb->setup_dma = ehci_dma_map_to(urb->setup_buffer,sizeof (usbctrlrequest));
+	//ehci_dbg ("do urb %X %X  ep %X\n",urb->setup_buffer,urb->transfer_buffer,urb->ep);
+	if(urb->ep==0) //control message
+		urb->setup_dma = ehci_dma_map_to(urb->setup_buffer,sizeof (usbctrlrequest));
 
-        if(urb->transfer_buffer_length){
-                if(urb->input)
-                        urb->transfer_dma = ehci_dma_map_to(urb->transfer_buffer,urb->transfer_buffer_length);
-                else
-                        urb->transfer_dma = ehci_dma_map_from(urb->transfer_buffer,urb->transfer_buffer_length);
-        }
-        qh = ehci->asyncqh;
-        memset(qh,0,12*4);
-        qtd = qh_urb_transaction ( urb);
-        qh ->qtd_head = qtd;
-        
-        
-        info1 |= ((urb->ep)&0xf)<<8;
-        info1 |= dev->id;
-        is_input = urb->input;
-        maxp = urb->maxpacket;
-        
-        info1 |= (2 << 12);	/* EPS "high" */
-        if(urb->ep==0)// control
-        {
-                info1 |= (EHCI_TUNE_RL_HS << 28);
-                info1 |= 64 << 16;	/* usb2 fixed maxpacket */
-                info1 |= 1 << 14;	/* toggle from qtd */
-                info2 |= (EHCI_TUNE_MULT_HS << 30);
-        }else//bulk
-        {
-                info1 |= (EHCI_TUNE_RL_HS << 28);
-                /* The USB spec says that high speed bulk endpoints
-                 * always use 512 byte maxpacket.  But some device
-                 * vendors decided to ignore that, and MSFT is happy
-                 * to help them do so.  So now people expect to use
-                 * such nonconformant devices with Linux too; sigh.
-                 */
-                info1 |= max_packet(maxp) << 16;
-                info2 |= (EHCI_TUNE_MULT_HS << 30);
-                
-        }
-        //ehci_dbg("HW info: %08X\n",info1);
+	if(urb->transfer_buffer_length)
+	{
+		if(urb->input)
+			urb->transfer_dma = ehci_dma_map_to(urb->transfer_buffer,urb->transfer_buffer_length);
+		else
+			urb->transfer_dma = ehci_dma_map_from(urb->transfer_buffer,urb->transfer_buffer_length);
+	}
+
+    qh = ehci->asyncqh;
+    memset(qh,0,12*4);
+    qtd = qh_urb_transaction ( urb);
+    qh ->qtd_head = qtd;
+
+    info1 |= ((urb->ep)&0xf)<<8;
+    info1 |= dev->id;
+    is_input = urb->input;
+    maxp = urb->maxpacket;
+
+    info1 |= (2 << 12);	/* EPS "high" */
+    if(urb->ep==0)// control
+    {
+		info1 |= (EHCI_TUNE_RL_HS << 28);
+		info1 |= 64 << 16;	/* usb2 fixed maxpacket */
+		info1 |= 1 << 14;	/* toggle from qtd */
+		info2 |= (EHCI_TUNE_MULT_HS << 30);
+    } else {//bulk
+   
+		info1 |= (EHCI_TUNE_RL_HS << 28);
+		/* The USB spec says that high speed bulk endpoints
+		* always use 512 byte maxpacket.  But some device
+		* vendors decided to ignore that, and MSFT is happy
+		* to help them do so.  So now people expect to use
+		* such nonconformant devices with Linux too; sigh.
+		*/
+		info1 |= max_packet(maxp) << 16;
+		info2 |= (EHCI_TUNE_MULT_HS << 30);
+    }
+
+	// ehci_dbg("HW info: %08X\n",info1);
 	qh->hw_info1 = cpu_to_hc32( info1);
 	qh->hw_info2 = cpu_to_hc32( info2);
 
-        qh->hw_next = QH_NEXT(qh->qh_dma);
+	qh->hw_next = QH_NEXT(qh->qh_dma);
 	qh->hw_qtd_next = QTD_NEXT( qtd->qtd_dma);
 	qh->hw_alt_next = EHCI_LIST_END();
 
-        if(urb->ep!=0){
-                if(get_toggle(dev,urb->ep))
-                        qh->hw_token |= cpu_to_hc32(QTD_TOGGLE);
-                else
-                        qh->hw_token &= ~cpu_to_hc32( QTD_TOGGLE);
-                //ehci_dbg("toggle for ep %x: %d %x\n",urb->ep,get_toggle(dev,urb->ep),qh->hw_token);
-        }
+    if( urb->ep != 0 )
+	{
+		if(get_toggle(dev,urb->ep))
+			qh->hw_token |= cpu_to_hc32(QTD_TOGGLE);
+		else
+			qh->hw_token &= ~cpu_to_hc32( QTD_TOGGLE);
+
+		//ehci_dbg("toggle for ep %x: %d %x\n",urb->ep,get_toggle(dev,urb->ep),qh->hw_token);
+    }
 
 	qh->hw_token &= cpu_to_hc32( QTD_TOGGLE | QTD_STS_PING);
 
-        qh->hw_next = QH_NEXT(ehci->async->qh_dma);
+	qh->hw_next = QH_NEXT(ehci->async->qh_dma);
 
 
-        ehci_dma_map_bidir(qh,sizeof(struct ehci_qh));
-        for(qtd = qh->qtd_head; qtd; qtd = qtd->next)
-                ehci_dma_map_bidir(qtd,sizeof(struct ehci_qtd));
-#if 0
-        if(urb->ep!=0){
-        dump_qh(ehci->async);
-        dump_qh(ehci->asyncqh);
-        }
-#endif   
-        // start (link qh)
-        ehci->async->hw_next = QH_NEXT(qh->qh_dma);
-        ehci_dma_map_bidir(ehci->async,sizeof(struct ehci_qh));
+    ehci_dma_map_bidir(qh,sizeof(struct ehci_qh));
+    for(qtd = qh->qtd_head; qtd; qtd = qtd->next)
+		ehci_dma_map_bidir(qtd,sizeof(struct ehci_qtd));
 
-        retval = handshake(&ehci->regs->status,STS_INT,STS_INT,1000*1000);
+    // start (link qh)
+    ehci->async->hw_next = QH_NEXT(qh->qh_dma);
+    ehci_dma_map_bidir(ehci->async,sizeof(struct ehci_qh));
 
-        //print_hex_dump_bytes ("qh mem",0,(void*)qh,17*4);
-        //retval = poll_transfer_end(1000*1000);
-        ehci_dma_unmap_bidir(ehci->async->qh_dma,sizeof(struct ehci_qh));
-        ehci_dma_unmap_bidir(qh->qh_dma,sizeof(struct ehci_qh));
-        for(qtd = qh->qtd_head; qtd; qtd = qtd->next)
-                ehci_dma_unmap_bidir(qtd->qtd_dma,sizeof(struct ehci_qtd));
+    retval = handshake(&ehci->regs->status,STS_INT,STS_INT,1000*1000);
 
-        // stop (unlink qh)
-        ehci->async->hw_next = QH_NEXT(ehci->async->qh_dma);
-        ehci_dma_map_bidir(ehci->async,sizeof(struct ehci_qh));
-        ehci_dma_unmap_bidir(ehci->async->qh_dma,sizeof(struct ehci_qh));
+    //print_hex_dump_bytes ("qh mem",0,(void*)qh,17*4);
+    //retval = poll_transfer_end(1000*1000);
+    ehci_dma_unmap_bidir(ehci->async->qh_dma,sizeof(struct ehci_qh));
+    ehci_dma_unmap_bidir(qh->qh_dma,sizeof(struct ehci_qh));
 
-        // ack
-        ehci_writel( STS_RECL|STS_IAA|STS_INT, &ehci->regs->status);
+    for(qtd = qh->qtd_head; qtd; qtd = qtd->next)
+		ehci_dma_unmap_bidir(qtd->qtd_dma,sizeof(struct ehci_qtd));
 
-        if(urb->ep!=0){
-                set_toggle(dev,urb->ep,(qh->hw_token & cpu_to_hc32(QTD_TOGGLE))?1:0);
-                //ehci_dbg("toggle for ep %x: %d %d %x %X\n",urb->ep,get_toggle(dev,urb->ep),(qh->hw_token & cpu_to_hc32(QTD_TOGGLE)),qh->hw_token,dev->toggles);
-        }
+    // stop (unlink qh)
+    ehci->async->hw_next = QH_NEXT(ehci->async->qh_dma);
+    ehci_dma_map_bidir(ehci->async,sizeof(struct ehci_qh));
+    ehci_dma_unmap_bidir(ehci->async->qh_dma,sizeof(struct ehci_qh));
 
-        if(retval>=0)
-        // wait hc really stopped
-                retval = handshake(&ehci->regs->async_next,~0,ehci->async->qh_dma,1*1000);
-        //release memory, and actualise urb->actual_length
-        qh_end_transfer();
+    // ack
+    ehci_writel( STS_RECL|STS_IAA|STS_INT, &ehci->regs->status);
 
+    if(urb->ep!=0)
+	{
+		set_toggle(dev,urb->ep,(qh->hw_token & cpu_to_hc32(QTD_TOGGLE))?1:0);
+		//ehci_dbg("toggle for ep %x: %d %d %x %X\n",urb->ep,get_toggle(dev,urb->ep),(qh->hw_token & cpu_to_hc32(QTD_TOGGLE)),qh->hw_token,dev->toggles);
+    }
 
-        if(urb->transfer_buffer_length){
-                if(urb->input)
-                        ehci_dma_unmap_to(urb->transfer_dma,urb->transfer_buffer_length);
-                else
-                        ehci_dma_unmap_from(urb->transfer_dma,urb->transfer_buffer_length);
-        }
-        if(urb->ep==0) //control message
-                ehci_dma_unmap_to(urb->setup_dma,sizeof (usbctrlrequest));
-        if(retval==0){
-                
-                return urb->actual_length;
-        }
-        ehci_dbg ( "un successfull urb %d!!\n", retval);
-        return retval;
+    if( retval >= 0 )
+    // wait hc really stopped
+		retval = handshake(&ehci->regs->async_next,~0,ehci->async->qh_dma,1*1000);
+    //release memory, and actualise urb->actual_length
+    qh_end_transfer();
+
+    if(urb->transfer_buffer_length)
+	{
+		if(urb->input)
+			ehci_dma_unmap_to(urb->transfer_dma,urb->transfer_buffer_length);
+		else
+			ehci_dma_unmap_from(urb->transfer_dma,urb->transfer_buffer_length);
+    }
+
+    if( urb->ep == 0 ) //control message
+		ehci_dma_unmap_to(urb->setup_dma,sizeof (usbctrlrequest));
+
+    if(retval==0)
+	{
+		return urb->actual_length;
+    }
+    ehci_dbg ( "un successfull urb %d!!\n", retval);
+    return retval;
 }
 
 s32 ehci_control_message(struct ehci_device *dev,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *buf)
 {
-        struct ehci_urb urb;
-        usbctrlrequest *req = ehci->ctrl_buffer;
-        if(verbose)
-          ehci_dbg ( "control msg: rt%02X r%02X v%04X i%04X s%04x %p\n", bmRequestType, bmRequest, wValue, wIndex,wLength,buf);
-        req->bRequestType = bmRequestType;
-        req->bRequest = bmRequest;
-        req->wValue = swab16(wValue);
-        req->wIndex = swab16(wIndex);
-        req->wLength = swab16(wLength);
-        urb.setup_buffer = req;
-        urb.ep = 0;
-        urb.input = (bmRequestType&USB_CTRLTYPE_DIR_DEVICE2HOST)!=0;
-        urb.maxpacket = 64;
-        urb.transfer_buffer_length = wLength;
-        if (((u32)buf) > 0x13880000){// HW cannot access this buffer, we allow this for convenience
-                int ret;
-                urb.transfer_buffer = USB_Alloc(wLength);
-                if (verbose)
-                ehci_dbg("alloc another buffer %p %p\n",buf,urb.transfer_buffer);
-                memcpy(urb.transfer_buffer,buf,wLength);
-                ret =  ehci_do_urb(dev,&urb);
-                memcpy(buf,urb.transfer_buffer,wLength);
-                USB_Free(urb.transfer_buffer);
-                return ret;
-        }
-        else{
-                urb.transfer_buffer = buf;
-                return ehci_do_urb(dev,&urb);
-        }
+    struct ehci_urb urb;
+    usbctrlrequest *req = ehci->ctrl_buffer;
+
+    if( verbose )
+		ehci_dbg("control msg: rt%02X r%02X v%04X i%04X s%04x %p\n", bmRequestType, bmRequest, wValue, wIndex, wLength, buf );
+
+    req->bRequestType = bmRequestType;
+    req->bRequest = bmRequest;
+    req->wValue = swab16(wValue);
+    req->wIndex = swab16(wIndex);
+    req->wLength = swab16(wLength);
+    urb.setup_buffer = req;
+    urb.ep = 0;
+    urb.input = (bmRequestType&USB_CTRLTYPE_DIR_DEVICE2HOST)!=0;
+    urb.maxpacket = 64;
+    urb.transfer_buffer_length = wLength;
+    urb.transfer_buffer = buf;
+
+    return ehci_do_urb(dev,&urb);
 }
 s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpData)
 {
-        struct ehci_urb urb;
-        s32 ret;
-        urb.setup_buffer = NULL;
-        urb.ep = bEndpoint;
-        urb.input = (bEndpoint&0x80)!=0;
-        urb.maxpacket = 512;
-        urb.transfer_buffer_length = wLength;
-        urb.transfer_buffer = rpData;
-        if(verbose)
-                ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
-        ret= ehci_do_urb(dev,&urb);
-        if(verbose)
-                ehci_dbg ( "==>%d\n", ret);
-        return ret;
+	struct ehci_urb urb;
+	s32 ret;
+	urb.setup_buffer = NULL;
+	urb.ep = bEndpoint;
+	urb.input = (bEndpoint&0x80)!=0;
+	urb.maxpacket = 512;
+	urb.transfer_buffer_length = wLength;
+	urb.transfer_buffer = rpData;
+
+	if (verbose)
+		ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
+
+	ret = ehci_do_urb(dev,&urb);
+
+	if (verbose)
+		ehci_dbg ( "==>%d\n", ret);
+
+	return ret;
 }
 
 
@@ -617,9 +617,9 @@ int ehci_reset_port(int port)
     dev->id = 0;
     if ((PORT_OWNER&status) || !(PORT_CONNECT&status))
     {
-            ehci_writel( PORT_OWNER,status_reg);
-            //ehci_dbg ( "port %d had no usb2 device connected at startup %X \n", port,ehci_readl(status_reg));
-            return -ENODEV;// no USB2 device connected
+		ehci_writel( PORT_OWNER, status_reg);
+		//ehci_dbg ( "port %d had no usb2 device connected at startup %X \n", port,ehci_readl(status_reg));
+		return -ENODEV;// no USB2 device connected
     }
     ehci_dbg ( "port %d has usb2 device connected! reset it...\n", port);
     ehci_writel( 0x1803,status_reg);
@@ -703,12 +703,12 @@ int ehci_open_device(int vid,int pid,int fd)
         int i;
         for(i=0;i<ehci->num_port;i++)
         {
-                //ehci_dbg("try device: %d\n",i);
+                ehci_dbg("try device: %d\n",i);
                 if(ehci->devices[i].fd == 0 &&
                    le16_to_cpu(ehci->devices[i].desc.idVendor) == vid &&
                    le16_to_cpu(ehci->devices[i].desc.idProduct) == pid)
                 {
-                        //ehci_dbg("found device: %x %x\n",vid,pid);
+                        ehci_dbg("found device: %x %x\n",vid,pid);
                         ehci->devices[i].fd = fd;
                         return fd;
                 }
@@ -727,7 +727,7 @@ int ehci_close_device(struct ehci_device *dev)
         for(i=0;i<ehci->num_port;i++)
         {
                 struct ehci_device *dev = &ehci->devices[i];
-                //ehci_dbg ( "device %d:fd:%d %X %X...\n", dev->id,dev->fd,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
+                ehci_dbg ( "device %d:fd:%d %X %X...\n", dev->id,dev->fd,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
                 if(dev->fd == fd){
                         return dev;
                 }
@@ -743,7 +743,7 @@ int ehci_get_device_list(u8 maxdev,u8 b0,u8*num,u16*buf)
         {
                 struct ehci_device *dev = &ehci->devices[i];
                 if(dev->id != 0){
-                        //ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
+                        ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
                         buf[j*4] = 0;
                         buf[j*4+1] = 0;
                         buf[j*4+2] = le16_to_cpu(dev->desc.idVendor);
@@ -751,7 +751,7 @@ int ehci_get_device_list(u8 maxdev,u8 b0,u8*num,u16*buf)
                         j++;
                 }
         }
-        //ehci_dbg("found %d devices\n",j);
+        ehci_dbg("found %d devices\n",j);
         *num = j;
         return 0;
 }

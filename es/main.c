@@ -1610,6 +1610,7 @@ int _main( int argc, char *argv[] )
 
 	u32 FBOffset	= 0;
 	u32 FBEnable	= 0;
+	u32	FBSize		= 0;
 	u32 SysFreeze	= 0;
 	u32 SysFreezeBL	= 0;
 
@@ -1632,6 +1633,7 @@ int _main( int argc, char *argv[] )
 
 				FBOffset	= 0x01699448;
 				FBEnable	= 0x01699430;
+				FBSize		= 320*480*4;
 				SysFreeze	= 0x0133DFB0;
 				SysFreezeBL	= 0x481FDB19;
 
@@ -1647,6 +1649,7 @@ int _main( int argc, char *argv[] )
 
 				FBOffset	= 0x016975A8;
 				FBEnable	= 0x01697590;
+				FBSize		= 304*480*4;
 				SysFreeze	= 0x0133DF40;
 				SysFreezeBL	= 0x481FDA8D;
 			} break;
@@ -1712,7 +1715,7 @@ int _main( int argc, char *argv[] )
 						{
 							if( FB[i] )
 							{
-								memset32( (u32*)(FB[i]), 0x10801080, 320*480*4 );
+								memset32( (u32*)(FB[i]), 0x10801080, FBSize );
 							}
 						}
 					}
@@ -1739,7 +1742,7 @@ int _main( int argc, char *argv[] )
 							if( Slot > 0 )
 								Slot--;
 							else
-								Slot=*GameCount-1;
+								Slot=(*GameCount)-1;
 
 							GameUpdate = 1;
 						} break;
@@ -1794,7 +1797,7 @@ int _main( int argc, char *argv[] )
 							else
 								PrintFormat( FB[i], (320/2)-(strlen(GameInfo+0x20)*7/2), MENU_POS_Y+16*1, "%.100s (Wii)", GameInfo+0x20 );
 							
-							sync_after_write( (u32*)(FB[i]), 320*480*4 );
+							sync_after_write( (u32*)(FB[i]), FBSize );
 						}
 					}
 

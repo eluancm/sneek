@@ -67,7 +67,6 @@ s32 RegisterDevices( void *QueueSpace )
 
 	return QueueID;
 }
-
 char __aeabi_unwind_cpp_pr0[0];
 void _main(void)
 {

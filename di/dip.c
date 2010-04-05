@@ -274,10 +274,16 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			if( FC[i].File.fs == NULL )
 				continue;
 
-			if( Offset >= FC[i].Offset && Offset < FC[i].Offset + FC[i].Size )
+			if( Offset < FC[i].Offset )
+				continue;
+
+			u32 nOffset = Offset - FC[i].Offset;
+			nOffset<<= 2;
+
+			if( nOffset < FC[i].Size )
 			{
 				//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, Offset-FC[i].Offset, Length );
-				f_lseek( &FC[i].File, (u64)(Offset-FC[i].Offset) << 2 );
+				f_lseek( &FC[i].File, nOffset );
 				f_read( &FC[i].File, ptr, ((Length)+31)&(~31), &read );
 				return DI_SUCCESS;
 			}
@@ -313,12 +319,19 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				if( level > 15 )	// something is wrong!
 					break;
 			} else {
-				if( Offset >= fe[i].FileOffset && Offset < fe[i].FileOffset + (fe[i].FileLength>>2) )
+
+				if( Offset < fe[i].FileOffset )
+					continue;
+
+				u32 nOffset = Offset - fe[i].FileOffset;
+				nOffset<<= 2;
+
+				if( nOffset < fe[i].FileLength )
 				{
 					//dbgprintf("Found Entry:%X file:%s FCEntry:%d\n", i,  FSTable + NameOff + fe[i].NameOffset, FCEntry );
 
-					Path = malloca( 1024, 32 );
-					memset( Path, 0, 1024 );
+					Path = malloca( 256, 32 );
+					memset( Path, 0, 256 );
 					sprintf( Path, "%sfiles/", GamePath );
 
 					for( j=0; j<level; ++j )
@@ -345,11 +358,11 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 						return DI_FATAL;
 					} else {
 
-						FC[FCEntry].Size	= fe[i].FileLength>>2;
+						FC[FCEntry].Size	= fe[i].FileLength;
 						FC[FCEntry].Offset	= fe[i].FileOffset;
 
-						dbgprintf("DIP:[%s] Offset:%08X Size:%08X\n", Path, (Offset-fe[i].FileOffset), ((Length)+31)&(~31) );
-						f_lseek( &FC[FCEntry].File, (Offset-fe[i].FileOffset) << 2 );
+						dbgprintf("DIP:[%s] Offset:%08X Size:%08X\n", Path, nOffset, ((Length)+31)&(~31) );
+						f_lseek( &FC[FCEntry].File, nOffset );
 						f_read(  &FC[FCEntry].File, ptr, ((Length)+31)&(~31), &read );
 						
 						FCEntry++;
@@ -419,7 +432,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 					{
 						f_read( &f, (u8*)(*(u32*)(bufin+4)), 0x100, &read );
 
-						if( *(u32*)(bufin+4) == read )
+						if( 0x100 == read )
 							ret = DI_SUCCESS;
 
 						f_close( &f );
@@ -478,7 +491,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_SET_AUDIO_BUFFER:
 		{
-			memset32( bufout, lenout );
+			memset32( bufout, 0, lenout );
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
 		} break;
@@ -575,7 +588,8 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			} else {
 				DIP_Fatal("DVDLowRead", __LINE__, __FILE__, 64, "Partition not opened!");
 			}
-			dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
+			if( ret < 0 )
+				dbgprintf("DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_UNENCRYPTED:
 		{

@@ -20,9 +20,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "diskio.h"
 
-
-u8 *buffer = (u8*)0x00001400;
-
 DSTATUS disk_initialize (BYTE drv)
 {
 	udelay( 50000 );
