@@ -1,9 +1,10 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+
+
 #define UINT_MAX ((unsigned int)0xffffffff)
 #define MEM2_BSS __attribute__ ((section (".bss.mem2")))
-
 
 #define DEBUG		0
 #define false		0
@@ -55,5 +56,12 @@ typedef s32(*ipccallback)(s32 result,void *usrdata);
 	((sizeof(type)*(cnt))%(alignment))) : 0))]; \
 	type *name = (type*)(((u32)(_al__##name)) + ((alignment) - (( \
 	(u32)(_al__##name))&((alignment)-1))))
+
+
+typedef struct
+{
+	u32 data;
+	u32 len;
+} vector;
 
 #endif

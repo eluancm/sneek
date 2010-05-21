@@ -3,10 +3,7 @@
 
 #define IPC_EINVAL -1
 
-typedef struct ioctl_vector {
-	void *data;
-	unsigned int len;
-} __attribute__((packed));
+
 
 
 /* IOCTL vector */

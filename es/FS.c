@@ -22,48 +22,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 extern int FFSHandle;
 
-typedef struct 
-{
-	char filepath[0x40];
-	union {
-		char filepath_ren[0x40];
-		struct {
-			u32 owner_id;
-			u16 group_id;
-			char filepath[0x40];
-			u8 ownerperm;
-			u8 groupperm;
-			u8 otherperm;
-			u8 attributes;
-			u8 pad0[2];
-		} fsattr;
-		struct {
-			ioctlv vector[4];
-			u32 no_entries;
-		} fsreaddir;
-		struct {
-			ioctlv vector[4];
-			u32 usage1;
-			u8 pad0[28];
-			u32 usage2;
-		} fsusage;
-		struct {
-			u32	a;
-			u32	b;
-			u32	c;
-			u32	d;
-			u32	e;
-			u32	f;
-			u32	g;
-		} fsstats;
-	};
-
-	isfscallback cb;
-	void *usrdata;
-	u32 functype;
-	void *funcargv[8];
-} isfs_cb;
-
 s32 ISFS_Init( void )
 {
 	FFSHandle = IOS_Open("/dev/fs", 0 );
@@ -159,7 +117,7 @@ s32 ISFS_CreateFile( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermG
 	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
-	memcpy8( param->fsattr.filepath, FileName, strlen(FileName)+1 );
+	memcpy( param->fsattr.filepath, (void*)FileName, strlen(FileName)+1 );
 	
 	param->fsattr.attributes = Attributes;
 	param->fsattr.ownerperm = PermOwner;
@@ -177,7 +135,7 @@ s32 ISFS_CreateDir( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGr
 	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
 	memset32( param, 0, sizeof(isfs_cb) );
 
-	memcpy8( param->fsattr.filepath, FileName, strlen(FileName)+1 );
+	memcpy( param->fsattr.filepath, (void*)FileName, strlen(FileName)+1 );
 	
 	param->fsattr.attributes = Attributes;
 	param->fsattr.ownerperm = PermOwner;
@@ -207,11 +165,12 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 
 		s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_READDIR, 1, 1, v );
 
-		free(v );
-
+		free(v);
 		return r;
+
 	} else {
-		vector *v = (vector*)malloca( sizeof(vector)*2, 0x40 );
+
+		vector *v = (vector*)malloca( sizeof(vector)*4, 0x40 );
 
 		v[0].data = (u32)filepath;
 		v[0].len  = sizeof( char * );
@@ -225,8 +184,7 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 
 		s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_READDIR, 2, 2, v );
 
-		free(v );
-
+		free(v);
 		return r;
 	}
 }
@@ -238,28 +196,29 @@ s32 ISFS_Delete( const char *filepath )
 {
 	return IOS_Ioctl( FFSHandle, ISFS_IOCTL_DELETE, (void*)filepath, 0x40, NULL, 0 );
 }
-
 s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 {
-	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
-	memset32( param, 0, sizeof(isfs_cb) );
+	vector *vec		= (vector*)malloca( sizeof(vector) * ( 1 + 2 ), 32 );	// 1-IN, 2-OUT
+	u32 *FileCount	= (u32*)malloca( sizeof(u32), 32 );
+	u32 *FileSize	= (u32*)malloca( sizeof(u32), 32 );
+	u32 *FileName	= (u32*)malloca( 0x40, 32 );
 
-	memcpy8( param->filepath, filepath, strlen(filepath)+1 );
+	memcpy( FileName, (void*)filepath, 0x40 );
 
-	param->fsusage.vector[0].data = param->filepath;
-	param->fsusage.vector[0].len = ISFS_MAXPATH;
-	param->fsusage.vector[1].data = &param->fsusage.usage1;
-	param->fsusage.vector[1].len = sizeof(u32);
-	param->fsusage.vector[2].data = &param->fsusage.usage2;
-	param->fsusage.vector[2].len = sizeof(u32);
+	vec[0].data = (u32)FileName;
+	vec[0].len	= 0x40;
+	vec[1].data = (u32)FileCount;
+	vec[1].len	= 4;
+	vec[2].data = (u32)FileSize;
+	vec[2].len	= 4;
 
-	s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_GETUSAGE, 1, 2, param->fsusage.vector );
+	s32 r = IOS_Ioctlv( FFSHandle, ISFS_IOCTL_GETUSAGE, 1, 2, vec );
 
 	if( usage1 != NULL )
 	{
 		if( ((u32)(usage1)&3) == 0 )
 		{
-			*usage1 = param->fsusage.usage1;
+			*usage1 = *FileCount;
 		} else {
 			dbgprintf("ES:Warning unaligned memory access:%p\n", usage1 );
 		}
@@ -269,31 +228,32 @@ s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 	{
 		if( ((u32)(usage2)&3) == 0 )
 		{
-			*usage2 = param->fsusage.usage2;
+			*usage2 = *FileSize;
 		} else {
 			dbgprintf("ES:Warning unaligned memory access:%p\n", usage2 );
 		}
 	}
 
-	free( param );
+	free( vec );
+	free( FileCount );
+	free( FileSize );
+	free( FileName );
 
 	return r;
 }
-s32 ISFS_Rename(const char *filepathOld,const char *filepathNew )
+s32 ISFS_Rename( const char *FileSrc, const char *FileDst )
 {
-	isfs_cb *param = (isfs_cb*)malloca( sizeof(isfs_cb), 32 );
-	memset32( param, 0, sizeof(isfs_cb) );
+	u8  *data = ( u8*)malloca( 0x80, 32 );
 
-	memcpy8( param->filepath, filepathOld, strlen(filepathOld)+1 );
-	memcpy8( param->filepath_ren, filepathNew,  strlen(filepathNew)+1 );
+	memcpy( data,	   (void*)FileSrc, 0x40 );
+	memcpy( data+0x40, (void*)FileDst, 0x40 );
 
-	s32 r = IOS_Ioctl( FFSHandle, ISFS_IOCTL_RENAME, param->filepath, (ISFS_MAXPATH<<1), NULL, 0 );
+	s32 r = IOS_Ioctl( FFSHandle, ISFS_IOCTL_RENAME, data, 0x80, NULL, 0 );
 
-	free( param );
+	free( data );
 
 	return r;
 }
-
 s32 ISFS_IsUSB( void )
 {
 	return IOS_Ioctl( FFSHandle, ISFS_IS_USB, NULL, 0, NULL, 0 );

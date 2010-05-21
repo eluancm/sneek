@@ -71,7 +71,7 @@ void print_hex_dump_bytes(char *header,int prefix,u8 *buf,int len)
 #define ehci_writel(v,a) do{*((volatile u32*)(a))=(v);}while(0)
 
 struct ehci_hcd _ehci;
-struct ehci_hcd *ehci = &_ehci;
+struct ehci_hcd *ehci;
 
 #include "ehci.c"
 

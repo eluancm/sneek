@@ -31,17 +31,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "vsprintf.h"
 #include "alloc.h"
 
+typedef s32 (*isfscallback)(s32 result,void *usrdata);
+
 typedef struct _fstats
 {
 	u32 Size;
 	u32 Offset;
 } fstats;
-
-typedef struct
-{
-	u32 data;
-	u32 len;
-} vector;
 
 typedef struct {
 	unsigned int offsetText[7];
@@ -55,6 +51,47 @@ typedef struct {
 	unsigned int entrypoint;
 } dolhdr;
 
+typedef struct 
+{
+	char filepath[0x40];
+	union {
+		char filepath_ren[0x40];
+		struct {
+			u32 owner_id;
+			u16 group_id;
+			char filepath[0x40];
+			u8 ownerperm;
+			u8 groupperm;
+			u8 otherperm;
+			u8 attributes;
+			u8 pad0[2];
+		} fsattr;
+		struct {
+			ioctlv vector[4];
+			u32 no_entries;
+		} fsreaddir;
+		struct {
+			ioctlv vector[4];
+			u32 usage1;
+			u8 pad0[28];
+			u32 usage2;
+		} fsusage;
+		struct {
+			u32	a;
+			u32	b;
+			u32	c;
+			u32	d;
+			u32	e;
+			u32	f;
+			u32	g;
+		} fsstats;
+	};
+
+	isfscallback cb;
+	void *usrdata;
+	u32 functype;
+	void *funcargv[8];
+} isfs_cb;
 
 // error codes
 #define FS_SUCCESS		0			// Success
@@ -104,7 +141,6 @@ typedef struct {
 
 #define ISFS_IS_USB					30
 
-typedef s32 (*isfscallback)(s32 result,void *usrdata);
 
 s32 ISFS_Init( void );
 s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num );
@@ -113,7 +149,7 @@ s32 ISFS_Delete( const char *filepath );
 s32 ISFS_CreateFile( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGroup, u8 PermOther );
 s32 ISFS_CreateDir( const char *FileName, u8 Attributes, u8 PermOwner, u8 PermGroup, u8 PermOther );
 s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 );
-s32 ISFS_Rename(const char *filepathOld,const char *filepathNew);
+s32 ISFS_Rename( const char *FileSrc, const char *FileDst );
 s32 ISFS_GetStats( void *stats );
 s32 ISFS_IsUSB( void );
 

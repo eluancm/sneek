@@ -48,19 +48,19 @@ void sdmmc_attach(sdmmc_chipset_handle_t handle)
 
 	card.handle = handle;
 
-	DPRINTF(0, ("sdmmc: attached new SD/MMC card\n"));
+	//DPRINTF(0, ("sdmmc: attached new SD/MMC card\n"));
 
 	sdhc_host_reset(card.handle);
 
 	if (sdhc_card_detect(card.handle)) {
-		DPRINTF(1, ("card is inserted. starting init sequence.\n"));
+		//DPRINTF(1, ("card is inserted. starting init sequence.\n"));
 		sdmmc_needs_discover();
 	}
 }
 
 void sdmmc_abort(void) {
 	struct sdmmc_command cmd;
-	dbgprintf("abortion kthx\n");
+	//dbgprintf("abortion kthx\n");
 	
 	memset8(&cmd, 0, sizeof(cmd));
 	cmd.c_opcode = MMC_STOP_TRANSMISSION;
@@ -74,25 +74,25 @@ void sdmmc_needs_discover(void)
 	struct sdmmc_command cmd;
 	u32 ocr;
 
-	DPRINTF(0, ("sdmmc: card needs discovery.\n"));
+	//DPRINTF(0, ("sdmmc: card needs discovery.\n"));
 	sdhc_host_reset(card.handle);
 	card.new_card = 1;
 
 	if (!sdhc_card_detect(card.handle)) {
-		DPRINTF(1, ("sdmmc: card (no longer?) inserted.\n"));
+		//DPRINTF(1, ("sdmmc: card (no longer?) inserted.\n"));
 		card.inserted = 0;
 		return;
 	}
 	
 	DPRINTF(1, ("sdmmc: enabling power\n"));
 	if (sdhc_bus_power(card.handle, 1) != 0) {
-		dbgprintf("sdmmc: powerup failed for card\n");
+		//dbgprintf("sdmmc: powerup failed for card\n");
 		goto out;
 	}
 
 	DPRINTF(1, ("sdmmc: enabling clock\n"));
 	if (sdhc_bus_clock(card.handle, SDMMC_DEFAULT_CLOCK) != 0) {
-		dbgprintf("sdmmc: could not enable clock for card\n");
+		//dbgprintf("sdmmc: could not enable clock for card\n");
 		goto out_power;
 	}
 
@@ -104,7 +104,7 @@ void sdmmc_needs_discover(void)
 	sdhc_exec_command(card.handle, &cmd);
 
 	if (cmd.c_error) {
-		dbgprintf("sdmmc: GO_IDLE_STATE failed with %d\n", cmd.c_error);
+		//dbgprintf("sdmmc: GO_IDLE_STATE failed with %d\n", cmd.c_error);
 		goto out_clock;
 	}
 	DPRINTF(2, ("sdmmc: GO_IDLE_STATE response: %x\n", MMC_R1(cmd.c_resp)));
@@ -152,7 +152,7 @@ void sdmmc_needs_discover(void)
 			break;
 	}
 	if (!ISSET(cmd.c_resp[0], MMC_OCR_MEM_READY)) {
-		dbgprintf("sdmmc: card failed to powerup.\n");
+		//dbgprintf("sdmmc: card failed to powerup.\n");
 		goto out_power;
 	}
 

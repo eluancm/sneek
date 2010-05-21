@@ -57,7 +57,7 @@ s32 RegisterDevices( void )
 
 	s32 ret = device_register("/", QueueID);
 #ifdef DEBUG
-	dbgprintf("FFS:DeviceRegister(\"/\"):%d\n", ret );
+	//dbgprintf("FFS:DeviceRegister(\"/\"):%d\n", ret );
 #endif
 	if( ret < 0 )
 		return ret;
@@ -71,6 +71,10 @@ s32 RegisterDevices( void )
 }
 int _main( int argc, char *argv[] )
 {
+	int fres=0;
+	s32 ret=0;
+	struct IPCMessage *CMessage=NULL;
+
 	thread_set_priority( 0, 0x58 );
 
 #ifdef DEBUG
@@ -78,11 +82,6 @@ int _main( int argc, char *argv[] )
 #else
 	dbgprintf("$IOSVersion: FFS-SD: %s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
-
-
-	int fres=0;
-	s32 ret=0;
-	struct IPCMessage *CMessage=NULL;
 
 	//dbgprintf("FFS:Heap Init...");
 	HeapID = heap_create(Heap, sizeof Heap);
@@ -103,7 +102,7 @@ int _main( int argc, char *argv[] )
 
 	if(fres != FR_OK)
 	{
-		dbgprintf("FFS:Error %d while trying to mount SD\n", fres);
+		//dbgprintf("FFS:Error %d while trying to mount SD\n", fres);
 		ThreadCancel( 0, 0x77 );
 	}
 
@@ -127,13 +126,16 @@ int _main( int argc, char *argv[] )
 			continue;
 		}
 
-		switch (CMessage->command)
+		//dbgprintf("FFS:Cmd:%d\n", CMessage->command );
+
+		switch( CMessage->command )
 		{
 			case IOS_OPEN:
 			{
 				ret = FS_Open( CMessage->open.device, CMessage->open.mode );
+				
 #ifdef DEBUG
-				if( ret != FS_ENOENT )
+				if( ret != FS_NO_DEVICE )
 					dbgprintf("FFS:IOS_Open(\"%s\", %d):%d\n", CMessage->open.device, CMessage->open.mode, ret );
 #endif
 				mqueue_ack( (void *)CMessage, ret);
@@ -142,9 +144,12 @@ int _main( int argc, char *argv[] )
 			
 			case IOS_CLOSE:
 			{
+#ifdef DEBUG
+				dbgprintf("FFS:IOS_Close(%d):", CMessage->fd);
+#endif
 				ret = FS_Close( CMessage->fd );
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Close(%d):%d\n", CMessage->fd, ret );
+				dbgprintf("%d\n", ret );
 #endif
 				mqueue_ack( (void *)CMessage, ret);
 			} break;
@@ -152,64 +157,49 @@ int _main( int argc, char *argv[] )
 			case IOS_READ:
 			{
 
-				ret = FS_Read( CMessage->fd, CMessage->read.data, CMessage->read.length );
-					
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Read(%d, 0x%p, %d):%d\n", CMessage->fd, CMessage->read.data, CMessage->read.length, ret );
+				dbgprintf("FFS:IOS_Read(%d, 0x%p, %d):", CMessage->fd, CMessage->read.data, CMessage->read.length );
+#endif
+				ret = FS_Read( CMessage->fd, CMessage->read.data, CMessage->read.length );
+
+#ifdef DEBUG
+				dbgprintf("%d\n", ret );
 #endif
 				mqueue_ack( (void *)CMessage, ret );
 
 			} break;
 			case IOS_WRITE:
 			{
-				if( (vu32)(CMessage->write.data)>>28 )
-				{
-					ret = FS_Write( CMessage->fd, CMessage->write.data, CMessage->write.length );
-
-				} else {
-
-					u8 *buf = heap_alloc_aligned( 0, CMessage->write.length, 0x40 );
-					memcpy( buf, CMessage->write.data, CMessage->write.length );
-
-					ret = FS_Write( CMessage->fd, CMessage->write.data, CMessage->write.length );
-
-					heap_free( 0, buf );
-
-				}
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Write(%d, 0x%p, %d):%d\n", CMessage->fd, CMessage->write.data, CMessage->write.length, ret );
+				dbgprintf("FFS:IOS_Write(%d, 0x%p, %d)", CMessage->fd, CMessage->write.data, CMessage->write.length );
+#endif
+				ret = FS_Write( CMessage->fd, CMessage->write.data, CMessage->write.length );
+
+#ifdef DEBUG
+				dbgprintf(":%d\n", ret );
 #endif
 				mqueue_ack( (void *)CMessage, ret );
 			} break;
 			case IOS_SEEK:
 			{
+#ifdef DEBUG
+				dbgprintf("FFS:IOS_Seek(%d, %d, %d):", CMessage->fd, CMessage->seek.offset, CMessage->seek.origin );
+#endif
 				ret = FS_Seek( CMessage->fd, CMessage->seek.offset, CMessage->seek.origin );
 
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Seek(%d, %d, %d):%d\n", CMessage->fd, CMessage->seek.offset, CMessage->seek.origin, ret);
+				dbgprintf("%d\n", ret);
 #endif
 				mqueue_ack( (void *)CMessage, ret );
 
 			} break;
 			
 			case IOS_IOCTL:
-				if( CMessage->fd == SD_FD )
-				{
-					if( CMessage->ioctl.command == 0x0B )
-						*(vu32*)(CMessage->ioctl.buffer_io) = 2;
-
-					mqueue_ack( (void *)CMessage, 0);
-				} else
-					FFS_Ioctl(CMessage);
+				FFS_Ioctl(CMessage);
 			break;	
 
 			case IOS_IOCTLV:
-				if( CMessage->fd == FL_FD )
-				{
-					//dbgprintf("FFS:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", CMessage->fd, CMessage->ioctlv.command, CMessage->ioctlv.argc_in, CMessage->ioctlv.argc_io, CMessage->ioctlv.argv);
-					mqueue_ack( (void *)CMessage, -1017);
-				} else
-					FFS_Ioctlv(CMessage);
+				FFS_Ioctlv(CMessage);
 			break;
 #ifdef EDEBUG
 			default:

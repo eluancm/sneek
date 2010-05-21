@@ -38,7 +38,7 @@ DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 
 	if( sdmmc_read( sector, count, buffer ) < 0 )
 	{
-		FS_Fatal( "disk_read()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
+		;//FS_Fatal( "disk_read()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
 	}
 
 	_ahbMemFlush( 9 );
@@ -59,7 +59,7 @@ DRESULT disk_write( BYTE drv, const BYTE *buff, DWORD sector, BYTE count )
 
 	if( sdmmc_write( sector, count, buffer ) < 0 )
 	{
-		FS_Fatal( "disk_write()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
+		;//FS_Fatal( "disk_write()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
 	}
 
 	heap_free( 0, buffer );

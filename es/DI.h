@@ -29,6 +29,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "common.h"
 #include "alloc.h"
 
+
+typedef struct
+{
+	u32		SlotID;
+	u32		Region;
+	u32		Gamecount;
+	u32		Unused;
+	u8		GameInfo[][0x60];
+} DIConfig;
+
 enum GameRegion 
 {
 	JAP=0,
@@ -81,7 +91,7 @@ s32 DVDSetRegion( u32 *Region );
 s32 DVDGetRegion( u32 *Region );
 s32 DVDEjectDisc( void );
 s32 DVDInsertDisc( void );
-s32 DVDReadGameInfo( u32 SlotID, u8 *GameInfo );
+s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data );
 s32 DVDSelectGame( u32 SlotID );
 
 #endif

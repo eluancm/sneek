@@ -56,7 +56,7 @@ size_t strlcpy(char *dest, const char *src, size_t maxlen)
 	if (len >= maxlen)
 		len = maxlen-1;
 
-	memcpy8(dest, src, len);
+	memcpy(dest, src, len);
 	dest[len]='\0';
 
 	return needed-1;
@@ -94,57 +94,6 @@ int strncmp(const char *p, const char *q, size_t n)
 	}
 	return 0;
 }
-void *memcpy16(void *dst, const void *src, size_t n)
-{
-	unsigned short *p;
-	const unsigned short *q;
-
-	for (p = dst, q = src; n; n-=2)
-		*p++ = *q++;
-
-	return dst;
-}
-void *memcpy32(void *dst, const void *src, size_t n)
-{
-	unsigned int *p;
-	const unsigned int *q;
-
-	for (p = dst, q = src; n; n-=4)
-		*p++ = *q++;
-
-	return dst;
-}
-void *memset32(void *dst, int x, size_t n)
-{
-	unsigned int *p;
-
-	for (p = dst; n; n-=4)
-		*p++ = x;
-
-	return dst;
-}
-void *memset8(void *dst, int x, size_t n)
-{
-	unsigned char *p;
-
-	for (p = dst; n; n-=4)
-		*p++ = x;
-
-	return dst;
-}
-
-void *memcpy8(void *dst, const void *src, size_t n)
-{
-	unsigned char *p;
-	const unsigned char *q;
-
-	for (p = dst, q = src; n; n--)
-		*p++ = *q++;
-
-	return dst;
-}
-
-
 int memcmp(const void *s1, const void *s2, size_t n)
 {
 	unsigned char *us1 = (unsigned char *) s1;
@@ -157,7 +106,6 @@ int memcmp(const void *s1, const void *s2, size_t n)
 	}
 	return 0;
 }
-
 char *strchr(const char *s, int c)
 {
 	do {

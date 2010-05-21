@@ -17,9 +17,8 @@ char *strchr(const char *s, int c);
 int memcmp(const void *s1, const void *s2, size_t n);
 int sprintf(char *str, const char *fmt, ...);
 
-void *memcpy8( void *dst, const void *src, size_t len );
-void *memcpy16( void *dst, const void *src, size_t len );
-void *memcpy32( void *dst, const void *src, size_t len );
+extern void memcpy(void *dst, void *src, u32 size);
+
 int _sprintf( char *buf, const char *fmt, ... );
 void hexdump(void *d, int len);
 

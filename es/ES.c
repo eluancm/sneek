@@ -25,8 +25,7 @@ u32 *KeyID=NULL;
 
 u16 TitleVersion;
 
-static u8 *DITicket=NULL;
-
+static u8  *DITicket=NULL;
 static u8  *CNTMap=NULL;
 static u32 *CNTSize=NULL;
 static u32 *CNTMapDirty=NULL;
@@ -98,6 +97,14 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 }
 s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 {
+	CNTMap=NULL;
+	CNTMapDirty=NULL;
+	CNTSize=NULL;
+	DITicket=NULL;
+	KeyID=NULL;
+
+	u32 LaunchDisc = 0;
+
 	char *path = (char*)malloca( 0x40, 32 );
 	u32 *size = (u32*)malloca( 4, 32 );
 
@@ -107,9 +114,11 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 	if( ES_CheckBootOption( "/sys/launch.sys", TitleID ) == 0 )
 	{
-		if( ES_CheckBootOption( "/sys/default.sys", TitleID ) == 0 )
-			*TitleID = 0x100000002LL;
+		*TitleID = 0x100000002LL;
 	}
+
+	//if( *TitleID == 0x0000000100000100LL )			
+	//	*TitleID =  0x0000000100000101LL;
 
 	dbgprintf("ES:Booting %08x-%08x...\n", (u32)(*TitleID>>32), (u32)*TitleID );
 
@@ -118,6 +127,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 	if( (u32)(*TitleID>>32) == 1 && (u32)(*TitleID) != 2 )	//IOS loading requested
 	{
 		IOSVersion = (u32)(*TitleID);
+		LaunchDisc = 1;
 
 	} else {
 		//Get tmd from title and build kernelversion
@@ -170,26 +180,19 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 	s32 r = ES_LoadModules( IOSVersion );
 	dbgprintf("ES:ES_LoadModules(%d):%d\n", IOSVersion, r );
 
-	if( *(u32*)0x00000020 != 0x0D15EA5E )
+	_sprintf( path, "/sys/disc.sys" );
+
+	if( LaunchDisc )
 	{
-		_sprintf( path, "/sys/disc.sys" );
-		ISFS_Delete( path );
-
-	} else if( (u32)(*TitleID>>32) == 1 && (u32)(*TitleID) != 2 ) {
-
-		_sprintf( path, "/sys/disc.sys" );
-
 		//Check for disc.sys
 		u8 *data = NANDLoadFile( path, size );
 		if( data != NULL )
 		{
 			r = LoadPPC( data+0x29A );
+			dbgprintf("ES:Disc->LoadPPC(%p):%d\n", data+0x29A, r );
 
-			dbgprintf("ES:Disc->LoadPPC():%d\n", r );
-
-			_sprintf( path, "/sys/disc.sys" );
 			r = ISFS_Delete( path );
-			dbgprintf("ES:Disc->ISFS_Delete():%d\n", r );
+			dbgprintf("ES:Disc->ISFS_Delete(%s):%d\n", path, r );
 
 			free( data );
 			free( path );
@@ -197,10 +200,9 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 			return ES_SUCCESS;
 		}
-
-		if( ES_CheckBootOption( "/sys/default.sys", TitleID ) == 0 )
-			*TitleID = 0x100000002LL;
 	}
+
+	ISFS_Delete( path );
 
 	r = ES_LaunchSYS( TitleID );
 
@@ -245,7 +247,7 @@ s32 ES_Sign( u64 *TitleID, u8 *data, u32 len, u8 *sign, u8 *cert )
 	if( r < 0 )
 		dbgprintf("syscall_75( %p, %d, %d, %p ):%d\n", hash, 0x14, *Key, sign, r );
 	else {
-		memcpy32( cert, NewCert, 0x180 );
+		memcpy( cert, NewCert, 0x180 );
 	}
 
 ES_Sign_CleanUp:
@@ -419,7 +421,7 @@ void iES_GetTMDView( u8 *TMD, u8 *oTMDView )
 	*(u32*)(TMDView+0x14) = *(u32*)(TMD+0x194);	// Title Type
 	*(u16*)(TMDView+0x18) = *(u16*)(TMD+0x198);	// Group ID  
 
-	memcpy8( TMDView+0x1A, TMD+0x19A, 0x3E );	// Region info
+	memcpy( TMDView+0x1A, TMD+0x19A, 0x3E );	// Region info
 
 	*(u16*)(TMDView+0x58) = *(u16*)(TMD+0x1DC);	// Title version
 	*(u16*)(TMDView+0x5A) = *(u16*)(TMD+0x1DE);	// Number of contents
@@ -442,7 +444,7 @@ void iES_GetTMDView( u8 *TMD, u8 *oTMDView )
 	*(u16*)(TMDView+0x1C) = 3;
 //-
 
-	memcpy32( oTMDView, TMDView, TMDViewSize );
+	memcpy( oTMDView, TMDView, TMDViewSize );
 	free( TMDView );
 }
 s32 ES_GetTMDView( u64 *TitleID, u8 *oTMDView )
@@ -479,18 +481,18 @@ void iES_GetTicketView( u8 *Ticket, u8 *oTicketView )
 	*(u32*)(TikView+0x0C) = *(u32*)(Ticket+0x1D8);
 	*(u64*)(TikView+0x10) = *(u64*)(Ticket+0x1DC);
 
-	memcpy8( TikView+0x18, Ticket+0x1E4, 2 );
+	memcpy( TikView+0x18, Ticket+0x1E4, 2 );
 
 	*(u16*)(TikView+0x1A) = *(u16*)(Ticket+0x1E6);
 	*(u32*)(TikView+0x1C) = *(u32*)(Ticket+0x1E8);
 	*(u32*)(TikView+0x20) = *(u32*)(Ticket+0x1EC);
 	*(u8*) (TikView+0x24) = *(u8*) (Ticket+0x1F0);
 
-	memcpy8( TikView+0x25, Ticket+0x1F1, 0x30 );
+	memcpy( TikView+0x25, Ticket+0x1F1, 0x30 );
 
 	*(u8*) (TikView+0x55) = *(u8*) (Ticket+0x221);
 
-	memcpy8( TikView+0x56, Ticket+0x222, 0x40 );
+	memcpy( TikView+0x56, Ticket+0x222, 0x40 );
 
 	u32 i;
 	for( i=0; i < 7; ++i )
@@ -499,7 +501,7 @@ void iES_GetTicketView( u8 *Ticket, u8 *oTicketView )
 		*(u32*)(i*8 + TikView + 0x9C) = *(u32*)(i*8 + Ticket + 0x268);
 	}
 
-	memcpy32( oTicketView, TikView, 0xD8 );
+	memcpy( oTicketView, TikView, 0xD8 );
 
 	free( TikView );
 
@@ -628,78 +630,17 @@ s32 ES_GetUID( u64 *TitleID, u16 *UID )
 }
 s32 ES_DIVerify( u64 *TitleID, u32 *Key, void *tmd, u32 tmd_size, void *tik, void *Hashes )
 {
-	s32 r = CreateKey( Key, 0, 0 );
-	if( r < 0 )
-	{
-		dbgprintf("CreateKey():%d\n", r);
-		dbgprintf("keyid:%p:%08x\n", Key, *Key );
-		return r;
-	}
-
-	r = syscall_71( *Key, 8 );
-	if( r < 0 )
-	{
-		dbgprintf("keyid:%p:%08x\n", Key, *Key );
-		dbgprintf("syscall_71():%d\n", r);
-		return r;
-	}
-
+	char *path		= (char*)malloca( 0x40, 32 );
+	u32 *size		= (u32*)malloca( 4, 32 );
 	u8 *sTitleID	= (u8*)malloca( 0x10, 32 );
 	u8 *encTitleKey	= (u8*)malloca( 0x10, 32 );
 
-	memset32( sTitleID, 0, 0x10 );
-	memset32( encTitleKey, 0, 0x10 );
-
-	memcpy32( sTitleID, tmd+0x18C, 8 );
-	memcpy8( encTitleKey, tik+0x1BF, 0x10 );		//src is unaligned so memcpy8
-
-	r = syscall_5d( *Key, 0, 4, 1, 0, sTitleID, encTitleKey );
-	if( r < 0 )
-	{
-		dbgprintf("syscall_5d():%d\n", r);
-		goto ES_DIVerfiy_end1;
-	}
-
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
-
 	u16 UID = 0;
-
-	r = ES_GetUID( (u64*)(tmd+0x18C), &UID );
-	if( r < 0 )
-	{
-		dbgprintf("ES_GetUID():%d\n", r );
-		goto ES_DIVerfiy_end;
-	}
-
-	r = SetUID( 0xF, UID );
-	if( r < 0 )
-	{
-		dbgprintf("SetUID( 0xF, %04X ):%d\n", r, UID );
-		goto ES_DIVerfiy_end;
-	}
-
-	r = _cc_ahbMemFlush( 0xF, *(vu16*)(tmd+0x198) );
-	if( r < 0 )
-	{
-		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(vu16*)(tmd+0x198), r );
-		goto ES_DIVerfiy_end;
-
-	}
-
-	DVDLowEnableVideo(0);
-
-	r = LoadPPC( tmd+0x1BA );
-	dbgprintf("ES:ES_DIVerify->LoadPPC:%d\n", r );
-	if( r < 0 )
-		goto ES_DIVerfiy_end;
-
-	memcpy32( Hashes, (u8*)(tmd+0x1F4), 20*(*(u16*)(tmd+0x1DE)) );
 
 	_sprintf( path, "/title/%08x/%08x/data", *(u32*)(tmd+0x18C), *(u32*)(tmd+0x190) );
 
 	//Create data and content dir if neccessary
-	r = ISFS_GetUsage( path, NULL, NULL );
+	s32 r = ISFS_GetUsage( path, NULL, NULL );
 	switch( r )
 	{
 		case FS_ENOENT2:
@@ -752,7 +693,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, void *tmd, u32 tmd_size, void *tik, voi
 		} break;
 		case FS_SUCCESS:
 		{
-			;
+			dbgprintf("ISFS_GetUsage(\"%s\"):%d\n", path, r );
 		} break;
 		default:
 		{
@@ -768,38 +709,96 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, void *tmd, u32 tmd_size, void *tik, voi
 		r = NANDWriteFileSafe( path, tmd, tmd_size );
 		if( r < 0 )
 		{
-			dbgprintf("NANDWriteFileSafe(tmd):%d\n", r );
+			dbgprintf("NANDWriteFileSafe(\"%s\"):%d\n", path, r );
 			goto ES_DIVerfiy_end;
 		}
 	}
 
-	DITicket = malloca( 0x2A4, 0x40 );
-	memcpy8( DITicket, tik, 0x2a4 );
-
-	if( *TitleID != 0x0LL )
+	r = CreateKey( Key, 0, 0 );
+	if( r < 0 )
 	{
-		*TitleID = *(vu64*)(tmd+0x18C);
-
-		//Create /sys/disc.sys
-		_sprintf( path, "/sys/space.sys" );
-		ISFS_Delete( path );
-		_sprintf( path, "/sys/launch.sys" );
-		ISFS_Delete( path );
-
-		u32 aSize = *(u16*)(tmd+0x1DE)*0x24 + 0x1E4 + 0xE0;
-
-		//dbgprintf("ES:disc.sys size:%d\n", aSize );
-
-		u8 *DiscSys = malloca( aSize, 0x40 );
-
-		iES_GetTicketView( tik, DiscSys+8 );
-
-		memcpy8( DiscSys, TitleID, sizeof(u64) );
-		memcpy8( DiscSys+0xE0, tmd, aSize-0xE0 );
-
-		_sprintf( path, "/sys/disc.sys" );
-		NANDWriteFileSafe( path, DiscSys, aSize );
+		dbgprintf("CreateKey():%d\n", r);
+		dbgprintf("keyid:%p:%08x\n", Key, *Key );
+		return r;
 	}
+
+	r = syscall_71( *Key, 8 );
+	if( r < 0 )
+	{
+		dbgprintf("keyid:%p:%08x\n", Key, *Key );
+		dbgprintf("syscall_71():%d\n", r);
+		return r;
+	}
+
+	memset32( sTitleID, 0, 0x10 );
+	memset32( encTitleKey, 0, 0x10 );
+
+	memcpy( sTitleID, tmd+0x18C, 8 );
+	memcpy( encTitleKey, tik+0x1BF, 0x10 );		//src is unaligned so memcpy
+
+	r = syscall_5d( *Key, 0, 4, 1, 0, sTitleID, encTitleKey );
+	if( r < 0 )
+	{
+		dbgprintf("syscall_5d():%d\n", r);
+		goto ES_DIVerfiy_end1;
+	}
+
+	r = ES_GetUID( (u64*)(tmd+0x18C), &UID );
+	if( r < 0 )
+	{
+		dbgprintf("ES_GetUID():%d\n", r );
+		goto ES_DIVerfiy_end;
+	}
+
+	r = SetUID( 0xF, UID );
+	if( r < 0 )
+	{
+		dbgprintf("SetUID( 0xF, %04X ):%d\n", r, UID );
+		goto ES_DIVerfiy_end;
+	}
+
+	r = _cc_ahbMemFlush( 0xF, *(vu16*)(tmd+0x198) );
+	if( r < 0 )
+	{
+		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(vu16*)(tmd+0x198), r );
+		goto ES_DIVerfiy_end;
+
+	}
+
+	DVDLowEnableVideo(0);
+
+	r = LoadPPC( tmd+0x1BA );
+	dbgprintf("ES:ES_DIVerify->LoadPPC:%d\n", r );
+	if( r < 0 )
+		goto ES_DIVerfiy_end;
+
+	memcpy( Hashes, (u8*)(tmd+0x1F4), 20*(*(u16*)(tmd+0x1DE)) );
+
+	DITicket = malloca( 0x2A4, 0x40 );
+	memcpy( DITicket, tik, 0x2a4 );
+
+	*TitleID = *(vu64*)(tmd+0x18C);
+
+	//Create /sys/disc.sys
+	_sprintf( path, "/sys/space.sys" );
+	ISFS_Delete( path );
+	_sprintf( path, "/sys/launch.sys" );
+	ISFS_Delete( path );
+
+	u32 aSize = *(u16*)(tmd+0x1DE)*0x24 + 0x1E4 + 0xE0;
+
+	//dbgprintf("ES:disc.sys size:%d\n", aSize );
+
+	u8 *DiscSys = malloca( aSize, 0x40 );
+
+	iES_GetTicketView( tik, DiscSys+8 );
+
+	memcpy( DiscSys, TitleID, sizeof(u64) );
+	memcpy( DiscSys+0xE0, tmd, aSize-0xE0 );
+
+	_sprintf( path, "/sys/disc.sys" );
+	NANDWriteFileSafe( path, DiscSys, aSize );
+	
 
 ES_DIVerfiy_end:
 	free( size );
@@ -914,7 +913,7 @@ s32 ES_AddTitleFinish( void *TMD )
 
 					_sprintf( (char*)Entry, "%08x", size/0x1c );
 					dbgprintf("Adding new shared1 content:\"%s.app\"\n", Entry );
-					memcpy32( Entry+8, (u8*)(TMD+0x1F4+i*0x24), 0x14 );
+					memcpy( Entry+8, (u8*)(TMD+0x1F4+i*0x24), 0x14 );
 
 					r = IOS_Write( fd, Entry, 0x1c );
 
@@ -1051,8 +1050,8 @@ s32 ES_CreateKey( u8 *Ticket )
 	memset32( sTitleID, 0, 0x10 );
 	memset32( encTitleKey, 0, 0x10 );
 
-	memcpy32( sTitleID, Ticket+0x1DC, 8 );
-	memcpy8( encTitleKey, Ticket+0x1BF, 0x10 );		//unaligned src, 8bit mode!
+	memcpy( sTitleID, Ticket+0x1DC, 8 );
+	memcpy( encTitleKey, Ticket+0x1BF, 0x10 );
 
 	*KeyID=0;
 
@@ -1098,9 +1097,9 @@ s32 doTicketMagic( u8 *Ticket )
 	u8 *encTitleKey = (u8*)malloca( 0x10, 0x20 );
 
 	memset32( TitleID, 0, 0x10 );
-	memcpy8( TitleID, Ticket+0x1D0, 8 );	//This is really 0x1D0
+	memcpy( TitleID, Ticket+0x1D0, 8 );	//This is really 0x1D0
 
-	memcpy8( encTitleKey, Ticket+0x01BF, 0x10 );
+	memcpy( encTitleKey, Ticket+0x01BF, 0x10 );
 
 	hexdump( TitleID, 0x10 );
 	hexdump( encTitleKey, 0x10 );
@@ -1111,7 +1110,7 @@ s32 doTicketMagic( u8 *Ticket )
 	dbgprintf("aes_decrypt_():%d\n", r );
 	hexdump( decTitleKey, 0x10 );
 
-	memcpy8( Ticket+0x1BF, decTitleKey, 0x10 );
+	memcpy( Ticket+0x1BF, decTitleKey, 0x10 );
 
 	DestroyKey( Object[0] );
 	DestroyKey( Object[1] );
@@ -1488,8 +1487,8 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 	//build launch.sys
 	u8 *data=(u8*)malloca( 0xE0, 0x40 );
 
-	memcpy32( data, TitleID, sizeof(u64) );
-	memcpy8( data + sizeof(u64), TikView, 0xD8 );
+	memcpy( data, TitleID, sizeof(u64) );
+	memcpy( data + sizeof(u64), TikView, 0xD8 );
 
 	_sprintf( path, "/sys/launch.sys" );
 

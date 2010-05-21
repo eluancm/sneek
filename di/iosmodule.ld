@@ -65,7 +65,7 @@ SECTIONS
 		*(.data.*)
 		*(.gnu.linkonce.d*)
 		. = ALIGN(4);
-	} >ram :ram
+	} >code :code
 
 	.bss :
 	{

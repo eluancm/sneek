@@ -49,6 +49,13 @@ typedef s32(*ipccallback)(s32 result,void *usrdata);
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
+
+typedef struct
+{
+	u32 data;
+	u32 len;
+} vector;
+
 #define STACK_ALIGN(type, name, cnt, alignment)         \
 	u8 _al__##name[((sizeof(type)*(cnt)) + (alignment) + \
 	(((sizeof(type)*(cnt))%(alignment)) > 0 ? ((alignment) - \

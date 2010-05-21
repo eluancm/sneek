@@ -25,7 +25,7 @@ static u32 PartitionSize ALIGNED(32);
 static u32 DIStatus ALIGNED(32);
 static u32 DICover ALIGNED(32);
 static u32 ChangeDisc ALIGNED(32);
-u32 Region ALIGNED(32);
+DIConfig *DICfg;
 
 static char GamePath[64];
 static u32 *KeyID ALIGNED(32);
@@ -53,8 +53,8 @@ s32 DVDSelectGame( int SlotID )
 {
 	FIL f;
 	DIR d;
-	u32 read;
 	FILINFO FInfo;
+	u32 read;
 	u32 count = 0;
 
 	if( f_opendir( &d, "/games" ) != FR_OK )
@@ -73,23 +73,12 @@ s32 DVDSelectGame( int SlotID )
 			sprintf( GamePath, "/games/%s/", FInfo.fname );
 			dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
 
-			free( FSTable );
+			FSTable = NULL;
 
 			char *str = malloca( 128, 32 );
-			sprintf( str, "%ssys/fst.bin", GamePath );
-
-			if( f_open( &f, str, FA_READ ) != FR_OK )
-			{
-				return DI_FATAL;
-			}
 
 			ChangeDisc = 1;
 			DICover |= 1;
-
-			FSTable = malloca( f.fsize, 32 );
-			FSTableSize = f.fsize;
-			f_read( &f, FSTable, f.fsize, &read );
-			f_close( &f );
 		
 			//Get Apploader size
 			sprintf( str, "%ssys/apploader.img", GamePath );
@@ -107,26 +96,12 @@ s32 DVDSelectGame( int SlotID )
 
 			free( str );
 
-			//create slot.bin
-			switch( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) )
+			//update di-config
+			if( f_open( &f, "/sneek/diconfig.bin", FA_WRITE ) == FR_OK )
 			{
-				case FR_OK:
-				{
-					f_write( &f, &SlotID, sizeof(u32), &read );
-					f_close( &f );
-				} break;
-				case FR_NO_PATH:	//Folder sneek doesn't exit!
-				case FR_NO_FILE:
-				{
-					f_mkdir("/sneek");
-					if( f_open( &f, "/sneek/slot.bin", FA_CREATE_ALWAYS|FA_WRITE ) == FR_OK )
-					{
-						f_write( &f, &SlotID, sizeof(u32), &read );
-						f_close( &f );
-					}
-				} break;
-				default:
-					break;
+				DICfg->SlotID = SlotID;
+				f_write( &f, DICfg, 0x10, &read );
+				f_close( &f );
 			}
 
 			//Init cache
@@ -142,12 +117,52 @@ s32 DVDSelectGame( int SlotID )
 
 	return DI_FATAL;
 }
+
+unsigned char sig_fwrite[32] =
+{
+    0x94, 0x21, 0xFF, 0xD0,
+	0x7C, 0x08, 0x02, 0xA6,
+	0x90, 0x01, 0x00, 0x34,
+	0xBF, 0x21, 0x00, 0x14, 
+    0x7C, 0x9B, 0x23, 0x78,
+	0x7C, 0xDC, 0x33, 0x78,
+	0x7C, 0x7A, 0x1B, 0x78,
+	0x7C, 0xB9, 0x2B, 0x78, 
+} ;
+
+unsigned char patch_fwrite[144] =
+{
+    0x7C, 0x85, 0x21, 0xD7, 0x40, 0x81, 0x00, 0x84, 0x3C, 0xE0, 0xCD, 0x00, 0x3D, 0x40, 0xCD, 0x00, 
+    0x3D, 0x60, 0xCD, 0x00, 0x60, 0xE7, 0x68, 0x14, 0x61, 0x4A, 0x68, 0x24, 0x61, 0x6B, 0x68, 0x20, 
+    0x38, 0xC0, 0x00, 0x00, 0x7C, 0x06, 0x18, 0xAE, 0x54, 0x00, 0xA0, 0x16, 0x64, 0x08, 0xB0, 0x00, 
+    0x38, 0x00, 0x00, 0xD0, 0x90, 0x07, 0x00, 0x00, 0x7C, 0x00, 0x06, 0xAC, 0x91, 0x0A, 0x00, 0x00, 
+    0x7C, 0x00, 0x06, 0xAC, 0x38, 0x00, 0x00, 0x19, 0x90, 0x0B, 0x00, 0x00, 0x7C, 0x00, 0x06, 0xAC, 
+    0x80, 0x0B, 0x00, 0x00, 0x7C, 0x00, 0x04, 0xAC, 0x70, 0x09, 0x00, 0x01, 0x40, 0x82, 0xFF, 0xF4, 
+    0x80, 0x0A, 0x00, 0x00, 0x7C, 0x00, 0x04, 0xAC, 0x39, 0x20, 0x00, 0x00, 0x91, 0x27, 0x00, 0x00, 
+    0x7C, 0x00, 0x06, 0xAC, 0x74, 0x09, 0x04, 0x00, 0x41, 0x82, 0xFF, 0xB8, 0x38, 0xC6, 0x00, 0x01, 
+    0x7F, 0x86, 0x20, 0x00, 0x40, 0x9E, 0xFF, 0xA0, 0x7C, 0xA3, 0x2B, 0x78, 0x4E, 0x80, 0x00, 0x20, 
+};
+unsigned char sig_iplmovie[] =
+{
+    0x4D, 0x50, 0x4C, 0x53,
+	0x2E, 0x4D, 0x4F, 0x56,
+	0x49, 0x45, 0x00, 
+} ;
+
+unsigned char patch_iplmovie[] =
+{
+    0x49, 0x50, 0x4C, 0x2E,
+	0x45, 0x55, 0x4C, 0x41,
+	0x00, 
+} ;
+
+
 s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
 	FIL f;
 	u32 read;
 
-	//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X\n", Offset, Length );
+	//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X as:%08X\n", Offset<<2, Length, ApploaderSize<<2 );
 
 	if( Offset < 0x110 )	// 0x440
 	{
@@ -167,18 +182,25 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			//Read DOL/FST offset/sizes for later usage
 			f_lseek( &f, 0x0420 );
 			f_read( &f, &DolOffset, 4, &read );
+
 			f_lseek( &f, 0x0424 );
 			f_read( &f, &FSTableOffset, 4, &read );
 
+			f_lseek( &f, 0x0428 );
+			f_read( &f, &FSTableSize, 4, &read );
+
 			DolSize = FSTableOffset - DolOffset;
+			FSTableSize <<= 2;
 
 			if( DiscType == DISC_REV )
 			{
 				dbgprintf("DIP:FSTableOffset:%08X\n", FSTableOffset<<2 );
+				dbgprintf("DIP:FSTableSize:  %08X\n", FSTableSize );
 				dbgprintf("DIP:DolOffset:    %08X\n", DolOffset<<2 );
 				dbgprintf("DIP:DolSize:      %08X\n", DolSize<<2 );
 			} else {
 				dbgprintf("DIP:FSTableOffset:%08X\n", FSTableOffset );
+				dbgprintf("DIP:FSTableSize:  %08X\n", FSTableSize );
 				dbgprintf("DIP:DolOffset:    %08X\n", DolOffset );
 				dbgprintf("DIP:DolSize:      %08X\n", DolSize );
 			}
@@ -198,7 +220,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[bi2.bin] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[bi2.bin] Offset:%08X Size:%08X\n", Offset, Length );
+			dbgprintf("DIP:[bi2.bin] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			f_lseek( &f, Offset<<2 );
 			f_read( &f, ptr, Length, &read );
 			f_close( &f );
@@ -206,8 +228,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			//GC region patch
 			if( DiscType == DISC_DOL )
 			{
-				*(vu32*)(ptr+0x18) = Region;
-				dbgprintf("DIP:Patched GC region to:%d\n", Region );
+				*(vu32*)(ptr+0x18) = DICfg->Region;
+				dbgprintf("DIP:Patched GC region to:%d\n", DICfg->Region );
 			}
 			return DI_SUCCESS;
 		}
@@ -224,7 +246,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[apploader.img] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[apploader.img] Offset:%08X Size:%08X\n", Offset, Length );
+			dbgprintf("DIP:[apploader.img] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			f_lseek( &f, Offset<<2 );
 			f_read( &f, ptr, Length, &read );
 			f_close( &f );
@@ -241,10 +263,38 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[main.dol] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[main.dol] Offset:%08X Size:%08X\n", Offset, Length );
+			dbgprintf("DIP:[main.dol] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			f_lseek( &f, Offset<<2 );
 			f_read( &f, ptr, Length, &read );
 			f_close( &f );
+
+			int i;
+			for( i=0; i < Length; i+=4 )
+			{
+				if( memcmp( (void*)(ptr+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
+				{
+					dbgprintf("DIP:[patcher] Found __fwrite pattern:%08X\n", ptr+i );
+					memcpy( (void*)(ptr+i), patch_fwrite, sizeof(patch_fwrite) );
+
+				}
+				if( memcmp( (void*)(ptr+i), sig_iplmovie, sizeof(sig_iplmovie) ) == 0 )
+				{
+					dbgprintf("DIP:[patcher] Found sig_iplmovie pattern:%08X\n", ptr+i );
+					memcpy( (void*)(ptr+i), patch_iplmovie, sizeof(patch_iplmovie) );
+
+				}
+				//if( *(vu32*)(ptr+i) == 0x3C608000 )
+				//{
+				//	if( *(vu32*)(ptr+i+4) == 0x836300CC )
+				//	{
+				//		dbgprintf("DIP:[patcher] Found VI pattern:%08X\n", ptr+i );
+				//		*(vu32*)(ptr+i+8) = 0x541BF0BE;
+				//	}
+				//}
+			}
+
+			//*(vu32*)0x005212C = 0x60000000;
+
 			return DI_SUCCESS;
 		}
 	} else if( Offset < FSTableOffset+(FSTableSize>>2) )
@@ -255,16 +305,30 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 		sprintf( str, "%ssys/fst.bin", GamePath );
 		if( f_open( &f, str, FA_READ ) != FR_OK )
 		{
-			dbgprintf("DIP:[fst.bin] Failed to open!\n" );
+			dbgprintf("DIP:[fst.bin]  Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[fst.bin] Offset:%08X Size:%08X\n", Offset, Length );
+			dbgprintf("DIP:[fst.bin]  Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			f_lseek( &f, (u64)Offset<<2 );
 			f_read( &f, ptr, Length, &read );
 			f_close( &f );
+
+			if( FSTable == NULL )
+			{
+				FSTable	= (u8*)ptr;
+				dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
+			}
+
 			return DI_SUCCESS;
 		}
 	} else {
+
+		//Get FSTTable offset from low memory, must be set by apploader
+		if( FSTable == NULL )
+		{
+			FSTable	= (u8*)((*(vu32*)0x38) & 0x7FFFFFFF);
+			dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
+		}
 
 		u32 i,j;
 
@@ -274,18 +338,16 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			if( FC[i].File.fs == NULL )
 				continue;
 
-			if( Offset < FC[i].Offset )
-				continue;
-
-			u32 nOffset = Offset - FC[i].Offset;
-			nOffset<<= 2;
-
-			if( nOffset < FC[i].Size )
+			if( Offset >= FC[i].Offset )
 			{
-				//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, Offset-FC[i].Offset, Length );
-				f_lseek( &FC[i].File, nOffset );
-				f_read( &FC[i].File, ptr, ((Length)+31)&(~31), &read );
-				return DI_SUCCESS;
+				u64 nOffset = ((u64)(Offset-FC[i].Offset)) << 2;
+				if( nOffset < FC[i].Size )
+				{
+					//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, (u32)(nOffset>>2), Length );
+					f_lseek( &FC[i].File, nOffset );
+					f_read( &FC[i].File, ptr, ((Length)+31)&(~31), &read );
+					return DI_SUCCESS;
+				}
 			}
 		}
 
@@ -320,59 +382,56 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 					break;
 			} else {
 
-				if( Offset < fe[i].FileOffset )
-					continue;
-
-				u32 nOffset = Offset - fe[i].FileOffset;
-				nOffset<<= 2;
-
-				if( nOffset < fe[i].FileLength )
+				if( Offset >= fe[i].FileOffset )
 				{
-					//dbgprintf("Found Entry:%X file:%s FCEntry:%d\n", i,  FSTable + NameOff + fe[i].NameOffset, FCEntry );
-
-					Path = malloca( 256, 32 );
-					memset( Path, 0, 256 );
-					sprintf( Path, "%sfiles/", GamePath );
-
-					for( j=0; j<level; ++j )
+					u64 nOffset = ((u64)(Offset-fe[i].FileOffset)) << 2;
+					if( nOffset < fe[i].FileLength )
 					{
-						if( j )
+						//dbgprintf("DIP:Offset:%08X FOffset:%08X Dif:%08X Flen:%08X nOffset:%08X\n", Offset, fe[i].FileOffset, Offset-fe[i].FileOffset, fe[i].FileLength, nOffset );
+
+						//dbgprintf("Found Entry:%X file:%s FCEntry:%d\n", i,  FSTable + NameOff + fe[i].NameOffset, FCEntry );
+
+						Path = malloca( 256, 32 );
+						memset( Path, 0, 256 );
+						sprintf( Path, "%sfiles/", GamePath );
+
+						for( j=0; j<level; ++j )
+						{
+							if( j )
+								Path[strlen(Path)] = '/';
+							memcpy( Path+strlen(Path), FSTable + NameOff + fe[Entry[j]].NameOffset, strlen(FSTable + NameOff + fe[Entry[j]].NameOffset ) );
+						}
+						if( level )
 							Path[strlen(Path)] = '/';
-						memcpy( Path+strlen(Path), FSTable + NameOff + fe[Entry[j]].NameOffset, strlen(FSTable + NameOff + fe[Entry[j]].NameOffset ) );
+						memcpy( Path+strlen(Path), FSTable + NameOff + fe[i].NameOffset, strlen(FSTable + NameOff + fe[i].NameOffset) );
+
+						if( FCEntry >= FILECACHE_MAX )
+							FCEntry = 0;
+
+						if( FC[FCEntry].File.fs != NULL )
+							f_close( &FC[FCEntry].File );
+
+						if( f_open( &FC[FCEntry].File, Path, FA_READ ) != FR_OK )
+						{
+							dbgprintf("DIP:[%s] Failed to open!\n", Path );
+							error = 0x031100;
+							free( Path );
+							return DI_FATAL;
+						} else {
+
+							FC[FCEntry].Size	= fe[i].FileLength;
+							FC[FCEntry].Offset	= fe[i].FileOffset;
+
+							dbgprintf("DIP:[%s] Offset:%08X Size:%05X\n", Path, (u32)(nOffset>>2), ((Length)+31)&(~31) );
+							f_lseek( &FC[FCEntry].File, nOffset );
+							f_read(  &FC[FCEntry].File, ptr, ((Length)+31)&(~31), &read );
+							
+							FCEntry++;
+
+							free( Path );
+							return DI_SUCCESS;
+						}
 					}
-					if( level )
-						Path[strlen(Path)] = '/';
-					memcpy( Path+strlen(Path), FSTable + NameOff + fe[i].NameOffset, strlen(FSTable + NameOff + fe[i].NameOffset) );
-
-					if( FCEntry >= FILECACHE_MAX )
-						FCEntry = 0;
-
-					if( FC[FCEntry].File.fs != NULL )
-						f_close( &FC[FCEntry].File );
-
-					if( f_open( &FC[FCEntry].File, Path, FA_READ ) != FR_OK )
-					{
-						dbgprintf("DIP:[%s] Failed to open!\n", Path );
-						error = 0x031100;
-						free( Path );
-						return DI_FATAL;
-					} else {
-
-						FC[FCEntry].Size	= fe[i].FileLength;
-						FC[FCEntry].Offset	= fe[i].FileOffset;
-
-						dbgprintf("DIP:[%s] Offset:%08X Size:%08X\n", Path, nOffset, ((Length)+31)&(~31) );
-						f_lseek( &FC[FCEntry].File, nOffset );
-						f_read(  &FC[FCEntry].File, ptr, ((Length)+31)&(~31), &read );
-						
-						FCEntry++;
-
-						free( Path );
-						return DI_SUCCESS;
-					}
-
-					free( Path );
-					break;
 				}
 			}
 		}
@@ -407,46 +466,21 @@ int DIP_Ioctl( struct ipcmessage *msg )
 	{
 		case DVD_READ_GAMEINFO:
 		{
-			FIL f;
-			DIR d;
-			if( f_opendir( &d, "/games" ) != FR_OK )
+			u32 *vec = (u32*)msg->ioctl.buffer_in;
+
+			if( f_open( &f, "/sneek/diconfig.bin", FA_READ ) == FR_OK )
+			{
+				f_lseek( &f, vec[0] );
+				f_read( &f, (u8*)(vec[2]), vec[1], &read );
+				f_close( &f );
+
+				ret = DI_SUCCESS;
+			} else 
 			{
 				ret = DI_FATAL;
-				break;
 			}
 
-			FILINFO FInfo;
-			u32 count = 0;
-			while( f_readdir( &d, &FInfo ) == FR_OK )
-			{
-				if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
-					continue;
-
-				if( count == *(u32*)(bufin) )
-				{
-					char *LPath = malloca( 128, 32 );
-					//build path
-					sprintf( LPath, "/games/%s/sys/boot.bin", FInfo.fname );
-
-					if( f_open( &f, LPath, FA_READ ) == FR_OK )
-					{
-						f_read( &f, (u8*)(*(u32*)(bufin+4)), 0x100, &read );
-
-						if( 0x100 == read )
-							ret = DI_SUCCESS;
-
-						f_close( &f );
-						
-					} else {
-						ret = DI_FATAL;
-					}
-
-					free( LPath );
-					break;
-				}
-				count++;
-			}
-			dbgprintf("DIP:DVDReadGameInfo(%d:%p):%d\n", *(u32*)(bufin), *(u32*)(bufin+4), ret );
+			dbgprintf("DIP:DVDReadGameInfo( %08X, %08X, %p ):%d\n", vec[0], vec[1], vec[2], ret );
 		} break;
 		case DVD_INSERT_DISC:
 		{
@@ -462,26 +496,9 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_GET_GAMECOUNT:	//Get Game count
 		{
-			DIR d;
-			if( f_opendir( &d, "/games" ) != FR_OK )
-			{
-				ret = DI_FATAL;
-				break;
-			}
-
-			FILINFO FInfo;
-			u32 count = 0;
-			while( f_readdir( &d, &FInfo ) == FR_OK )
-			{
-				if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
-					continue;
-
-				count++;
-			}
-
-			*(u32*)bufout = count;
+			*(u32*)bufout = DICfg->Gamecount;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:GetGameCount(%d):%d\n", count, ret );
+			dbgprintf("DIP:GetGameCount(%d):%d\n", DICfg->Gamecount, ret );
 		} break;
 		case DVD_SELECT_GAME:
 		{
@@ -649,10 +666,10 @@ int DIP_Ioctl( struct ipcmessage *msg )
 						{
 							memset( bufout, 0, lenout );
 
-							*(u32*)(bufout)			= Region;			// 0 = JAP, 1 = USA, 2 = EUR, 4 = KOR
+							*(u32*)(bufout)			= DICfg->Region;
 							*(u32*)(bufout+0x1FFC)	= 0xC3F81A8E;
 
-							dbgprintf("DIP:Region:%d\n", Region );
+							dbgprintf("DIP:Region:%d\n", DICfg->Region );
 
 							ret = DI_SUCCESS;
 						} break;
@@ -789,6 +806,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					f_close( &fp );
+					dbgprintf("DIP:Failed to read:\"%s\"\n", str );
 					break;
 				}
 
@@ -814,6 +832,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					f_close( &fp );
+					dbgprintf("DIP:Failed to read:\"%s\"\n", str );
 					break;
 				} 
 
@@ -822,7 +841,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				sync_before_read(TMD, asize);
 
 				PartitionSize = (u32)((*(u64*)(TMD+0x1EC)) >> 2 );
-				dbgprintf("DIP:Set partition size to:%08X%08X\n", (PartitionSize>>29)&0xFFFFFFFF , (((u64)PartitionSize)<<2)&0xFFFFFFFF );
+				dbgprintf("DIP:Set partition size to:%08X%08X\n", (u32)((((u64)PartitionSize)<<2)>>32), (PartitionSize<<2) );
 
 				if( v[3].data != NULL )
 				{
@@ -848,6 +867,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					f_close( &fp );
+					dbgprintf("DIP:Failed to read:\"%s\"\n", str );
 					break;
 				}
 
@@ -864,7 +884,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 
 			hfree( str );
 
-			KeyID = (u32*)malloca( sizeof( u32 ) , 32 );
+			KeyID = (u32*)malloca( sizeof( u32 ), 32 );
 
 
 			((u32*)buffer)[0x02] = (u32)NULL;			//0x08

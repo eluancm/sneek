@@ -29,7 +29,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ff.h"
 #include "dip.h"
 
-extern u32 Region;
+
+extern DIConfig *DICfg;;
 extern char *RegionStr;
 
 void udelay(int us)
@@ -71,6 +72,7 @@ char __aeabi_unwind_cpp_pr0[0];
 void _main(void)
 {
 	FATFS fatfs;
+	u32 read;
 	struct ipcmessage *IPCMessage=NULL;
 
 	ThreadSetPriority( 0, 0xF4 );
@@ -109,38 +111,119 @@ void _main(void)
 		ThreadCancel( 0, 0x77 );
 	}
 
+	DICfg = (DIConfig*)malloca( sizeof(u32) * 4, 32 );
+
 	FIL fi;
-	if( f_open( &fi, "/sneek/slot.bin", FA_READ ) == FR_OK )
+
+	fres = f_open( &fi, "/sneek/diconfig.bin", FA_WRITE|FA_READ );
+
+	switch( fres )
 	{
-		u32 slot,read;
-
-		f_read( &fi, &slot, sizeof(u32), &read );
-		f_close( &fi );
-
-		ret = DVDSelectGame( slot );
-		dbgprintf("DIP:DVDSelectGame(%d):%d\n", slot, ret );
-
-	} else {
-		ret = DVDSelectGame( 0 );
-		dbgprintf("DIP:DVDSelectGame():%d\n", ret );
+		case FR_OK:
+			break;
+		case FR_NO_PATH:	//Folder sneek doesn't exit!
+		case FR_NO_FILE:
+		{
+			f_mkdir("/sneek");
+			if( f_open( &fi, "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ  ) != FR_OK )
+			{
+				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
+				while(1);
+			}
+		} break;
+		default:
+			dbgprintf("DIP:Unhandled error %d when trying to create/open diconfig.bin file!\n", fres );
+			while(1);
+			break;
 	}
 
-	if( f_open( &fi, "/sneek/region.bin", FA_READ ) == FR_OK )
+	if( fi.fsize )
 	{
-		u32 read;
-
-		f_read( &fi, &Region, sizeof(u32), &read );
-		f_close( &fi );
-
-		if( Region > LTN )
-			Region = JAP;
-
-		dbgprintf("DIP:Region set to:%d\n", Region );
+		f_read( &fi, DICfg, sizeof(u32) * 4, &read );
+		DICfg->Region = USA;
 
 	} else {
-		Region=JAP;
-		dbgprintf("DIP:No region.bin found, set region to %d\n", Region );
+
+		dbgprintf("DIP:Created new DI-Config\n");
+
+		DICfg->Region = EUR;
+		DICfg->SlotID = 0;
+		DICfg->Unused = 0;
+		DICfg->Gamecount = 0;
+
+		f_write( &fi, DICfg, sizeof(u32) * 4, &read );
 	}
+	
+	//check if new games were installed
+
+	u32 GameCount=0;
+	DIR d;
+	if( f_opendir( &d, "/games" ) != FR_OK )
+	{
+		dbgprintf("DIP:Could not open game dir!\n");
+		while(1);
+	}
+
+	FILINFO FInfo;
+	while( f_readdir( &d, &FInfo ) == FR_OK )
+	{
+		if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
+			continue;
+
+		GameCount++;
+	}
+
+	dbgprintf("DIP:%d:%d\n", GameCount, DICfg->Gamecount );
+
+	if( GameCount != DICfg->Gamecount )
+	{
+		dbgprintf("DIP:Updating game info cache...");
+
+		f_lseek( &fi, 0x10 );
+
+		FIL f;
+		FILINFO FInfo;
+		char *LPath = malloca( 128, 32 );
+		char *GInfo = malloca( 0x60, 32 );
+
+		if( f_opendir( &d, "/games" ) == FR_OK )
+		{
+			while( f_readdir( &d, &FInfo ) == FR_OK )
+			{
+				if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
+					continue;
+
+				sprintf( LPath, "/games/%s/sys/boot.bin", FInfo.fname );
+
+				if( f_open( &f, LPath, FA_READ ) == FR_OK )
+				{
+					f_read( &f, GInfo, 0x60, &read );
+					f_write( &fi, GInfo, 0x60, &read );
+					f_close( &f );
+				}
+			}
+		}
+
+		free( LPath );
+		free( GInfo );
+
+		DICfg->Gamecount = GameCount;
+		if( DICfg->SlotID >= DICfg->Gamecount )
+			DICfg->SlotID = 0;
+
+		f_lseek( &fi, 0 );
+		f_write( &fi, DICfg, 0x10, &read );
+
+		dbgprintf("done\n");
+	}
+
+	f_close( &fi );
+
+	dbgprintf("DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
+
+	fres = DVDSelectGame( DICfg->SlotID );
+
+	dbgprintf("DIP:DVDSelectGame(%d):%d\n", DICfg->SlotID, fres );
 
 	while (1)
 	{

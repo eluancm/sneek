@@ -70,21 +70,17 @@ void PrintFormat( u32 FrameBuffer, int x, int y, const char *str, ... )
 
 	free(astr);
 }
-void LoadFont( char *str )
+s32 LoadFont( char *str )
 {
 	u32 *size = malloca( sizeof(u32), 32 );
 	fontfx = (u32*)NANDLoadFile( str, size );
 	if( fontfx == NULL )
 	{
 		dbgprintf("ES:Couldn't open:\"%s\":%d\n", str, *size );
+		free( size );
+		return 0;
 	}
 
 	free( size );
-
-	//FIL f;
-	//f_open( &f, str, FA_READ );
-	//fontfx = (u32*)malloca( f.fsize, 32 );
-	//int read;
-	//f_read( &f, fontfx, f.fsize, &read );
-	//f_close( &f );
+	return 1;
 }

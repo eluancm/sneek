@@ -92,17 +92,18 @@ s32 DVDInsertDisc( void )
 
 	return r;
 }
-s32 DVDReadGameInfo( u32 SlotID, u8 *GameInfo )
+s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data )
 {
 	s32 fd = IOS_Open("/dev/di", 0 );
 	if( fd < 0 )
 		return fd;
 
-	u32 *vec = malloca( sizeof(u32) * 2, 32 );
-	vec[0] = SlotID;
-	vec[1] = (u32)GameInfo;
+	u32 *vec = malloca( sizeof(u32) * 3, 32 );
+	vec[0] = Offset;
+	vec[1] = Length;
+	vec[2] = (u32)Data;
 
-	s32 r = IOS_Ioctl( fd, DVD_READ_GAMEINFO, vec, sizeof(u32) * 2, NULL, 0 );
+	s32 r = IOS_Ioctl( fd, DVD_READ_GAMEINFO, vec, sizeof(u32) * 3, NULL, 0 );
 
 	IOS_Close( fd );
 

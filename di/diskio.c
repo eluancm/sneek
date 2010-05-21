@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 DSTATUS disk_initialize (BYTE drv)
 {
-	udelay( 50000 );
+	//udelay( 50000 );
 
 	dbgprintf("DIP: Initializing TinyEHCI...\n");
 	tiny_ehci_init();

@@ -83,8 +83,14 @@ enum GameRegion
 	LTN,
 };
 
-
-#ifdef FILEMODE
+typedef struct
+{
+	u32		SlotID;
+	u32		Region;
+	u32		Gamecount;
+	u32		Unused;
+	u8		GameInfo[][0x60];
+} DIConfig;
 
 typedef struct
 {
@@ -120,9 +126,7 @@ typedef struct
 	FIL File;
 } FileCache;
 
-#define FILECACHE_MAX	10
-
-#endif
+#define FILECACHE_MAX	20
 
 typedef struct
 {

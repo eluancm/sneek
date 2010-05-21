@@ -29,4 +29,4 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "NAND.h"
 
 void PrintFormat( u32 FrameBuffer, int x, int y, const char *str, ... );
-void LoadFont( char *str );
+s32 LoadFont( char *str );
