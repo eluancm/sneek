@@ -140,7 +140,6 @@ void _main(void)
 	if( fi.fsize )
 	{
 		f_read( &fi, DICfg, sizeof(u32) * 4, &read );
-		DICfg->Region = USA;
 
 	} else {
 
