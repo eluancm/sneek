@@ -126,7 +126,7 @@ typedef struct
 	FIL File;
 } FileCache;
 
-#define FILECACHE_MAX	20
+#define FILECACHE_MAX	5
 
 typedef struct
 {

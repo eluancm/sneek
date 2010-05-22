@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "DI.h"
 #include "SDI.h"
 #include "GCPad.h"
+#include "WPad.h"
 
 int verbose = 0;
 u32 base_offset=0;
@@ -62,6 +63,8 @@ char *RegionStr[] = {
 	"KOR",
 	"ASN",
 	"LTN",
+	"UNK",
+	"ALL",
 };
 
 #define MENU_POS_X 20
@@ -1125,12 +1128,6 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 	mqueue_ack( (void *)msg, ret);
 }
-void patch_b(u32 source, u32 dst)
-{
-	u32 diff = (dst - source) << 2;
-	diff &= 0x03FFFFFC;
-	*(vu32*)source = diff | 0x48000000;
-}
 int _main( int argc, char *argv[] )
 {
 	s32 ret=0;
@@ -1213,8 +1210,7 @@ int _main( int argc, char *argv[] )
 	u32 FBOffset	= 0;
 	u32 FBEnable	= 0;
 	u32	FBSize		= 0;
-	u32 SysFreeze	= 0;
-	u32 SysFreezeBL	= 0;
+	u32 *WPad		= NULL;
 
 //Patches and GameMenu
 	if( TitleID == 0x0000000100000002LL )
@@ -1244,8 +1240,7 @@ int _main( int argc, char *argv[] )
 				FBOffset	= 0x01699448;
 				FBEnable	= 0x01699430;
 				FBSize		= 320*480*4;
-				SysFreeze	= 0x0133DFB0;
-				SysFreezeBL	= 0x481FDB19;
+				WPad		= (u32*)0x0113EFE0;
 
 			} break;
 			case 481:
@@ -1260,8 +1255,7 @@ int _main( int argc, char *argv[] )
 				FBOffset	= 0x016975A8;
 				FBEnable	= 0x01697590;
 				FBSize		= 304*480*4;
-				SysFreeze	= 0x0133DF40;
-				SysFreezeBL	= 0x481FDA8D;
+				WPad		= (u32*)0x0113EFE0;
 			} break;
 		}
 	}
@@ -1274,7 +1268,7 @@ int _main( int argc, char *argv[] )
 	u32 FB[3] = {0,0,0};
 	u32 GameUpdate = 1;
 	GCPadStatus GCPad;
-
+	
 	DIConfig *DICfg = NULL;
 
 	dbgprintf("ES:looping!\n");
@@ -1294,93 +1288,7 @@ int _main( int argc, char *argv[] )
 
 			if( *(vu32*)FBEnable == 1 )
 			{
-				if( GameUpdate )
-				{
-					for( i=0; i<3; ++i)
-					{
-						if( FB[i] )
-						{
-							memset32( (u32*)(FB[i]) + (MENU_POS_Y+16)*320, 0x10801080, 640*32*20 );
-						}
-					}
-
-					GameUpdate = 0;
-				}
-
 				FrameBuffer = (*(vu32*)FBOffset) & 0x7FFFFFFF;
-
-				memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
-
-				if( GCPad.Start && SLock == 0 )
-				{
-					ShowMenu ^= 1;
-					if(ShowMenu)
-					{
-						if( DICfg == NULL )
-						{
-							DVDGetGameCount( GameCount );
-
-							DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
-							DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
-						}
-
-						*(vu32*)SysFreeze = 0x4BFFFFFC;
-
-						udelay( 8000 );
-
-						for( i=0; i<3; ++i)
-						{
-							if( FB[i] )
-							{
-								memset32( (u32*)(FB[i]), 0x10801080, FBSize );
-							}
-						}
-					}
-					SLock = 1;
-				}
-
-				if( GCPad.A && SLock == 0 )
-				{
-					DVDSelectGame( PosX+ScrollX );
-					SLock = 1;
-				}
-				if( GCPad.Up && SLock == 0 )
-				{
-					for( i=0; i<3; ++i)
-					{
-						if( FB[i] )
-							PrintFormat( FB[i], 0, MENU_POS_Y+16+16*PosX, "   ");
-					}
-
-					if( PosX )
-						PosX--;
-					else if( ScrollX )
-					{
-						ScrollX--;
-						GameUpdate=1;
-					}
-
-					SLock = 1;
-				} else if( GCPad.Down && SLock == 0 )
-				{
-					for( i=0; i<3; ++i)
-					{
-						if( FB[i] )
-							PrintFormat( FB[i], 0, MENU_POS_Y+16+16*PosX, "   ");
-					}
-
-					if( PosX >= 19 )
-					{
-						if( PosX+ScrollX+1 < *GameCount )
-						{
-							ScrollX++;
-							GameUpdate=1;
-						}
-					} else 
-						PosX++;
-
-					SLock = 1;
-				}
 
 				for( i=0; i<3; i++)
 				{
@@ -1406,7 +1314,35 @@ int _main( int argc, char *argv[] )
 					if( FB[i] != 0 && ShowMenu )
 					{
 						PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
-						PrintFormat( FB[i], MENU_POS_X, 40+16, "PosX:%d ScrollX:%d", PosX, ScrollX );
+						//PrintFormat( FB[i], MENU_POS_X, 40+16, "PosX:%d ScrollX:%d", PosX, ScrollX );
+
+						u32 gRegion = 0;
+
+						switch( *(u8*)(DICfg->GameInfo[PosX+ScrollX] + 3) )
+						{
+							case 'A':
+							case 'Z':
+								gRegion =  ALL;
+								break;
+							case 'E':
+								gRegion =  USA;
+								break;
+							case 'I':	// Italy
+							case 'U':	// United Kingdom
+							case 'S':	// Spain
+							case 'D':	// Germany
+							case 'P':	
+								gRegion =  EUR;
+								break;
+							case 'J':
+								gRegion =  JAP;
+								break;
+							default:
+								gRegion =  UNK;
+								break;
+						}
+
+						PrintFormat( FB[i], MENU_POS_X, 40+16, "GameRegion:%s", RegionStr[gRegion] );
 
 						for( j=0; j<20; ++j )
 						{
@@ -1425,14 +1361,84 @@ int _main( int argc, char *argv[] )
 					}
 				}
 
-				if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 )
+				memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
+
+				if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
 					SLock = 0;
 
-				if( ShowMenu == 0 )
-					*(vu32*)SysFreeze = SysFreezeBL;
+				if( SLock == 0 )
+				{
+					if( GCPad.Start || (*WPad&WPAD_BUTTON_1) )
+					{
+						ShowMenu = !ShowMenu;
+						if(ShowMenu)
+						{
+							if( DICfg == NULL )
+							{
+								DVDGetGameCount( GameCount );
+
+								DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
+								DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
+							}
+						}
+						SLock = 1;
+					}
+
+					if( ShowMenu )
+					{
+						if( GCPad.A || (*WPad&WPAD_BUTTON_2) )
+						{
+							DVDSelectGame( PosX+ScrollX );
+							ShowMenu = 0;
+							SLock = 1;
+						}
+
+						if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
+						{
+							if( PosX )
+								PosX--;
+							else if( ScrollX )
+							{
+								ScrollX--;
+								GameUpdate=1;
+							}
+
+							SLock = 1;
+						} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
+						{
+							if( PosX >= 19 )
+							{
+								if( PosX+ScrollX+1 < *GameCount )
+								{
+									ScrollX++;
+									GameUpdate=1;
+								}
+							} else 
+								PosX++;
+
+							SLock = 1;
+						}
+
+						if( GCPad.X )
+						{
+							if( DICfg->Region == LTN )
+								DICfg->Region = JAP;
+							else
+								DICfg->Region++;
+							SLock = 1;
+						} else if( GCPad.Y )
+						{
+							if( DICfg->Region == JAP )
+								DICfg->Region = LTN;
+							else
+								DICfg->Region--;
+							SLock = 1;
+						} 
+					}
+				}
 			}
 
-			TimerRestart( Timer, 0, 10000 );
+			TimerRestart( Timer, 0, 5000 );
 			continue;
 		}
 	

@@ -161,14 +161,14 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
 	FIL f;
 	u32 read;
+	char Path[256];
 
 	//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X as:%08X\n", Offset<<2, Length, ApploaderSize<<2 );
 
 	if( Offset < 0x110 )	// 0x440
 	{
-		char *str = malloca( 32, 32 );
-		sprintf( str, "%ssys/boot.bin", GamePath );
-		if( f_open( &f, str, FA_READ ) != FR_OK )
+		sprintf( Path, "%ssys/boot.bin", GamePath );
+		if( f_open( &f, Path, FA_READ ) != FR_OK )
 		{
 			dbgprintf("DIP:[boot.bin] Failed to open!\n" );
 			return DI_FATAL;
@@ -213,9 +213,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	{
 		Offset -= 0x110;
 
-		char *str = malloca( 32, 32 );
-		sprintf( str, "%ssys/bi2.bin", GamePath );
-		if( f_open( &f, str, FA_READ ) != FR_OK )
+		sprintf( Path, "%ssys/bi2.bin", GamePath );
+		if( f_open( &f, Path, FA_READ ) != FR_OK )
 		{
 			dbgprintf("DIP:[bi2.bin] Failed to open!\n" );
 			return DI_FATAL;
@@ -239,9 +238,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	{
 		Offset -= 0x910;
 
-		char *str = malloca( 32, 32 );
-		sprintf( str, "%ssys/apploader.img", GamePath );
-		if( f_open( &f, str, FA_READ ) != FR_OK )
+		sprintf( Path, "%ssys/apploader.img", GamePath );
+		if( f_open( &f, Path, FA_READ ) != FR_OK )
 		{
 			dbgprintf("DIP:[apploader.img] Failed to open!\n" );
 			return DI_FATAL;
@@ -256,9 +254,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	{
 		Offset -= DolOffset;
 
-		char *str = malloca( 32, 32 );
-		sprintf( str, "%ssys/main.dol", GamePath );
-		if( f_open( &f, str, FA_READ ) != FR_OK )
+		sprintf( Path, "%ssys/main.dol", GamePath );
+		if( f_open( &f, Path, FA_READ ) != FR_OK )
 		{
 			dbgprintf("DIP:[main.dol] Failed to open!\n" );
 			return DI_FATAL;
@@ -301,9 +298,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	{
 		Offset -= FSTableOffset;
 
-		char *str = malloca( 32, 32 );
-		sprintf( str, "%ssys/fst.bin", GamePath );
-		if( f_open( &f, str, FA_READ ) != FR_OK )
+		sprintf( Path, "%ssys/fst.bin", GamePath );
+		if( f_open( &f, Path, FA_READ ) != FR_OK )
 		{
 			dbgprintf("DIP:[fst.bin]  Failed to open!\n" );
 			return DI_FATAL;
@@ -343,7 +339,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				u64 nOffset = ((u64)(Offset-FC[i].Offset)) << 2;
 				if( nOffset < FC[i].Size )
 				{
-					//dbgprintf("DIP:[Cache:%d] Offset:%08X Size:%08X\n", i, (u32)(nOffset>>2), Length );
+					dbgprintf("DIP:[Cache:%02d][%08X:%05X]\n", i, (u32)(nOffset>>2), Length );
 					f_lseek( &FC[i].File, nOffset );
 					f_read( &FC[i].File, ptr, ((Length)+31)&(~31), &read );
 					return DI_SUCCESS;
@@ -354,10 +350,9 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 		//The fun part!
 
 		u32 Entries = *(u32*)(FSTable+0x08);
-		u32 NameOff = Entries * 0x0C;
+		char *NameOff = (char*)(FSTable + Entries * 0x0C);
 		FEntry *fe = (FEntry*)(FSTable);
 
-		char *Path=NULL;
 		u32 Entry[16];
 		u32 LEntry[16];
 		u32 level=0;
@@ -375,6 +370,10 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 
 			if( fe[i].Type )
 			{
+				//Skip empty folders
+				if( fe[i].NextOffset == i+1 )
+					continue;
+
 				//printf("[%03X]Entering:\"%s\" Level:%d leave:%04X\n", i, buffer + NameOff + swap24( fe[i].NameOffset ), level, swap32( fe[i].NextOffset ) );
 				Entry[level] = i;
 				LEntry[level++] = fe[i].NextOffset;
@@ -391,19 +390,19 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 
 						//dbgprintf("Found Entry:%X file:%s FCEntry:%d\n", i,  FSTable + NameOff + fe[i].NameOffset, FCEntry );
 
-						Path = malloca( 256, 32 );
-						memset( Path, 0, 256 );
+						//Do not remove!
+						memset( Path, 0, 256 );					
 						sprintf( Path, "%sfiles/", GamePath );
 
 						for( j=0; j<level; ++j )
 						{
 							if( j )
 								Path[strlen(Path)] = '/';
-							memcpy( Path+strlen(Path), FSTable + NameOff + fe[Entry[j]].NameOffset, strlen(FSTable + NameOff + fe[Entry[j]].NameOffset ) );
+							memcpy( Path+strlen(Path), NameOff + fe[Entry[j]].NameOffset, strlen(NameOff + fe[Entry[j]].NameOffset ) );
 						}
 						if( level )
 							Path[strlen(Path)] = '/';
-						memcpy( Path+strlen(Path), FSTable + NameOff + fe[i].NameOffset, strlen(FSTable + NameOff + fe[i].NameOffset) );
+						memcpy( Path+strlen(Path), NameOff + fe[i].NameOffset, strlen(NameOff + fe[i].NameOffset) );
 
 						if( FCEntry >= FILECACHE_MAX )
 							FCEntry = 0;
@@ -415,20 +414,18 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 						{
 							dbgprintf("DIP:[%s] Failed to open!\n", Path );
 							error = 0x031100;
-							free( Path );
 							return DI_FATAL;
 						} else {
 
 							FC[FCEntry].Size	= fe[i].FileLength;
 							FC[FCEntry].Offset	= fe[i].FileOffset;
 
-							dbgprintf("DIP:[%s] Offset:%08X Size:%05X\n", Path, (u32)(nOffset>>2), ((Length)+31)&(~31) );
+							dbgprintf("DIP:[%s][%08X:%05X]\n", Path, (u32)(nOffset>>2), Length );
 							f_lseek( &FC[FCEntry].File, nOffset );
-							f_read(  &FC[FCEntry].File, ptr, ((Length)+31)&(~31), &read );
+							f_read(  &FC[FCEntry].File, ptr, Length, &read );
 							
 							FCEntry++;
 
-							free( Path );
 							return DI_SUCCESS;
 						}
 					}

@@ -1,18 +1,3 @@
-
-enum GCPad
-{
-	PAD_BUTTON_LEFT	=(1<<16),
-	PAD_BUTTON_RIGHT=(1<<17),
-	PAD_BUTTON_DOWN	=(1<<18),
-	PAD_BUTTON_UP	=(1<<19),
-
-	PAD_BUTTON_A	=(1<<24),
-	PAD_BUTTON_B	=(1<<25),
-	PAD_BUTTON_X	=(1<<26),
-	PAD_BUTTON_Y	=(1<<27),
-	PAD_BUTTON_START=(1<<28),
-};
-
 typedef struct
 {
 	union

@@ -47,6 +47,8 @@ enum GameRegion
 	KOR,
 	ASN,
 	LTN,
+	UNK,
+	ALL,
 };
 
 enum DIOpcodes

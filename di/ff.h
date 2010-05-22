@@ -55,7 +55,7 @@
 /   3: f_lseek is removed in addition to level 2. */
 
 
-#define	_FS_TINY	0
+#define	_FS_TINY	1
 /* When _FS_TINY is set to 1, FatFs uses the sector buffer in the file system
 /  object instead of the sector buffer in the individual file object for file
 /  data transfer. This reduces memory consumption 512 bytes each file object. */
