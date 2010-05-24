@@ -6,18 +6,17 @@ u32 FBOffset	= 0;
 u32 FBEnable	= 0;
 u32	FBSize		= 0;
 u32 *WPad		= NULL;
-u32 *GameCount	= NULL;
+u32 *GameCount;
 
 u32 ShowMenu=0;
 u32 SLock=0;
 u32 PosX=0,ScrollX=0;
 
-u32 FB[3] = {0,0,0};
-u32 GameUpdate = 1;
+u32 FB[3];
 
 GCPadStatus GCPad;
 
-DIConfig *DICfg = NULL;
+DIConfig *DICfg;
 
 char *RegionStr[] = {
 	"JAP",
@@ -34,7 +33,8 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 {
 	ShowMenu=0;
 	SLock=0;
-	PosX=0,ScrollX=0;
+	PosX=0;
+	ScrollX=0;
 	FB[0] = 0;
 	FB[1] = 0;
 	FB[2] = 0;
@@ -267,7 +267,6 @@ void SMenuReadPad ( void )
 					else if( ScrollX )
 					{
 						ScrollX--;
-						GameUpdate=1;
 					}
 
 					SLock = 1;
@@ -278,7 +277,6 @@ void SMenuReadPad ( void )
 						if( PosX+ScrollX+1 < *GameCount )
 						{
 							ScrollX++;
-							GameUpdate=1;
 						}
 					} else 
 						PosX++;
