@@ -29,16 +29,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "common.h"
 #include "alloc.h"
 
-
-typedef struct
-{
-	u32		SlotID;
-	u32		Region;
-	u32		Gamecount;
-	u32		Unused;
-	u8		GameInfo[][0x60];
-} DIConfig;
-
 enum GameRegion 
 {
 	JAP=0,
@@ -50,6 +40,22 @@ enum GameRegion
 	UNK,
 	ALL,
 };
+
+enum SNEEKConfig
+{
+	CONFIG_PATCH_FWRITE	= (1<<0),
+	CONFIG_PATCH_MPVIDEO= (1<<1),
+	CONFIG_PATCH_VIDEO	= (1<<2),
+};
+
+typedef struct
+{
+	u32		SlotID;
+	u32		Region;
+	u32		Gamecount;
+	u32		Config;
+	u8		GameInfo[][0x60];
+} DIConfig;
 
 enum DIOpcodes
 {
@@ -79,6 +85,7 @@ enum DIOpcodes
 	DVD_EJECT_DISC			= 0x27,
 	DVD_INSERT_DISC			= 0x28,
 	DVD_READ_GAMEINFO		= 0x30,
+	DVD_WRITE_CONFIG		= 0x31,
 };
 enum DIError
 {
@@ -94,6 +101,7 @@ s32 DVDGetRegion( u32 *Region );
 s32 DVDEjectDisc( void );
 s32 DVDInsertDisc( void );
 s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data );
+s32 DVDWriteDIConfig( void *DIConfig );
 s32 DVDSelectGame( u32 SlotID );
 
 #endif

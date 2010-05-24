@@ -69,14 +69,12 @@ s32 DVDSelectGame( int SlotID )
 
 		if( count == SlotID )
 		{
+			char *str = malloca( 128, 32 );
 			//build path
 			sprintf( GamePath, "/games/%s/", FInfo.fname );
 			dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
 
 			FSTable = NULL;
-
-			char *str = malloca( 128, 32 );
-
 			ChangeDisc = 1;
 			DICover |= 1;
 		
@@ -155,7 +153,6 @@ unsigned char patch_iplmovie[] =
 	0x45, 0x55, 0x4C, 0x41,
 	0x00, 
 } ;
-
 
 s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
@@ -268,29 +265,34 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			int i;
 			for( i=0; i < Length; i+=4 )
 			{
-				if( memcmp( (void*)(ptr+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
+				if( DICfg->Config & CONFIG_PATCH_FWRITE )
 				{
-					dbgprintf("DIP:[patcher] Found __fwrite pattern:%08X\n", ptr+i );
-					memcpy( (void*)(ptr+i), patch_fwrite, sizeof(patch_fwrite) );
-
+					if( memcmp( (void*)(ptr+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
+					{
+						dbgprintf("DIP:[patcher] Found __fwrite pattern:%08X\n", ptr+i );
+						memcpy( (void*)(ptr+i), patch_fwrite, sizeof(patch_fwrite) );
+					}
 				}
-				if( memcmp( (void*)(ptr+i), sig_iplmovie, sizeof(sig_iplmovie) ) == 0 )
+				if( DICfg->Config & CONFIG_PATCH_MPVIDEO )
 				{
-					dbgprintf("DIP:[patcher] Found sig_iplmovie pattern:%08X\n", ptr+i );
-					memcpy( (void*)(ptr+i), patch_iplmovie, sizeof(patch_iplmovie) );
-
+					if( memcmp( (void*)(ptr+i), sig_iplmovie, sizeof(sig_iplmovie) ) == 0 )
+					{
+						dbgprintf("DIP:[patcher] Found sig_iplmovie pattern:%08X\n", ptr+i );
+						memcpy( (void*)(ptr+i), patch_iplmovie, sizeof(patch_iplmovie) );
+					}
 				}
-				//if( *(vu32*)(ptr+i) == 0x3C608000 )
-				//{
-				//	if( *(vu32*)(ptr+i+4) == 0x836300CC )
-				//	{
-				//		dbgprintf("DIP:[patcher] Found VI pattern:%08X\n", ptr+i );
-				//		*(vu32*)(ptr+i+8) = 0x541BF0BE;
-				//	}
-				//}
+				if( DICfg->Config & CONFIG_PATCH_VIDEO )
+				{
+					if( *(vu32*)(ptr+i) == 0x3C608000 )
+					{
+						if( *(vu32*)(ptr+i+4) == 0x836300CC )
+						{
+							dbgprintf("DIP:[patcher] Found VI pattern:%08X\n", ptr+i );
+							*(vu32*)(ptr+i+8) = 0x541BF0BE;
+						}
+					}
+				}
 			}
-
-			//*(vu32*)0x005212C = 0x60000000;
 
 			return DI_SUCCESS;
 		}
@@ -318,7 +320,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			return DI_SUCCESS;
 		}
 	} else {
-
+		
 		//Get FSTTable offset from low memory, must be set by apploader
 		if( FSTable == NULL )
 		{
@@ -339,7 +341,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				u64 nOffset = ((u64)(Offset-FC[i].Offset)) << 2;
 				if( nOffset < FC[i].Size )
 				{
-					dbgprintf("DIP:[Cache:%02d][%08X:%05X]\n", i, (u32)(nOffset>>2), Length );
+					//dbgprintf("DIP:[Cache:%02d][%08X:%05X]\n", i, (u32)(nOffset>>2), Length );
 					f_lseek( &FC[i].File, nOffset );
 					f_read( &FC[i].File, ptr, ((Length)+31)&(~31), &read );
 					return DI_SUCCESS;
@@ -435,6 +437,110 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	}
 	return DI_FATAL;
 }
+s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr )
+{
+	FIL f;
+	u32 read;
+
+	switch( Offset )
+	{
+		case 0x00:
+		case 0x08:		// 0x20
+		{
+			char *str = malloca( 64, 32 );
+			sprintf( str, "%ssys/boot.bin", GamePath );
+
+			if( f_open( &f, str, FA_READ ) == FR_OK )
+			{
+				free( str );
+				f_lseek( &f, (Offset) << 2 );
+
+				if( f_read( &f, ptr, Length, &read ) == FR_OK )
+				{
+					f_close( &f );
+					return DI_SUCCESS;
+				} else {
+					return DI_FATAL;
+				}
+			} else {
+				free( str );
+				return DI_FATAL;
+			}
+			
+		} break;
+		case 0x10000:		// 0x40000
+		{
+			memset( ptr, 0, Length );
+
+			*(u32*)(ptr)	= 1;				// one partition
+			*(u32*)(ptr+4)	= 0x40020>>2;		// partition table info
+
+			return DI_SUCCESS;
+		} break;
+		case 0x10008:		// 0x40020
+		{
+			memset( ptr, 0, Length );
+
+			*(u32*)(ptr)	= 0x03E00000;		// partition offset
+			*(u32*)(ptr+4)	= 0x00000000;		// partition type
+
+			return DI_SUCCESS;
+		} break;
+		case 0x00013800:		// 0x4E000
+		{
+			memset( ptr, 0, Length );
+
+			*(u32*)(ptr)		= DICfg->Region;
+			*(u32*)(ptr+0x1FFC)	= 0xC3F81A8E;
+
+			dbgprintf("DIP:Region:%d\n", DICfg->Region );
+
+			return DI_SUCCESS;
+		} break;
+		default:
+			dbgprintf("DIP:unexpected read offset!\n");
+			dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p )\n", Offset, Length, ptr );
+			while(1);
+		break;
+	}
+}
+s32 DVDLowReadDiscID( u32 Offset, u32 Length, void *ptr )
+{
+	FIL f;
+	u32 read;
+
+	char *str = malloca( 32, 32 );
+	sprintf( str, "%ssys/boot.bin", GamePath );
+	if( f_open( &f, str, FA_READ ) != FR_OK )
+	{
+		return DI_FATAL;
+	} else {
+		f_read( &f, ptr, Length, &read );
+		f_close( &f );
+
+		//Possible region hack here
+		//Starlet can only access PPC memory in 32bit read/writes
+		//	*(vu32*)bufout = ((*(vu32*)bufout) & 0xFFFFFF00 ) | 'P';
+		//	sync_after_write( bufout, lenout );
+	}
+
+	free( str );
+
+	hexdump( ptr, Length );
+
+	if( *(vu32*)(ptr+0x1C) == 0xc2339f3d )
+	{
+		DiscType = DISC_DOL;
+	} else if( *(vu32*)(ptr+0x18) == 0x5D1C9EA3 )
+	{
+		DiscType = DISC_REV;
+	} else {
+		DiscType = DISC_INV;
+	}
+
+	return DI_SUCCESS;
+}
+
 void DIP_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
 {
 	dbgprintf("************ DI FATAL ERROR ************\n");
@@ -461,6 +567,23 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			
 	switch(msg->ioctl.command)
 	{
+		case DVD_WRITE_CONFIG:
+		{
+			u32 *vec = (u32*)msg->ioctl.buffer_in;
+
+			if( f_open( &f, "/sneek/diconfig.bin", FA_WRITE|FA_OPEN_EXISTING ) == FR_OK )
+			{
+				f_write( &f, (u8*)(vec[0]), 0x10, &read );
+				f_close( &f );
+
+				ret = DI_SUCCESS;
+			} else 
+			{
+				ret = DI_FATAL;
+			}
+
+			dbgprintf("DIP:DVDWriteDIConfig( %p ):%d\n", vec[0], ret );
+		} break;
 		case DVD_READ_GAMEINFO:
 		{
 			u32 *vec = (u32*)msg->ioctl.buffer_in;
@@ -615,67 +738,11 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			{
 				if( *(u32*)(bufin+8) > 0x46090000 )
 				{
-					ret = DI_ERROR;
 					error = 0x00052100;
+					return DI_ERROR;
 
 				} else {
-					switch( *(u32*)(bufin+8) )
-					{
-						case 0x00:
-						case 0x08:		// 0x20
-						{
-							char *str = malloca( 62, 32 );
-							sprintf( str, "%ssys/boot.bin", GamePath );
-
-							if( f_open( &f, str, FA_READ ) == FR_OK )
-							{
-								f_lseek( &f, (*(u32*)(bufin+8)) << 2 );
-
-								if( f_read( &f, bufout, *(u32*)(bufin+4), &read ) != FR_OK )
-									ret = DI_FATAL;
-								else 
-									ret = DI_SUCCESS;
-								f_close( &f );
-							} else {
-								ret = DI_FATAL;
-							}
-							free( str );
-						} break;
-						case 0x10000:		// 0x40000
-						{
-							memset( bufout, 0, lenout );
-
-							*(u32*)(bufout)		= 1;				// one partition
-							*(u32*)(bufout+4)	= 0x40020>>2;		// partition table info
-
-							ret = DI_SUCCESS;
-						} break;
-						case 0x10008:		// 0x40020
-						{
-							memset( bufout, 0, lenout );
-
-							*(u32*)(bufout)		= 0x03E00000;		// partition offset
-							*(u32*)(bufout+4)	= 0x00000000;		// partition type
-
-							ret = DI_SUCCESS;
-						} break;
-						case 0x00013800:		// 0x4E000
-						{
-							memset( bufout, 0, lenout );
-
-							*(u32*)(bufout)			= DICfg->Region;
-							*(u32*)(bufout+0x1FFC)	= 0xC3F81A8E;
-
-							dbgprintf("DIP:Region:%d\n", DICfg->Region );
-
-							ret = DI_SUCCESS;
-						} break;
-						default:
-							dbgprintf("DIP:unexpected read offset!\n");
-							dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
-							while(1);
-						break;
-					}
+					ret = DVDLowReadUnencrypted( *(u32*)(bufin+8), *(u32*)(bufin+4), bufout );
 				}
 			} else {
 				//Invalid disc type!
@@ -686,33 +753,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_READ_DISCID:
 		{
-			char *str = malloca( 32, 32 );
-			sprintf( str, "%ssys/boot.bin", GamePath );
-			if( f_open( &f, str, FA_READ ) != FR_OK )
-			{
-				ret = DI_FATAL;
-			} else {
-				f_read( &f, bufout, lenout, &read );
-				f_close( &f );
-				free( str );
-				ret = DI_SUCCESS;
-
-				//Possible region hack here
-				//Starlet can only access PPC memory in 32bit read/writes
-				//	*(vu32*)bufout = ((*(vu32*)bufout) & 0xFFFFFF00 ) | 'P';
-				//	sync_after_write( bufout, lenout );
-			}
-			hexdump( bufout, lenout );
-
-			if( *(vu32*)(bufout+0x1C) == 0xc2339f3d )
-			{
-				DiscType = DISC_DOL;
-			} else if( *(vu32*)(bufout+0x18) == 0x5D1C9EA3 )
-			{
-				DiscType = DISC_REV;
-			} else {
-				DiscType = DISC_INV;
-			}
+			ret = DVDLowReadDiscID( 0, lenout, bufout );
 
 			dbgprintf("DIP:DVDLowReadDiscID(%p):%d\n", bufout, ret );
 		} break;

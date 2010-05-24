@@ -30,8 +30,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "font.h"
 #include "DI.h"
 #include "SDI.h"
-#include "GCPad.h"
-#include "WPad.h"
+#include "SMenu.h"
 
 int verbose = 0;
 u32 base_offset=0;
@@ -53,22 +52,6 @@ extern u32 *KeyID;
 extern u8 *CNTMap;
 extern u32 *HCR;
 extern u32 *SDStatus;
-
-u32 FrameBuffer=0;
-
-char *RegionStr[] = {
-	"JAP",
-	"USA",
-	"EUR",
-	"KOR",
-	"ASN",
-	"LTN",
-	"UNK",
-	"ALL",
-};
-
-#define MENU_POS_X 20
-#define MENU_POS_Y 80
 
 void iCleanUpTikTMD( void )
 {
@@ -1204,72 +1187,20 @@ int _main( int argc, char *argv[] )
 	size		= (u32*) malloca( sizeof(u32), 32 );
 	iTitleID	= (u64*) malloca( sizeof(u64), 32 );
 
-//GameMenu
-	u32 *GameCount = malloca( sizeof(u32), 32 );
+	dbgprintf("ES:TitleID:%08x-%08x\n", (u32)((TitleID)>>32), (u32)(TitleID) );
 
-	u32 FBOffset	= 0;
-	u32 FBEnable	= 0;
-	u32	FBSize		= 0;
-	u32 *WPad		= NULL;
+	if( SMenuInit( TitleID, TitleVersion ) )
+	{
+		if( LoadFont( "/font.bin" ) )
+			TimerRestart( Timer, 0, 10000 );
+	}
 
-//Patches and GameMenu
 	if( TitleID == 0x0000000100000002LL )
 	{
 		//Disable SD for system menu, as it breaks channel/game loading
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
-
-		switch( TitleVersion )
-		{
-			case 482:
-			{
-				//Disc Region free hack
-				*(u32*)0x0137DC90 = 0x4800001C;
-				*(u32*)0x0137E4E4 = 0x60000000;
-
-				//Disc autoboot
-				//*(u32*)0x0137AD5C = 0x48000020;
-				//*(u32*)0x013799A8 = 0x60000000;
-
-				//BS2Report
-				//*(u32*)0x137AEC4 = 0x481B22BC;
-				
-				if(LoadFont( "/font.bin" ))
-					TimerRestart( Timer, 0, 10000 );
-
-				FBOffset	= 0x01699448;
-				FBEnable	= 0x01699430;
-				FBSize		= 320*480*4;
-				WPad		= (u32*)0x0113EFE0;
-
-			} break;
-			case 481:
-			{
-				//Disc Region free hack
-				*(u32*)0x0137DBE8 = 0x4800001C;
-				*(u32*)0x0137E43C = 0x60000000;
-
-				if(LoadFont( "/font.bin" ))
-					TimerRestart( Timer, 0, 10000 );
-
-				FBOffset	= 0x016975A8;
-				FBEnable	= 0x01697590;
-				FBSize		= 304*480*4;
-				WPad		= (u32*)0x0113EFE0;
-			} break;
-		}
 	}
-
-	int i=0,j=0,f=0;
-	int ShowMenu=0;
-	int SLock=0;
-	int PosX=0,ScrollX=0;
-
-	u32 FB[3] = {0,0,0};
-	u32 GameUpdate = 1;
-	GCPadStatus GCPad;
-	
-	DIConfig *DICfg = NULL;
 
 	dbgprintf("ES:looping!\n");
 
@@ -1286,157 +1217,9 @@ int _main( int argc, char *argv[] )
 		{
 			TimerStop( Timer );
 
-			if( *(vu32*)FBEnable == 1 )
-			{
-				FrameBuffer = (*(vu32*)FBOffset) & 0x7FFFFFFF;
-
-				for( i=0; i<3; i++)
-				{
-					if( FB[i] == 0 )	//add a new entry
-					{
-						//check if we already know this address
-						f=0;
-						for( j=0; j<i; ++j )
-						{
-							if( FrameBuffer == FB[j] )	// already known!
-							{
-								f=1;
-								break;
-							}
-						}
-						if( !f && FrameBuffer && FrameBuffer < 0x01800000 )	// add new entry
-						{
-							FB[i] = FrameBuffer;
-							dbgprintf("ES:Added new FB[%d]:%08X\n", i, FrameBuffer );
-						}
-					}
-
-					if( FB[i] != 0 && ShowMenu )
-					{
-						PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
-						//PrintFormat( FB[i], MENU_POS_X, 40+16, "PosX:%d ScrollX:%d", PosX, ScrollX );
-
-						u32 gRegion = 0;
-
-						switch( *(u8*)(DICfg->GameInfo[PosX+ScrollX] + 3) )
-						{
-							case 'A':
-							case 'Z':
-								gRegion =  ALL;
-								break;
-							case 'E':
-								gRegion =  USA;
-								break;
-							case 'I':	// Italy
-							case 'U':	// United Kingdom
-							case 'S':	// Spain
-							case 'D':	// Germany
-							case 'P':	
-								gRegion =  EUR;
-								break;
-							case 'J':
-								gRegion =  JAP;
-								break;
-							default:
-								gRegion =  UNK;
-								break;
-						}
-
-						PrintFormat( FB[i], MENU_POS_X, 40+16, "GameRegion:%s", RegionStr[gRegion] );
-
-						for( j=0; j<20; ++j )
-						{
-							if( j+ScrollX >= *GameCount )
-								break;
-
-							if( *(vu32*)(DICfg->GameInfo[ScrollX+j]+0x1C) == 0xc2339f3d )
-								PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s (GC)", DICfg->GameInfo[ScrollX+j] + 0x20 );
-							else
-								PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s (Wii)", DICfg->GameInfo[ScrollX+j] + 0x20 );
-
-							if( j == PosX )
-								PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
-						}
-						sync_after_write( (u32*)(FB[i]), FBSize );
-					}
-				}
-
-				memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
-
-				if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
-					SLock = 0;
-
-				if( SLock == 0 )
-				{
-					if( GCPad.Start || (*WPad&WPAD_BUTTON_1) )
-					{
-						ShowMenu = !ShowMenu;
-						if(ShowMenu)
-						{
-							if( DICfg == NULL )
-							{
-								DVDGetGameCount( GameCount );
-
-								DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
-								DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
-							}
-						}
-						SLock = 1;
-					}
-
-					if( ShowMenu )
-					{
-						if( GCPad.A || (*WPad&WPAD_BUTTON_2) )
-						{
-							DVDSelectGame( PosX+ScrollX );
-							ShowMenu = 0;
-							SLock = 1;
-						}
-
-						if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
-						{
-							if( PosX )
-								PosX--;
-							else if( ScrollX )
-							{
-								ScrollX--;
-								GameUpdate=1;
-							}
-
-							SLock = 1;
-						} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
-						{
-							if( PosX >= 19 )
-							{
-								if( PosX+ScrollX+1 < *GameCount )
-								{
-									ScrollX++;
-									GameUpdate=1;
-								}
-							} else 
-								PosX++;
-
-							SLock = 1;
-						}
-
-						if( GCPad.X )
-						{
-							if( DICfg->Region == LTN )
-								DICfg->Region = JAP;
-							else
-								DICfg->Region++;
-							SLock = 1;
-						} else if( GCPad.Y )
-						{
-							if( DICfg->Region == JAP )
-								DICfg->Region = LTN;
-							else
-								DICfg->Region--;
-							SLock = 1;
-						} 
-					}
-				}
-			}
+			SMenuAddFramebuffer();
+			SMenuDraw();
+			SMenuReadPad();
 
 			TimerRestart( Timer, 0, 5000 );
 			continue;

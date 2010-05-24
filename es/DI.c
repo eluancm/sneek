@@ -111,6 +111,23 @@ s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data )
 
 	return r;
 }
+s32 DVDWriteDIConfig( void *DIConfig )
+{
+	s32 fd = IOS_Open("/dev/di", 0 );
+	if( fd < 0 )
+		return fd;
+
+	u32 *vec = malloca( sizeof(u32) * 1, 32 );
+	vec[0] = (u32)DIConfig;
+
+	s32 r = IOS_Ioctl( fd, DVD_WRITE_CONFIG, vec, sizeof(u32) * 1, NULL, 0 );
+
+	IOS_Close( fd );
+
+	free( vec );
+
+	return r;
+}
 
 s32 DVDSelectGame( u32 SlotID )
 {

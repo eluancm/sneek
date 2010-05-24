@@ -137,7 +137,7 @@ void _main(void)
 			break;
 	}
 
-	if( fi.fsize )
+	if( fi.fsize >= 0x10 )
 	{
 		f_read( &fi, DICfg, sizeof(u32) * 4, &read );
 
@@ -147,7 +147,7 @@ void _main(void)
 
 		DICfg->Region = EUR;
 		DICfg->SlotID = 0;
-		DICfg->Unused = 0;
+		DICfg->Config = CONFIG_PATCH_MPVIDEO;
 		DICfg->Gamecount = 0;
 
 		f_write( &fi, DICfg, sizeof(u32) * 4, &read );

@@ -182,12 +182,16 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 	_sprintf( path, "/sys/disc.sys" );
 
+	u64 DiscTitleID = 0LL;
+
 	if( LaunchDisc )
 	{
 		//Check for disc.sys
 		u8 *data = NANDLoadFile( path, size );
 		if( data != NULL )
 		{
+			*TitleID = *(vu64*)data;//Set TitleID to disc Title
+
 			r = LoadPPC( data+0x29A );
 			dbgprintf("ES:Disc->LoadPPC(%p):%d\n", data+0x29A, r );
 
