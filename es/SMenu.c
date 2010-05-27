@@ -10,9 +10,13 @@ u32 *GameCount;
 
 u32 ShowMenu=0;
 u32 SLock=0;
-u32 PosX=0,ScrollX=0;
+s32 PosX=0,ScrollX=0;
 
 u32 FB[3];
+
+u32 Freeze;
+u32 value;
+u32 *offset;
 
 GCPadStatus GCPad;
 
@@ -31,14 +35,16 @@ char *RegionStr[] = {
 
 s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 {
-	ShowMenu=0;
-	SLock=0;
-	PosX=0;
-	ScrollX=0;
-	FB[0] = 0;
-	FB[1] = 0;
-	FB[2] = 0;
-	DICfg = NULL;
+	value	= 0;
+	Freeze	= 0;
+	ShowMenu= 0;
+	SLock	= 0;
+	PosX	= 0;
+	ScrollX	= 0;
+	FB[0]	= 0;
+	FB[1]	= 0;
+	FB[2]	= 0;
+	DICfg	= NULL;
 
 	GameCount = malloca( sizeof(u32), 32 );
 
@@ -144,6 +150,7 @@ void SMenuDraw( void )
 			continue;
 
 		PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+		PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
 
 		switch( ShowMenu )
 		{
@@ -278,10 +285,34 @@ void SMenuReadPad ( void )
 						{
 							ScrollX++;
 						}
-					} else 
+					} else if ( PosX+ScrollX+1 < *GameCount )
 						PosX++;
 
 					SLock = 1;
+				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+				{
+					if( ScrollX/20*20 + 20 < *GameCount )
+					{
+						PosX	= 0;
+						ScrollX = ScrollX/20*20 + 20;
+					} else {
+						PosX	= 0;
+						ScrollX	= 0;
+					}
+
+					SLock = 1; 
+				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+				{
+					if( ScrollX/20*20 - 20 > 0 )
+					{
+						PosX	= 0;
+						ScrollX-= 20;
+					} else {
+						PosX	= 0;
+						ScrollX	= 0;
+					}
+
+					SLock = 1; 
 				}
 			} break;
 			case 2:		//SNEEK Settings
@@ -395,6 +426,81 @@ void SMenuReadPad ( void )
 				} 
 
 			} break;
+		}
+	}
+}
+
+void SCheatDraw( void )
+{
+	u32 i,j;
+	offset = (u32*)0x007D0500;
+
+	if( Freeze == 0xdeadbeef )
+	{
+		*offset = value;
+	}
+
+	if( *(vu32*)FBEnable != 1 )
+		return;
+
+	if( ShowMenu == 0 )
+		return;
+
+	for( i=0; i<3; i++)
+	{
+		if( FB[i] == 0 )
+			continue;
+
+		PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Cheater!!!", __DATE__ );
+
+		PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "%08X:%08X(%d)", offset, *offset, *offset );
+
+		if( Freeze == 0xdeadbeef )
+			PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "Frozen!" );
+
+		sync_after_write( (u32*)(FB[i]), FBSize );
+	}
+}
+void SCheatReadPad ( void )
+{
+	if( *WPad == -1 )
+		return;
+
+	if( (*WPad & 0x0000FFFF ) == 0 )
+	{
+		SLock = 0;
+		return;
+	}
+
+	if( SLock == 0 )
+	{
+		if( *WPad & WPAD_BUTTON_1 )
+		{
+			ShowMenu = !ShowMenu;
+			SLock = 1;
+		}
+	
+		if( ShowMenu == 0 )
+			return;
+
+		if( *WPad & WPAD_BUTTON_B )
+		{
+			if( Freeze == 0xdeadbeef )
+				Freeze = 0xdeadbabe;
+			else
+				Freeze = 0xdeadbeef;
+
+			value	= *offset;
+			SLock = 1;
+		}
+		if( *WPad & WPAD_BUTTON_UP )
+		{
+			value++;
+			SLock = 1;
+		} else if( *WPad & WPAD_BUTTON_DOWN )
+		{
+			value--;
+			SLock = 1;
 		}
 	}
 }

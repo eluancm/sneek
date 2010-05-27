@@ -44,4 +44,8 @@ void SMenuAddFramebuffer( void );
 void SMenuDraw( void );
 void SMenuReadPad( void );
 
+void SCheatDraw( void );
+void SCheatReadPad( void );
+
+
 #endif

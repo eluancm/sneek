@@ -1221,6 +1221,9 @@ int _main( int argc, char *argv[] )
 			SMenuDraw();
 			SMenuReadPad();
 
+			//SCheatDraw();
+			//SCheatReadPad();
+
 			TimerRestart( Timer, 0, 5000 );
 			continue;
 		}
