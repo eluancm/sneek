@@ -1189,20 +1189,25 @@ int _main( int argc, char *argv[] )
 
 	dbgprintf("ES:TitleID:%08x-%08x\n", (u32)((TitleID)>>32), (u32)(TitleID) );
 
+	ret = 0;
+
 	if( TitleID == 0x0000000100000002LL )
 	{
 		//Disable SD for system menu, as it breaks channel/game loading
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
-		SMenuFindOffsets( (void*)0x01330000, 0x003D0000 );
+		ret = SMenuFindOffsets( (void*)0x01330000, 0x003D0000 );
 	}/* else {
-		SMenuFindOffsets( (void*)0x00000000, 0x01200000 );
+		ret = SMenuFindOffsets( (void*)0x00000000, 0x01200000 );
 	}*/
 
-	if( SMenuInit( TitleID, TitleVersion ) )
+	if( ret != 0 )
 	{
-		if( LoadFont( "/font.bin" ) )
-			TimerRestart( Timer, 0, 10000 );
+		if( SMenuInit( TitleID, TitleVersion ) )
+		{
+			if( LoadFont( "/font.bin" ) )
+				TimerRestart( Timer, 0, 10000 );
+		}
 	}
 
 	dbgprintf("ES:looping!\n");

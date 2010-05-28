@@ -99,7 +99,10 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 	dbgprintf("ES:FBOffset:%08X\n", FBOffset );
 	dbgprintf("ES:WPad    :%p\n",	WPad );
 
-	return 1;
+	if( r13 && FBEnable && FBOffset && (WPad != NULL) )
+		return 1;
+
+	return 0;
 }
 
 s32 SMenuInit( u64 TitleID, u16 TitleVersion )
