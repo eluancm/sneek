@@ -40,6 +40,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define MENU_POS_Y 80
 
 s32 SMenuInit( u64 TitleID, u16 TitleVersion );
+s32 SMenuFindOffsets( void *ptr, u32 size );
 void SMenuAddFramebuffer( void );
 void SMenuDraw( void );
 void SMenuReadPad( void );

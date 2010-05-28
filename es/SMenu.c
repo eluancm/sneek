@@ -33,6 +33,75 @@ char *RegionStr[] = {
 	"ALL",
 };
 
+unsigned char VISetFB[] =
+{
+    0x7C, 0xE3, 0x3B, 0x78,
+	0x38, 0x87, 0x00, 0x34,
+	0x38, 0xA7, 0x00, 0x38,
+	0x38, 0xC7, 0x00, 0x4C, 
+};
+
+s32 SMenuFindOffsets( void *ptr, u32 size )
+{
+	u32 i;
+	u32 r13  = 0;
+
+	FBOffset = 0;
+	FBEnable = 0;
+	WPad	 = NULL;
+
+	for( i = 0; i < size; i+=4 )
+	{
+		if( *(u32*)(ptr+i) >> 16 == 0x3DA0 && r13 == 0 )
+		{
+			r13 = ((*(u32*)(ptr+i)) & 0xFFFF) << 16;
+			r13|= (*(u32*)(ptr+i+4)) & 0xFFFF;
+		}
+
+		if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
+		{
+			FBEnable = ( *(u32*)(ptr+i+sizeof(VISetFB)) );
+			FBEnable = ((~FBEnable) & 0xFFFF) + 1;
+			FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
+
+			for(; i < size; i+=4 )
+			{
+				if( (*(u32*)(ptr+i)) >> 16 == 0x806D )
+				{
+					FBOffset = ( *(u32*)(ptr+i) );
+					FBOffset = ((~FBOffset) & 0xFFFF) + 1;
+					FBOffset = (r13 - FBOffset) & 0x7FFFFFF ;
+					break;;
+				}
+			}
+		}
+
+		if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x1C03		&&		//  mulli   %r0, %r3, 0x688
+			(*(u32*)(ptr+i+0x04)) >> 16 == 0x3C60		&&		//  lis     %r3, inside_kpads@h
+			(*(u32*)(ptr+i+0x08)) >> 16 == 0x3863		&&		//  addi    %r3, %r3, inside_kpads@l
+			(*(u32*)(ptr+i+0x0C))	    == 0x7C630214	&&		//  add     %r3, %r3, %r0
+			(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
+			(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
+			)
+		{
+			if( *(u32*)(ptr+i+0x08) & 0x8000 )
+				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
+			else
+				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
+		}
+
+		if( r13 && FBEnable && FBOffset && WPad )
+			break;
+	}
+
+	dbgprintf("ES:r13     :%08X\n", r13 );
+	dbgprintf("ES:FBEnable:%08X\n", FBEnable );
+	dbgprintf("ES:FBOffset:%08X\n", FBOffset );
+	dbgprintf("ES:WPad    :%p\n",	WPad );
+
+	return 1;
+}
+
 s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 {
 	value	= 0;
@@ -68,10 +137,7 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//BS2Report
 					//*(u32*)0x137AEC4 = 0x481B22BC;
 					
-					FBOffset	= 0x01699448;
-					FBEnable	= 0x01699430;
 					FBSize		= 320*480*4;
-					WPad		= (u32*)0x0113EFE0;
 
 					return 1;
 				} break;
@@ -81,14 +147,16 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					*(u32*)0x0137DBE8 = 0x4800001C;
 					*(u32*)0x0137E43C = 0x60000000;
 
-					FBOffset	= 0x016975A8;
-					FBEnable	= 0x01697590;
 					FBSize		= 304*480*4;
-					WPad		= (u32*)0x0113EFE0;
 
 				return 1;	
 				} break;
 			}
+		} break;
+		default:
+		{
+			FBSize = 320*480*4;
+			return 1;
 		} break;
 		//case 0x0001000053423445LL:	//SMG2-USA
 		//{
@@ -167,6 +235,7 @@ void SMenuDraw( void )
 					case 'E':
 						gRegion =  USA;
 						break;
+					case 'F':	// France
 					case 'I':	// Italy
 					case 'U':	// United Kingdom
 					case 'S':	// Spain
