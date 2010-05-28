@@ -18,10 +18,6 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
-
-#ifndef _FS_
-#define _FS_
-
 #include "global.h"
 #include "ff.h"
 #include "syscalls.h"
@@ -36,30 +32,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define FL_FD			0x97		// 151
 #define SD_FD			0x96		// 153
 
-// error codes
-#define FS_SUCCESS		0			// Success
-#define FS_EACCES		-1			// Permission denied 
-#define FS_EEXIST		-2			// File exists 
-#define FS_EINVAL		-4			// Invalid argument, Invalid FD
-#define FS_ENOENT		-6			// File not found 
-#define FS_EBUSY		-8			// Resource busy 
-#define FS_EIO			-12			// returned on ECC error 
-#define FS_ENOMEM		-22			// Alloc failed during request 
-#define FS_EFATAL		-101		// Fatal error 
-#define FS_EACCESS		-102		// Permission denied 
-#define FS_ECORRUPT		-103		// returned for "corrupted" NAND 
-#define FS_EEXIST2		-105		// File exists 
-#define FS_ENOENT2		-106		// File not found 
-#define FS_ENFILE		-107		// Too many fds open 
-#define FS_EFBIG		-108		// max block count reached? 
-#define FS_ENFILE2 		-109		// Too many fds open 
-#define FS_ENAMELEN		-110		// pathname is too long 
-#define FS_EFDOPEN		-111		// FD is already open 
-#define FS_EIO2			-114		// returned on ECC error 
-#define FS_ENOTEMPTY 	-115		// Directory not empty 
-#define FS_EDIRDEPTH	-116		// max directory depth exceeded 
-#define FS_EBUSY2		-118		// Resource busy 
-//#define FS_EFATAL		-119		// fatal error, not used by IOS as fatal ERROR
+enum FSError
+{
+	FS_SUCCESS		=	0,
+	FS_INVALID		=	-4,
+	FS_NO_DEVICE	=	-6,
+	FS_FATAL		=	-101,
+	FS_NO_ACCESS	=	-102,
+	FS_FILE_EXIST	=	-105,
+	FS_NO_ENTRY		=	-106,
+	FS_NO_HANDLE	=	-109,
+};
 
 // FFS ioctl's
 #define	IOCTL_INIT       0x01
@@ -97,7 +80,7 @@ typedef struct {
 	u32 file_pos;
 } FDStat;
 
-
+void FS_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 void FFS_Ioctl(struct IPCMessage *msg);
 void FFS_Ioctlv(struct IPCMessage *msg);
 u32 FS_CheckHandle( s32 fd );
@@ -115,5 +98,3 @@ s32 FS_CreateDir( char *Path );
 s32 FS_SetAttr( char *Path );
 s32 FS_DeleteFile( char *Path );
 s32 FS_Move( char *sPath, char *dPath );
-
-#endif

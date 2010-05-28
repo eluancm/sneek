@@ -309,7 +309,7 @@ static s32 __usbstorage_reset(usbstorage_handle *dev)
 	if(retval < 0 && retval != -7004)
 		goto end;
   */              
-        //debug_printf("usbstorage reset..\n");
+        //dbgprintf("usbstorage reset..\n");
 	retval = __USB_CtrlMsgTimeout(dev, (USB_CTRLTYPE_DIR_HOST2DEVICE | USB_CTRLTYPE_TYPE_CLASS | USB_CTRLTYPE_REC_INTERFACE), USBSTORAGE_RESET, 0, dev->interface, 0, NULL);
 
 	/* FIXME?: some devices return -7004 here which definitely violates the usb ms protocol but they still seem to be working... */
@@ -319,7 +319,7 @@ static s32 __usbstorage_reset(usbstorage_handle *dev)
 	/* gives device enough time to process the reset */
 	msleep(10);
 
-        //debug_printf("cleat halt on bulk ep..\n");
+        //dbgprintf("cleat halt on bulk ep..\n");
 	retval = USB_ClearHalt(dev->usb_fd, dev->ep_in);
 	if(retval < 0)
 		goto end;
@@ -652,7 +652,7 @@ static int ums_init_done = 0;
 s32 USBStorage_Init(void)
 {
         int i;
-        //debug_printf("usbstorage init %d\n", ums_init_done);
+        //dbgprintf("usbstorage init %d\n", ums_init_done);
         if(ums_init_done)
           return 0;
         ums_init_done = 1;

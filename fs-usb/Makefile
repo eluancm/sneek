@@ -4,13 +4,13 @@ AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
 SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
 
-CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy
+CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy -fno-builtin-memset
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
 LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,iosmodule.map -n
 LIBS	=	-lgcc
 
 TARGET	=	iosmodule.elf
-OBJECTS	=	start.o alloc.o diskio.o ff.o syscalls.o utils_asm.o gecko.o FS.o main.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
+OBJECTS	=	start.o alloc.o diskio.o ff.o syscalls.o utils_asm.o common.o gecko.o FS.o main.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
 
 .PHONY: FORCE
 

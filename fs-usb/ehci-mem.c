@@ -32,7 +32,7 @@ static inline void ehci_qtd_init(struct ehci_qtd *qtd
 static inline struct ehci_qtd * ehci_qtd_alloc(void)
 {
         struct ehci_qtd *qtd ;
-        //debug_printf("ehci_qtd used=%x\n",ehci->qtd_used);
+        //dbgprintf("ehci_qtd used=%x\n",ehci->qtd_used);
         BUG_ON(ehci->qtd_used>=EHCI_MAX_QTD);
         qtd = ehci->qtds[ehci->qtd_used++];
         ehci_qtd_init(qtd);
@@ -50,8 +50,8 @@ int ehci_mem_init (void)
 		ehci->periodic [i] = EHCI_LIST_END();
 	ehci_writel(ehci->periodic_dma, &ehci->regs->frame_list);
 #else
-        debug_printf("ehci periodic:%x\n",ehci_readl(ehci,  &ehci->regs->frame_list));
-        debug_printf("ehci *periodic:%x\n",*(u32*)ehci_readl(ehci,  &ehci->regs->frame_list));
+        dbgprintf("ehci periodic:%x\n",ehci_readl(ehci,  &ehci->regs->frame_list));
+        dbgprintf("ehci *periodic:%x\n",*(u32*)ehci_readl(ehci,  &ehci->regs->frame_list));
 #endif
         for(i=0;i<EHCI_MAX_QTD;i++)
                 ehci->qtds[i] = ehci_maligned(sizeof(struct ehci_qtd),32,4096);

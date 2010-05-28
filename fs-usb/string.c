@@ -5,6 +5,8 @@
  */
 
 #include "string.h"
+#include "gecko.h"
+#include "vsprintf.h"
 
 size_t strnlen(const char *s, size_t count)
 {
@@ -23,18 +25,41 @@ size_t strlen(const char *s)
 		/* nothing */;
 	return sc - s;
 }
-
-char *strncpy(char *dst, const char *src, size_t n)
+char * strstr ( const char *str1, const char *str2)
 {
-	char *ret = dst;
+	char *cp = (char *) str1;
+	char *s1, *s2;
 
-	while (n && (*dst++ = *src++))
-		n--;
+	if ( !*str2 )
+		return((char *)str1);
 
-	while (n--)
-		*dst++ = 0;
+	while (*cp)
+	{
+		s1 = cp;
+		s2 = (char *) str2;
+		while ( *s1 && *s2 && !(*s1-*s2) )
+			s1++, s2++;
 
-	return ret;
+		if (!*s2)
+			return(cp);
+		cp++;
+
+	}
+
+	return(NULL);
+}
+size_t strlcpy(char *dest, const char *src, size_t maxlen)
+{
+	size_t len,needed;
+
+	len = needed = strnlen(src, maxlen-1) + 1;
+	if (len >= maxlen)
+		len = maxlen-1;
+
+	memcpy(dest, src, len);
+	dest[len]='\0';
+
+	return needed-1;
 }
 
 char *strcpy(char *dst, const char *src)
@@ -69,7 +94,6 @@ int strncmp(const char *p, const char *q, size_t n)
 	}
 	return 0;
 }
-
 void *memset(void *dst, int x, size_t n)
 {
 	unsigned char *p;
@@ -79,18 +103,6 @@ void *memset(void *dst, int x, size_t n)
 
 	return dst;
 }
-
-//void *memcpy(void *dst, const void *src, size_t n)
-//{
-//	unsigned char *p;
-//	const unsigned char *q;
-//
-//	for (p = dst, q = src; n; n--)
-//		*p++ = *q++;
-//
-//	return dst;
-//}
-
 int memcmp(const void *s1, const void *s2, size_t n)
 {
 	unsigned char *us1 = (unsigned char *) s1;
@@ -112,3 +124,32 @@ char *strchr(const char *s, int c)
 	} while(*s++ != 0);
 	return NULL;
 }
+#ifdef DEBUG
+static char ascii(char s) {
+  if(s < 0x20) return '.';
+  if(s > 0x7E) return '.';
+  return s;
+}
+
+void hexdump(void *d, int len)
+{
+  u8 *data;
+  int i, off;
+  data = (u8*)d;
+  for (off=0; off<len; off += 16)
+  {
+    dbgprintf("%08x  ",off);
+    for(i=0; i<16; i++)
+      if((i+off)>=len)
+		  dbgprintf("   ");
+      else
+		  dbgprintf("%02x ",data[off+i]);
+
+    dbgprintf(" ");
+    for(i=0; i<16; i++)
+      if((i+off)>=len) dbgprintf(" ");
+      else dbgprintf("%c",ascii(data[off+i]));
+    dbgprintf("\n");
+  }
+}
+#endif
