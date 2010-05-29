@@ -33,7 +33,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "GCPad.h"
 #include "WPad.h"
 #include "DI.h"
-#include "Font.h"
+#include "font.h"
 
 
 #define MENU_POS_X 20
