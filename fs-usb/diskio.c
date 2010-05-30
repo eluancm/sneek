@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "string.h"
 #include "ehci.h"
 #include "alloc.h"
-#include "vsprintf.h"
 
 #ifndef MEM2_BSS
 #define MEM2_BSS
@@ -30,7 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 DSTATUS disk_initialize (BYTE drv)
 {
-	//udelay( 50000 );
+	udelay( 50000 );
 
 	dbgprintf("FS: Initializing TinyEHCI...\n");
 	tiny_ehci_init();
@@ -60,7 +59,7 @@ DSTATUS disk_status (BYTE drv)
 
 DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 {
-	u32 *buffer = (u32 *)malloca( count*512, 0x40 );
+	u32 *buffer = malloca( count*512, 0x40 );
 
 	if( USBStorage_Read_Sectors( sector, count, buffer ) != 1 )
 	{
@@ -76,8 +75,9 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 
 DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 {
-	u32 *buffer = (u32 *)malloca( count*512, 0x40 );
-	memcpy( buffer, (void*)buff, count*512 );
+	int i;
+	u32 *buffer = malloca( count*512, 0x40 );
+	memcpy( buffer, buff, count*512 );
 
 	if( USBStorage_Write_Sectors( sector, count, buffer ) != 1 )
 	{

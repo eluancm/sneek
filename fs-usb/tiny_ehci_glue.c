@@ -28,14 +28,14 @@
 
 #define readl(a) (*((volatile u32*)(a)))
 #define writel(v,a) do{*((volatile u32*)(a))=(v);}while(0)
-#define ehci_dbg(a...) dbgprintf(a)
-#define printk(a...) dbgprintf(a)
+#define ehci_dbg(a...) debug_printf(a)
+#define printk(a...) debug_printf(a)
 #define get_timer()  (*(((volatile u32*)0x0D800010)))
 
 
 void BUG(void)
 {
-        dbgprintf("bug\n");
+        debug_printf("bug\n");
 //        stack_trace();
         while(1);
 }
@@ -70,23 +70,23 @@ void print_hex_dump_bytes(char *header,int prefix,u8 *buf,int len)
 {
         int i;
         if (len>0x100)len=0x100;
-        dbgprintf("%s  %08X\n",header,(u32)buf);
+        debug_printf("%s  %08X\n",header,(u32)buf);
         for (i=0;i<len;i++){
-                dbgprintf("%02x ",buf[i]);
+                debug_printf("%02x ",buf[i]);
                 if((i&0xf) == 0xf) 
-                        dbgprintf("\n");
+                        debug_printf("\n");
         }
-        dbgprintf("\n");
+        debug_printf("\n");
                 
 }
 #define DUMP_PREFIX_OFFSET 1
 #include "ehci.h"
 #define ehci_readl(a) ((*((volatile u32*)(a))))
-//#define ehci_writel(e,v,a) do{msleep(40);dbgprintf("writel %08X %08X\n",a,v);*((volatile u32*)(a))=(v);}while(0)
+//#define ehci_writel(e,v,a) do{msleep(40);debug_printf("writel %08X %08X\n",a,v);*((volatile u32*)(a))=(v);}while(0)
 #define ehci_writel(v,a) do{*((volatile u32*)(a))=(v);}while(0)
 
 struct ehci_hcd _ehci;
-struct ehci_hcd *ehci;
+struct ehci_hcd *ehci = &_ehci;
 
 #include "ehci.c"
 

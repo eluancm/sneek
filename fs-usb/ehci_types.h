@@ -29,6 +29,9 @@ struct timer_list
 {
         int time;
 };
+enum{ false=0,
+      true
+};
 enum{
         ENODEV =1,
         ETIMEDOUT,
