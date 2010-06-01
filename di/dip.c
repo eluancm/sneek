@@ -69,7 +69,7 @@ s32 DVDSelectGame( int SlotID )
 
 		if( count == SlotID )
 		{
-			char *str = malloca( 128, 32 );
+			char *str = (char *)malloca( 128, 32 );
 			//build path
 			sprintf( GamePath, "/games/%s/", FInfo.fname );
 			dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
@@ -447,7 +447,7 @@ s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr )
 		case 0x00:
 		case 0x08:		// 0x20
 		{
-			char *str = malloca( 64, 32 );
+			char *str = (char *)malloca( 64, 32 );
 			sprintf( str, "%ssys/boot.bin", GamePath );
 
 			if( f_open( &f, str, FA_READ ) == FR_OK )
@@ -509,7 +509,7 @@ s32 DVDLowReadDiscID( u32 Offset, u32 Length, void *ptr )
 	FIL f;
 	u32 read;
 
-	char *str = malloca( 32, 32 );
+	char *str = (char *)malloca( 32, 32 );
 	sprintf( str, "%ssys/boot.bin", GamePath );
 	if( f_open( &f, str, FA_READ ) != FR_OK )
 	{
@@ -571,15 +571,29 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		{
 			u32 *vec = (u32*)msg->ioctl.buffer_in;
 
-			if( f_open( &f, "/sneek/diconfig.bin", FA_WRITE|FA_OPEN_EXISTING ) == FR_OK )
+			switch( f_open( &f, "/sneek/diconfig.bin", FA_WRITE|FA_OPEN_EXISTING ) )
 			{
-				f_write( &f, (u8*)(vec[0]), 0x10, &read );
-				f_close( &f );
+				default:
+				{
+					f_unlink( "/sneek/diconfig.bin" );
+					if( f_open( &f, "/sneek/diconfig.bin", FA_WRITE|FA_CREATE_ALWAYS ) != FR_OK )
+					{
+						ret = DI_FATAL;
+						break;
+					}
+				}
+				/*fall through*/
+				case FR_OK:
+				{
+					f_write( &f, (u8*)(vec[0]), 0x10, &read );
+					f_close( &f );
+					
+					memcpy( DICfg, (u8*)(vec[0]), 0x10 );
 
-				ret = DI_SUCCESS;
-			} else 
-			{
-				ret = DI_FATAL;
+					dbgprintf("DIP:Region:%d SlotID:%d GameCount:%d Config:%04X\n", ((DIConfig*)(vec[0]))->Region, ((DIConfig*)(vec[0]))->SlotID, ((DIConfig*)(vec[0]))->Gamecount, ((DIConfig*)(vec[0]))->Config  );
+
+					ret = DI_SUCCESS;
+				} break;
 			}
 
 			dbgprintf("DIP:DVDWriteDIConfig( %p ):%d\n", vec[0], ret );
