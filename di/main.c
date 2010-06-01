@@ -152,9 +152,7 @@ void _main(void)
 
 		f_write( &fi, DICfg, sizeof(u32) * 4, &read );
 	}
-
-	f_close( &fi );
-	
+		
 	//check if new games were installed
 
 	u32 GameCount=0;
