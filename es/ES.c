@@ -636,7 +636,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 
 	u16 UID = 0;
 
-	_sprintf( path, "/title/%08x/%08x/data", TMD->TitleID >> 32, (u32)(TMD->TitleID) );
+	_sprintf( path, "/title/%08x/%08x/data", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
 
 	//Create data and content dir if neccessary
 	s32 r = ISFS_GetUsage( path, NULL, NULL );
@@ -645,7 +645,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 		case FS_ENOENT2:
 		{
 			//Create folders!
-			_sprintf( path, "/title/%08x",  TMD->TitleID >> 32 );
+			_sprintf( path, "/title/%08x",  (u32)(TMD->TitleID >> 32) );
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
@@ -656,7 +656,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				}
 			}
 
-			_sprintf( path, "/title/%08x/%08x", TMD->TitleID >> 32, (u32)(TMD->TitleID) );
+			_sprintf( path, "/title/%08x/%08x", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
@@ -667,7 +667,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				}
 			}
 
-			_sprintf( path, "/title/%08x/%08x/data", TMD->TitleID >> 32, (u32)(TMD->TitleID) );
+			_sprintf( path, "/title/%08x/%08x/data", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
@@ -678,7 +678,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				}
 			}
 
-			_sprintf( path, "/title/%08x/%08x/content", TMD->TitleID >> 32, (u32)(TMD->TitleID) );
+			_sprintf( path, "/title/%08x/%08x/content", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
@@ -702,8 +702,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 
 
 	//Write TMD to nand, disc titles don't write the ticket to nand
-
-	_sprintf( path, "/title/%08x/%08x/content/title.tmd", TMD->TitleID >> 32, (u32)(TMD->TitleID) );
+	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
 
 	//Check if there is already a TMD and check its version
 	TitleMetaData *nTMD = (TitleMetaData*)NANDLoadFile( path, size );
