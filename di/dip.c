@@ -643,6 +643,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		case DVD_SET_AUDIO_BUFFER:
 		{
 			memset32( bufout, 0, lenout );
+			hexdump( bufin, lenin );
 			ret = DI_SUCCESS;
 			dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
 		} break;

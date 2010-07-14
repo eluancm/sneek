@@ -27,78 +27,64 @@ s32 ISFS_Init( void )
 	FFSHandle = IOS_Open("/dev/fs", 0 );
 	dbgprintf("ES:IOS_Open(\"/dev/fs\", 0 ):%d\n", FFSHandle );
 
-	u8 *stats = heap_alloc( 0, 0x1C );
+	u8 *stats = (u8 *)heap_alloc( 0, 0x1C );
 
 	s32 r = ISFS_GetStats( stats );
 	dbgprintf("ES:ISFS_GetStats():%d\n", r );
 
-	free(stats );
+	free(stats);
 
 	u32 *num = (u32*)malloca( 4, 32 );
-	char *path = malloca( 0x70, 0x40 );
+	char *path = (char *)malloca( 0x70, 0x40 );
 
 	_sprintf( path, "/sys" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/ticket" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/shared1" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/shared2" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/tmp" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/import" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/meta" );
-	r = ISFS_ReadDir( path, NULL, num );
-	if( r < 0 )
+	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
+	if( r >= 0 )
 	{
-		r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-	} else
-		dbgprintf("ES:ISFS_ReadDir(\"%s\"):%d ItemCount:%d\n", path, r, *num );
+	}
 
 	_sprintf( path, "/shared1/content.map" );
 	r = ISFS_CreateFile( path, 0, 3, 3, 3 );
@@ -107,8 +93,8 @@ s32 ISFS_Init( void )
 		dbgprintf("ES:ISFS_CreateFile(\"%s\"):%d\n", path, r );
 	}
 
-	free(num );
-	free(path );
+	free(num);
+	free(path);
 
 	return 0;
 }

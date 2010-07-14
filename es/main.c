@@ -390,8 +390,8 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				ret = ES_AddContentData( *(s32*)(v[0].data), (u8*)(v[1].data), v[1].len );
 			}
 
-			if( ret < 0 )
-				dbgprintf("ES:AddContentData():%d\n", ret );
+			//if( ret < 0 )
+				dbgprintf("ES:AddContentData( %d, 0x%p, %d ):%d\n", *(s32*)(v[0].data), (u8*)(v[1].data), v[1].len, ret );
 		} break;
 		case IOCTL_ES_ADDCONTENTSTART:
 		{
@@ -830,7 +830,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_DIGETTMDVIEW:
 		{
-			u8 *data = (u8*)malloca( v[0].len, 0x40 );
+			TitleMetaData *data = (TitleMetaData*)malloca( v[0].len, 0x40 );
 			memcpy( data, (u8*)(v[0].data), v[0].len );
 
 			iES_GetTMDView( data, (u8*)(v[2].data) );
@@ -874,7 +874,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_OPENCONTENT:
 		{
 			ret = ES_OpenContent( TitleID, *(u32*)(v[0].data) );
-			if( ret < 0 )
+			//if( ret < 0 )
 				dbgprintf("ES:OpenContent(%d):%d\n", *(u32*)(v[0].data), ret );
 		} break;
 		case IOCTL_ES_OPENTITLECONTENT:
@@ -883,7 +883,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			ret = ES_OpenContent( *iTitleID, *(u32*)(v[2].data) );
 
-			if( ret < 0 )
+			//if( ret < 0 )
 				dbgprintf("ES:OpenTitleContent( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(v[2].data), ret );
 
 		} break;
@@ -901,6 +901,9 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			dbgprintf("ES:LaunchTitle( %08x-%08x )\n", (u32)((*(u64*)(v[0].data))>>32), (u32)(*(u64*)(v[0].data)) );
 
 			ret = ES_LaunchTitle( (u64*)(v[0].data), (u8*)(v[1].data) );
+
+			dbgprintf("ES_LaunchTitle Failed with:%d\n", ret );
+
 		} break;
 		case IOCTL_ES_SETUID:
 		{
@@ -1078,7 +1081,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			 }
 
 			if( ret == ES_SUCCESS )
-				ret = ES_DIVerify( &TitleID, (u32*)(v[4].data), (u8*)(v[3].data), v[3].len, (u8*)(v[2].data), (u8*)(v[5].data) );
+				ret = ES_DIVerify( &TitleID, (u32*)(v[4].data), (TitleMetaData*)(v[3].data), v[3].len, (char*)(v[2].data), (char*)(v[5].data) );
 
 			dbgprintf("ES:DIVerfiy():%d\n", ret );
 		} break;
@@ -1099,14 +1102,15 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			dbgprintf("ES:ImportBoot():%d\n", ret );
 		} break;
 		default:
+		{
 			for( i=0; i<InCount+OutCount; ++i)
 			{
 				dbgprintf("data:%p len:%d(0x%X)\n", v[i].data, v[i].len, v[i].len );
 				hexdump( (u8*)(v[i].data), v[i].len );
 			}
 			dbgprintf("ES:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv);
-			while(1);
-		break;
+			ret = ES_FATAL;
+		} break;
 	}
 
 	mqueue_ack( (void *)msg, ret);
@@ -1154,8 +1158,9 @@ int _main( int argc, char *argv[] )
 
 	u32 version = GetKernelVersion();
 	dbgprintf("ES:KernelVersion:%08X, %d\n", version, (version<<8)>>0x18 );
-
+	
 	ret = ISFS_Init();
+
 	dbgprintf("ES:ISFS_Init():%d\n", ret );
 
 	if( ISFS_IsUSB() == FS_ENOENT2 )
@@ -1176,30 +1181,27 @@ int _main( int argc, char *argv[] )
 
 	HCR = malloca( sizeof(u32)*0x30, 0x40 );
 	memset32( HCR, 0, sizeof(u32)*0x30 );
-
-	//WiiShop always swimming mario
-	//if( *(u32*)0x0001CCC0 == 0x4082007C )
-	//	*(u32*)0x0001CCC0 = 0x38000063;
-
-
+	
 //Used in Ioctlvs
 	path		= (char*)malloca(		0x40,  32 );
 	size		= (u32*) malloca( sizeof(u32), 32 );
 	iTitleID	= (u64*) malloca( sizeof(u64), 32 );
-
+	
 	dbgprintf("ES:TitleID:%08x-%08x\n", (u32)((TitleID)>>32), (u32)(TitleID) );
 
 	ret = 0;
+	u32 MenuType = 0;
 
 	if( TitleID == 0x0000000100000002LL )
 	{
-		//Disable SD for system menu, as it breaks channel/game loading
+		//Disable SD access for system menu, as it breaks channel/game loading
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
 		ret = SMenuFindOffsets( (void*)0x01330000, 0x003D0000 );
-	}/* else {
+	} else {
 		ret = SMenuFindOffsets( (void*)0x00000000, 0x01200000 );
-	}*/
+		MenuType = 1;
+	}
 
 	if( ret != 0 )
 	{
@@ -1226,13 +1228,17 @@ int _main( int argc, char *argv[] )
 			TimerStop( Timer );
 
 			SMenuAddFramebuffer();
-			SMenuDraw();
-			SMenuReadPad();
+			if( MenuType == 0 )
+			{
+				SMenuDraw();
+				SMenuReadPad();
+			} else if( MenuType == 1 ) {
 
-			//SCheatDraw();
-			//SCheatReadPad();
+				SCheatDraw();
+				SCheatReadPad();
+			}
 
-			TimerRestart( Timer, 0, 5000 );
+			TimerRestart( Timer, 0, 2500 );
 			continue;
 		}
 	
@@ -1299,7 +1305,6 @@ int _main( int argc, char *argv[] )
 			default:
 				dbgprintf("ES:unimplemented/invalid msg: %08x argv[0]:%08x\n", message->command, message->args[0] );
 				mqueue_ack( (void *)message, FS_EINVAL );
-				while(1);
 		}
 	}
 

@@ -12,11 +12,17 @@ u32 ShowMenu=0;
 u32 SLock=0;
 s32 PosX=0,ScrollX=0;
 
-u32 FB[3];
+u32 FB[MAX_FB];
 
 u32 Freeze;
 u32 value;
 u32 *offset;
+
+
+u32 PosValX;
+u32 Hits;
+u32 edit;
+u32 *Offsets;
 
 GCPadStatus GCPad;
 
@@ -48,7 +54,7 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 
 	FBOffset = 0;
 	FBEnable = 0;
-	WPad	 = NULL;
+	WPad	 = (u32*)NULL;
 
 	for( i = 0; i < size; i+=4 )
 	{
@@ -56,6 +62,7 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 		{
 			r13 = ((*(u32*)(ptr+i)) & 0xFFFF) << 16;
 			r13|= (*(u32*)(ptr+i+4)) & 0xFFFF;
+			dbgprintf("r13:%08X\n", i );
 		}
 
 		if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
@@ -63,19 +70,12 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 			FBEnable = ( *(u32*)(ptr+i+sizeof(VISetFB)) );
 			FBEnable = ((~FBEnable) & 0xFFFF) + 1;
 			FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
+			dbgprintf("FBe:%08X\n", i );
 
-			for(; i < size; i+=4 )
-			{
-				if( (*(u32*)(ptr+i)) >> 16 == 0x806D )
-				{
-					FBOffset = ( *(u32*)(ptr+i) );
-					FBOffset = ((~FBOffset) & 0xFFFF) + 1;
-					FBOffset = (r13 - FBOffset) & 0x7FFFFFF ;
-					break;;
-				}
-			}
+			FBOffset = FBEnable + 0x18;
 		}
 
+		//Wpad pattern new
 		if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x1C03		&&		//  mulli   %r0, %r3, 0x688
 			(*(u32*)(ptr+i+0x04)) >> 16 == 0x3C60		&&		//  lis     %r3, inside_kpads@h
 			(*(u32*)(ptr+i+0x08)) >> 16 == 0x3863		&&		//  addi    %r3, %r3, inside_kpads@l
@@ -88,6 +88,21 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
 			else
 				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
+		}
+
+		//WPad pattern old
+		if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x3C80		&&		//  lis     %r3, inside_kpads@h
+			(*(u32*)(ptr+i+0x04))		== 0x5460502A	&&		//  slwi    %r0, %r3, 10
+			(*(u32*)(ptr+i+0x08)) >> 16 == 0x3884		&&		//  addi    %r3, %r3, inside_kpads@l
+			(*(u32*)(ptr+i+0x0C))	    == 0x7C640214	&&		//  add     %r3, %r4, %r0
+			(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
+			(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
+			)
+		{
+			if( *(u32*)(ptr+i+0x08) & 0x8000 )
+				WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
+			else
+				WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
 		}
 
 		if( r13 && FBEnable && FBOffset && WPad )
@@ -104,7 +119,6 @@ s32 SMenuFindOffsets( void *ptr, u32 size )
 
 	return 0;
 }
-
 s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 {
 	value	= 0;
@@ -113,12 +127,16 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 	SLock	= 0;
 	PosX	= 0;
 	ScrollX	= 0;
+	PosValX	= 0;
+	Hits	= 0;
+	edit	= 0;
 	FB[0]	= 0;
 	FB[1]	= 0;
 	FB[2]	= 0;
 	DICfg	= NULL;
 
-	GameCount = malloca( sizeof(u32), 32 );
+	Offsets	  = (u32*)malloca( sizeof(u32)*MAX_HITS, 32 );
+	GameCount = (u32*)malloca( sizeof(u32), 32 );
 
 //Patches and SNEEK Menu
 	switch( TitleID )
@@ -127,7 +145,7 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 		{
 			switch( TitleVersion )
 			{
-				case 482:
+				case 482:	// EUR 4.2
 				{
 					//Disc Region free hack
 					*(u32*)0x0137DC90 = 0x4800001C;
@@ -144,7 +162,17 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 
 					return 1;
 				} break;
-				case 481:
+				case 514:	// EUR 4.3
+				{
+					//Disc Region free hack
+					*(u32*)0x0137DE28 = 0x4800001C;
+					*(u32*)0x0137E7A4 = 0x38000001;
+					
+					FBSize		= 320*480*4;
+
+					return 1;
+				} break;
+				case 481:	// USA 4.2
 				{
 					//Disc Region free hack
 					*(u32*)0x0137DBE8 = 0x4800001C;
@@ -152,7 +180,13 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 
 					FBSize		= 304*480*4;
 
-				return 1;	
+					return 1;	
+				} break;
+				case 513:	// USA 4.3
+				{
+					FBSize		= 304*480*4;
+
+					return 1;	
 				} break;
 			}
 		} break;
@@ -161,15 +195,6 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 			FBSize = 320*480*4;
 			return 1;
 		} break;
-		//case 0x0001000053423445LL:	//SMG2-USA
-		//{
-		//	FBOffset	= 0x007D67F8;
-		//	FBEnable	= 0x007D67E0;
-		//	FBSize		= 320*480*4;
-		//	WPad		= (u32*)0x00750A00;
-
-		//	return 1;
-		//} break;
 	}
 	return 0;
 }
@@ -182,7 +207,7 @@ void SMenuAddFramebuffer( void )
 
 	FrameBuffer = (*(vu32*)FBOffset) & 0x7FFFFFFF;
 
-	for( i=0; i<3; i++)
+	for( i=0; i < MAX_FB; i++)
 	{
 		if( FB[i] )	//add a new entry
 			continue;
@@ -199,10 +224,9 @@ void SMenuAddFramebuffer( void )
 		}
 		if( !f && FrameBuffer && FrameBuffer < 0x14000000 )	// add new entry
 		{
-			FB[i] = FrameBuffer;
 			dbgprintf("ES:Added new FB[%d]:%08X\n", i, FrameBuffer );
+			FB[i] = FrameBuffer;
 		}
-		
 	}
 }
 void SMenuDraw( void )
@@ -215,7 +239,7 @@ void SMenuDraw( void )
 	if( ShowMenu == 0 )
 		return;
 
-	for( i=0; i<3; i++)
+	for( i=0; i < MAX_FB; i++)
 	{
 		if( FB[i] == 0 )
 			continue;
@@ -501,7 +525,6 @@ void SMenuReadPad ( void )
 		}
 	}
 }
-
 void SCheatDraw( void )
 {
 	u32 i,j;
@@ -522,23 +545,66 @@ void SCheatDraw( void )
 	{
 		if( FB[i] == 0 )
 			continue;
+		
+		switch( ShowMenu )
+		{
+			case 1:
+			{
+				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Cheater!!!", __DATE__ );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Search value..." );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "RAM viewer..." );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "RAM dumper..." );
 
-		PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Cheater!!!", __DATE__ );
+				PrintFormat( FB[i], MENU_POS_X+80-6*3, 104+16*PosX, "-->");
 
-		PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "%08X:%08X(%d)", offset, *offset, *offset );
+			} break;
+			case 2:
+			{
+				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Search value", __DATE__ );
+				PrintFormat( FB[i], MENU_POS_X, 104+16*-1, "Hits :%08X:%08X", Hits, *(vu32*)WPad );
+				PrintFormat( FB[i], MENU_POS_X+6*6+PosValX*6, 108, "_" );
+				PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Value:%08X(%d:%u)", value, value, value );
 
-		if( Freeze == 0xdeadbeef )
-			PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "Frozen!" );
+				for( j=0; j < Hits; ++j )
+				{
+					if( j > 10 )
+						break;
+					PrintFormat( FB[i], MENU_POS_X, 104+32+16*j, "%08X:%08X(%d:%u)", Offsets[j], *(u32*)(Offsets[j]), *(u32*)(Offsets[j]), *(u32*)(Offsets[j]) );
+				}
+				
+			} break;
+			case 3:
+			{
+				PrintFormat( FB[i], MENU_POS_X, 32, "SNEEK+DI %s  edit value", __DATE__ );
+
+				for( j=0; j < Hits; ++j )
+				{
+					if( j > 20 )
+						break;
+					if( j == PosX && edit )
+						PrintFormat( FB[i], MENU_POS_X+9*6+PosValX*6, 64+18*j+2, "_" );
+					PrintFormat( FB[i], MENU_POS_X, 64+18*j, "%08X:%08X(%d:%u)", Offsets[j], *(u32*)(Offsets[j]), *(u32*)(Offsets[j]), *(u32*)(Offsets[j]) );
+				}
+
+				PrintFormat( FB[i], MENU_POS_X-6*3, 64+18*PosX, "-->");
+				
+			} break;
+			
+		}
+		//PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "%08X:%08X(%d)", offset, *offset, *offset );
+
+		//if( Freeze == 0xdeadbeef )
+		//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "Frozen!" );
 
 		sync_after_write( (u32*)(FB[i]), FBSize );
 	}
 }
 void SCheatReadPad ( void )
 {
-	if( *WPad == -1 )
-		return;
+	int i;
 
-	if( (*WPad & 0x0000FFFF ) == 0 )
+	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
+	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 )
 	{
 		SLock = 0;
 		return;
@@ -546,33 +612,213 @@ void SCheatReadPad ( void )
 
 	if( SLock == 0 )
 	{
-		if( *WPad & WPAD_BUTTON_1 )
+		if( GCPad.Start )
 		{
 			ShowMenu = !ShowMenu;
+			SLock = 1;
+			PosX  = 0;
+		}
+		if( GCPad.Z )
+		{
+			u8 *buf = (u8*)malloc( FBSize );
+			memcpy( buf, (void*)(FB[0]), FBSize );
+
+			dbgprintf("ES:Taking screenshot...");
+
+			char *str = (char*)malloc( 32 );
+
+			i=0;
+
+			do
+			{
+				_sprintf( str, "/scrn_%02X.raw", i++ );
+				s32 r = ISFS_CreateFile(str, 0, 3, 3, 3);
+				if( r < 0  )
+				{
+					if( r != -105 )
+					{
+						dbgprintf("ES:ISFS_CreateFile():%d\n", r );
+						free( buf );
+						free( str );
+						return;
+					}
+				} else {
+					break;
+				}
+			} while(1);
+
+			s32 fd = IOS_Open( str, 3 );
+			if( fd < 0 )
+			{
+				dbgprintf("ES:IOS_Open():%d\n", fd );
+				free( buf );
+				free( str );
+				return;
+			}
+
+			IOS_Write( fd, buf, FBSize );
+
+			IOS_Close( fd );
+
+			free( buf );
+			free( str );
+
+			dbgprintf("done\n");
 			SLock = 1;
 		}
 	
 		if( ShowMenu == 0 )
 			return;
 
-		if( *WPad & WPAD_BUTTON_B )
+		switch( ShowMenu )
 		{
-			if( Freeze == 0xdeadbeef )
-				Freeze = 0xdeadbabe;
-			else
-				Freeze = 0xdeadbeef;
+			case 1:
+			{
+				if( GCPad.A )
+				{
+					ShowMenu= 2;
+					SLock	= 1;
+					PosValX	= 0;
+				}
+			} break;
+			case 2:
+			{
+				if( GCPad.A )
+				{
+					Hits = 0;
 
-			value	= *offset;
-			SLock = 1;
-		}
-		if( *WPad & WPAD_BUTTON_UP )
-		{
-			value++;
-			SLock = 1;
-		} else if( *WPad & WPAD_BUTTON_DOWN )
-		{
-			value--;
-			SLock = 1;
+					for( i=0; i < 0x01800000; i+=4 )
+					{
+						if( *(u32*)i == value )
+						{
+							if( Hits < MAX_HITS )
+							{
+								Offsets[Hits] = i;
+							}
+							Hits++;
+						}
+					}
+
+					SLock	= 1;
+				}
+				if(  GCPad.B )
+				{
+					ShowMenu= 1;
+					SLock	= 1;
+				}
+				if(  GCPad.X )
+				{
+					ShowMenu= 3;
+					PosX	= 0;
+					edit	= 0;
+					SLock	= 1;
+				}
+				if(  GCPad.Left )
+				{
+					if( PosValX > 0 )
+						PosValX--;
+					SLock = 1;
+				} else if(  GCPad.Right )
+				{
+					if( PosValX < 7 )
+						PosValX++;
+					SLock = 1;
+				}
+				if( GCPad.Up )
+				{
+					if( ((value>>((7-PosValX)<<2)) & 0xF) == 0xF )
+					{
+						value &= ~(0xF << ((7-PosValX)<<2));
+					} else {
+						value += 0x1 << ((7-PosValX)<<2);
+					}
+					SLock = 1;
+				} else if( GCPad.Down )
+				{
+					if( ((value>>((7-PosValX)<<2)) & 0xF) == 0x0 )
+					{
+						value |= (0xF << ((7-PosValX)<<2));
+					} else {
+						value -= 0x1 << ((7-PosValX)<<2);
+					}
+					SLock = 1;
+				}
+			} break;
+			case 3:
+			{
+				if( *WPad == WPAD_BUTTON_A )
+				{
+					edit	= !edit;
+					SLock	= 1;
+					PosValX	= 0;
+				}
+				if( *WPad == WPAD_BUTTON_PLUS )
+				{
+					ShowMenu= 2;
+					PosX	= 0;
+					edit	= 0;
+					SLock	= 1;
+				}
+				if( edit == 0 )
+				{
+					if( *WPad == WPAD_BUTTON_UP )
+					{
+						if( PosX > 0 )
+							PosX--;
+
+						SLock = 1;
+					} else if( *WPad == WPAD_BUTTON_DOWN )
+					{
+						if( PosX <= Hits && PosX <= 20 )
+							PosX++;
+						else
+							PosX = 0;
+
+						SLock = 1;
+					}
+				} else {
+					if( *WPad == WPAD_BUTTON_LEFT )
+					{
+						if( PosValX > 0 )
+							PosValX--;
+						SLock = 1;
+					} else if( *WPad == WPAD_BUTTON_RIGHT )
+					{
+						if( PosValX < 7 )
+							PosValX++;
+						SLock = 1;
+					}
+					if( *WPad == WPAD_BUTTON_UP )
+					{
+						u32 val = *(vu32*)(Offsets[PosX]);
+
+						if( ((val>>((7-PosValX)<<2)) & 0xF) == 0xF )
+						{
+							val &= ~(0xF << ((7-PosValX)<<2));
+						} else {
+							val += 0x1 << ((7-PosValX)<<2);
+						}
+
+						 *(vu32*)(Offsets[PosX]) = val;
+
+						SLock = 1;
+					} else if( *WPad == WPAD_BUTTON_DOWN )
+					{
+						u32 val = *(vu32*)(Offsets[PosX]);
+
+						if( ((val>>((7-PosValX)<<2)) & 0xF) == 0x0 )
+						{
+							val |= (0xF << ((7-PosValX)<<2));
+						} else {
+							val -= 0x1 << ((7-PosValX)<<2);
+						}
+
+						 *(vu32*)(Offsets[PosX]) = val;
+
+						SLock = 1;
+					}
+				}
+			} break;
 		}
 	}
 }

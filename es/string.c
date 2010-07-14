@@ -56,7 +56,7 @@ size_t strlcpy(char *dest, const char *src, size_t maxlen)
 	if (len >= maxlen)
 		len = maxlen-1;
 
-	memcpy(dest, src, len);
+	memcpy(dest, (void*)src, len);
 	dest[len]='\0';
 
 	return needed-1;

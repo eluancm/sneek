@@ -94,6 +94,22 @@ enum DIError
 	DI_FATAL				= 0x40,
 };
 
+#define		DI_BASE		0x0D806000
+
+#define		DI_STATUS	(*(vu32*)(DI_BASE+0x00))
+#define		DI_COVER	(*(vu32*)(DI_BASE+0x04))
+#define		DI_CMD_0	(*(vu32*)(DI_BASE+0x08))
+#define		DI_CMD_1	(*(vu32*)(DI_BASE+0x0C))
+#define		DI_CMD_2	(*(vu32*)(DI_BASE+0x10))
+#define		DI_DMA_ADR	(*(vu32*)(DI_BASE+0x14))
+#define		DI_DMA_LEN	(*(vu32*)(DI_BASE+0x18))
+#define		DI_CONTROL	(*(vu32*)(DI_BASE+0x1C))
+#define		DI_IMM		(*(vu32*)(DI_BASE+0x20))
+#define		DI_CONFIG	(*(vu32*)(DI_BASE+0x24))
+
+#define		DMA_READ		3
+#define		IMM_READ		1
+
 s32 DVDLowEnableVideo( u32 Mode );
 s32 DVDGetGameCount( u32 *Mode );
 s32 DVDSetRegion( u32 *Region );

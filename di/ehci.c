@@ -566,6 +566,7 @@ int ehci_do_urb ( struct ehci_device *dev, struct ehci_urb	*urb)
 s32 ehci_control_message(struct ehci_device *dev,u8 bmRequestType,u8 bmRequest,u16 wValue,u16 wIndex,u16 wLength,void *buf)
 {
     struct ehci_urb urb;
+	int ret;
     usbctrlrequest *req = ehci->ctrl_buffer;
 
     if( verbose )
@@ -581,9 +582,26 @@ s32 ehci_control_message(struct ehci_device *dev,u8 bmRequestType,u8 bmRequest,u
     urb.input = (bmRequestType&USB_CTRLTYPE_DIR_DEVICE2HOST)!=0;
     urb.maxpacket = 64;
     urb.transfer_buffer_length = wLength;
-    urb.transfer_buffer = buf;
 
-    return ehci_do_urb(dev,&urb);
+	if( urb.transfer_buffer_length )
+	{
+		urb.transfer_buffer = USB_Alloc( wLength );
+		memcpy( urb.transfer_buffer, buf, wLength );
+
+		ret = ehci_do_urb( dev, &urb );
+
+		memcpy( buf,urb.transfer_buffer, wLength );
+		USB_Free( urb.transfer_buffer );
+
+	} else {
+
+		urb.transfer_buffer = NULL;
+
+		ret = ehci_do_urb( dev, &urb );
+
+	}
+
+    return ret;
 }
 s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpData)
 {

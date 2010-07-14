@@ -34,10 +34,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "WPad.h"
 #include "DI.h"
 #include "font.h"
+#include "bmp.h"
 
+#define MAX_HITS	64
+#define MAX_FB		3
 
-#define MENU_POS_X 20
-#define MENU_POS_Y 80
+#define MENU_POS_X	20
+#define MENU_POS_Y	80
 
 s32 SMenuInit( u64 TitleID, u16 TitleVersion );
 s32 SMenuFindOffsets( void *ptr, u32 size );

@@ -41,7 +41,6 @@ s32 DVDLowEnableVideo( u32 Mode )
 
 	return r;
 }
-
 s32 DVDLowPrepareCoverRegister( u32 *Cover )
 {
 	s32 fd = IOS_Open("/dev/di", 0 );
@@ -66,7 +65,6 @@ s32 DVDGetGameCount( u32 *Count )
 
 	return r;
 }
-
 s32 DVDEjectDisc( void )
 {
 	s32 fd = IOS_Open("/dev/di", 0 );
@@ -79,7 +77,6 @@ s32 DVDEjectDisc( void )
 
 	return r;
 }
-
 s32 DVDInsertDisc( void )
 {
 	s32 fd = IOS_Open("/dev/di", 0 );
@@ -98,7 +95,7 @@ s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data )
 	if( fd < 0 )
 		return fd;
 
-	u32 *vec = malloca( sizeof(u32) * 3, 32 );
+	u32 *vec = (u32 *)malloca( sizeof(u32) * 3, 32 );
 	vec[0] = Offset;
 	vec[1] = Length;
 	vec[2] = (u32)Data;
@@ -117,7 +114,7 @@ s32 DVDWriteDIConfig( void *DIConfig )
 	if( fd < 0 )
 		return fd;
 
-	u32 *vec = malloca( sizeof(u32) * 1, 32 );
+	u32 *vec = (u32 *)malloca( sizeof(u32) * 1, 32 );
 	vec[0] = (u32)DIConfig;
 
 	s32 r = IOS_Ioctl( fd, DVD_WRITE_CONFIG, vec, sizeof(u32) * 1, NULL, 0 );
@@ -128,14 +125,13 @@ s32 DVDWriteDIConfig( void *DIConfig )
 
 	return r;
 }
-
 s32 DVDSelectGame( u32 SlotID )
 {
 	s32 fd = IOS_Open("/dev/di", 0 );
 	if( fd < 0 )
 		return fd;
 
-	u32 *vec = malloca( sizeof(u32) * 1, 32 );
+	u32 *vec = (u32 *)malloca( sizeof(u32) * 1, 32 );
 	vec[0] = SlotID;
 
 	s32 r = IOS_Ioctl( fd, DVD_SELECT_GAME, vec, sizeof(u32) * 1, NULL, 0 );

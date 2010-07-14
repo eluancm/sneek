@@ -178,7 +178,7 @@ void syscall_57(void);
 void syscall_58(void);
 
 #define LoadPPC( TMD ) syscall_59( TMD )
-s32 syscall_59( u8 *TMD);
+s32 syscall_59( u8 *TMD );
 
 #define LoadModule( Path ) syscall_5a( Path )
 s32 syscall_5a( char *Path );
