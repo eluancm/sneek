@@ -102,7 +102,23 @@ void _main(void)
 	IRQ_Enable_18();
 
 	DVDInit();
+	
+	//check if new games were installed
+	u32 GameCount=0;
+	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
+	{
+		dbgprintf("DIP:Could not open game dir!\n");
+		while(1);
+	}
 
+	while( DVDReadDir() == DVD_SUCCESS )
+	{
+		if( DVDDirIsFile() )		// skip files
+			continue;
+
+		GameCount++;
+	}
+	
 	DICfg = (DIConfig*)malloca( sizeof(u32) * 4, 32 );
 	
 	s32 fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_READ );
@@ -120,7 +136,7 @@ void _main(void)
 		}
 	}
 
-	if( DVDGetSize(fd) >= 0x10 )
+	if( DVDGetSize(fd) == GameCount * 0x60 + 0x10 )
 	{
 		ret = DVDRead( fd,  DICfg, sizeof(u32) * 4 );
 	} else {
@@ -133,23 +149,6 @@ void _main(void)
 		DICfg->Gamecount = 0;
 
 		ret = DVDWrite( fd, DICfg, sizeof(u32) * 4 );
-	}
-		
-	//check if new games were installed
-
-	u32 GameCount=0;
-	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
-	{
-		dbgprintf("DIP:Could not open game dir!\n");
-		while(1);
-	}
-
-	while( DVDReadDir() == DVD_SUCCESS )
-	{
-		if( DVDDirIsFile() )		// skip files
-			continue;
-
-		GameCount++;
 	}
 
 	dbgprintf("DIP:%d:%d\n", GameCount, DICfg->Gamecount );

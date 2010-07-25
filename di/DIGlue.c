@@ -222,7 +222,7 @@ s32 DVDReadDir( void )
 
 		FirstEntry++;
 
-		if( FirstEntry < *EntryCount )
+		if( FirstEntry <= *EntryCount )
 			return DVD_SUCCESS;
 		else
 			return DVD_NO_FILE;
