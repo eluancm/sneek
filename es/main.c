@@ -38,6 +38,7 @@ void *queuespace=NULL;
 int queueid = 0;
 int heapid=0;
 int FFSHandle=0;
+u32 FSUSB=0;
 
 #undef DEBUG
 
@@ -801,7 +802,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			} else  {
 
 				for( i=0; i < *(u32*)(v[1].data); ++i )
-					iES_GetTicketView( data + i * 0x2A4, (u8*)(v[2].data) + i * 0xD8 );
+					iES_GetTicketView( data + i * TICKET_SIZE, (u8*)(v[2].data) + i * 0xD8 );
 				
 				free( data );
 				ret = ES_SUCCESS;
@@ -842,40 +843,37 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_DIGETTMDVIEWSIZE:
 		{
-			u8 *data = (u8*)malloca( v[0].len, 0x40 );
-			memcpy( data, (u8*)(v[0].data), v[0].len );
+			TitleMetaData *TMD = (TitleMetaData*)malloca( v[0].len, 0x40 );
+			memcpy( TMD, (u8*)(v[0].data), v[0].len );
 
-			*(u32*)(v[1].data) = *(u16*)(data+0x1DE)*16+0x5C;
+			*(u32*)(v[1].data) = TMD->ContentCount*16+0x5C;
 
-			free( data );
+			free( TMD );
 
 			ret = ES_SUCCESS;
 			dbgprintf("ES:DIGetTMDViewSize( %d ):%d\n", *(u32*)(v[1].data), ret );
 		} break;
 		case IOCTL_ES_CLOSECONTENT:
 		{
-			IOS_Close( *(u32*)(v[0].data) );	//Never returns anything
+			IOS_Close( *(u32*)(v[0].data) );
 
 			ret = ES_SUCCESS;
-			//dbgprintf("ES:CloseContent(%d):%d\n", *(u32*)(v[0].data), ret );
+			dbgprintf("ES:CloseContent(%d):%d\n", *(u32*)(v[0].data), ret );
 		} break;
 		case IOCTL_ES_SEEKCONTENT:
 		{
 			ret = IOS_Seek( *(u32*)(v[0].data), *(u32*)(v[1].data), *(u32*)(v[2].data) );
-			if( ret < 0 )
-				dbgprintf("ES:SeekContent( %d, %d, %d ):%d\n", *(u32*)(v[0].data), *(u32*)(v[1].data), *(u32*)(v[2].data), ret );
+			dbgprintf("ES:SeekContent( %d, %d, %d ):%d\n", *(u32*)(v[0].data), *(u32*)(v[1].data), *(u32*)(v[2].data), ret );
 		} break;
 		case IOCTL_ES_READCONTENT:
 		{
 			ret = IOS_Read( *(u32*)(v[0].data), (u8*)(v[1].data), v[1].len );
-			if( ret < 0 )			
-				dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(v[0].data), v[1].data, v[1].len, ret );
+			dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(v[0].data), v[1].data, v[1].len, ret );
 		} break;
 		case IOCTL_ES_OPENCONTENT:
 		{
 			ret = ES_OpenContent( TitleID, *(u32*)(v[0].data) );
-			//if( ret < 0 )
-				dbgprintf("ES:OpenContent(%d):%d\n", *(u32*)(v[0].data), ret );
+			dbgprintf("ES:OpenContent(%d):%d\n", *(u32*)(v[0].data), ret );
 		} break;
 		case IOCTL_ES_OPENTITLECONTENT:
 		{
@@ -883,13 +881,13 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			ret = ES_OpenContent( *iTitleID, *(u32*)(v[2].data) );
 
-			//if( ret < 0 )
-				dbgprintf("ES:OpenTitleContent( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(v[2].data), ret );
-
+			dbgprintf("ES:OpenTitleContent( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(v[2].data), ret );
 		} break;
 		case IOCTL_ES_GETTITLEDIR:
 		{
-			_sprintf( path, "/title/%08x/%08x/data", (u32)((*(u64*)(v[0].data))>>32), (u32)(*(u64*)(v[0].data)) );
+			memcpy( iTitleID, (u8*)(v[0].data), sizeof(u64) );
+
+			_sprintf( path, "/title/%08x/%08x/data", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
 			memcpy( (u8*)(v[1].data), path, 32 );
 
@@ -898,7 +896,9 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_LAUNCH:
 		{
-			dbgprintf("ES:LaunchTitle( %08x-%08x )\n", (u32)((*(u64*)(v[0].data))>>32), (u32)(*(u64*)(v[0].data)) );
+			memcpy( iTitleID, (u8*)(v[0].data), sizeof(u64) );
+
+			dbgprintf("ES:LaunchTitle( %08x-%08x )\n", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
 			ret = ES_LaunchTitle( (u64*)(v[0].data), (u8*)(v[1].data) );
 
@@ -907,7 +907,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_SETUID:
 		{
-			TitleID = *(u64*)(v[0].data);
+			memcpy( &TitleID, (u8*)(v[0].data), sizeof(u64) );
 
 			u16 UID = 0;
 			ret = ES_GetUID( &TitleID, &UID );
@@ -935,7 +935,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_GETTITLEID:
 		{
-			*(u64*)(v[0].data) = TitleID;
+			memcpy( (u8*)(v[0].data), &TitleID, sizeof(u64) );
 
 			ret = ES_SUCCESS;
 			dbgprintf("ES:GetTitleID(%08x-%08x):%d\n", (u32)(*(u64*)(v[0].data)>>32), (u32)*(u64*)(v[0].data), ret );
@@ -1166,12 +1166,15 @@ int _main( int argc, char *argv[] )
 	if( ISFS_IsUSB() == FS_ENOENT2 )
 	{
 		dbgprintf("ES:Found FS-SD\n");
+		FSUSB = 0;
+
 		ret = device_register("/dev/sdio", MessageQueue );
 #ifdef DEBUG
 		dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
 #endif
 	} else {
 		dbgprintf("ES:Found FS-USB\n");
+		FSUSB = 1;
 	}
 
 	ES_BootSystem( &TitleID, &KernelVersion );
@@ -1207,7 +1210,7 @@ int _main( int argc, char *argv[] )
 	{
 		if( SMenuInit( TitleID, TitleVersion ) )
 		{
-			if( LoadFont( "/font.bin" ) )
+			if( LoadFont( "/sneek/font.bin" ) )
 				TimerRestart( Timer, 0, 10000 );
 		}
 	}

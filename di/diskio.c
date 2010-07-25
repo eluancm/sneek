@@ -24,16 +24,11 @@ DSTATUS disk_initialize (BYTE drv)
 {
 	udelay( 50000 );
 
-	dbgprintf("DIP: Initializing TinyEHCI...\n");
 	tiny_ehci_init();
-
-	dbgprintf("DIP: Discovering EHCI devices...\n");
 
 	while( ehci_discover() == -ENODEV )
 		udelay( 4000 );
 
-	dbgprintf("done\n");
-	
 	s32 r = USBStorage_Init();
 	
 	u32 s_size;
@@ -54,10 +49,7 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 {
 	u32 *buffer = malloca( count*512, 0x40 );
 
-	if( USBStorage_Read_Sectors( sector, count, buffer ) != 1 )
-	{
-		DIP_Fatal( "disk_read()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
-	}
+	USBStorage_Read_Sectors( sector, count, buffer );
 	memcpy( buff, buffer, count*512 );
 	free( buffer );
 
@@ -69,10 +61,7 @@ DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 	u32 *buffer = malloca( count*512, 0x40 );
 	memcpy( buffer, buff, count*512 );
 
-	if( USBStorage_Write_Sectors( sector, count, buffer ) != 1 )
-	{
-		DIP_Fatal( "disk_write()", __LINE__, __FILE__, sector, "Failed to write disc\n" );
-	}
+	USBStorage_Write_Sectors( sector, count, buffer );
 	free( buffer );
 
 	return RES_OK;

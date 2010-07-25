@@ -31,6 +31,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "vsprintf.h"
 #include "alloc.h"
 
+#define ISFS_MAX_PATH	0x40
+
 typedef s32 (*isfscallback)(s32 result,void *usrdata);
 
 typedef struct _fstats

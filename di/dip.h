@@ -25,12 +25,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "syscalls.h"
 #include "global.h"
 #include "ipc.h"
-#include "ehci_types.h"
-#include "ehci.h"
 #include "gecko.h"
 #include "alloc.h"
-#include "ff.h"
 #include "vsprintf.h"
+#include "DIGlue.h"
 
 #define DI_SUCCESS	1
 #define DI_ERROR	2
@@ -131,7 +129,7 @@ typedef struct
 {
 	u32 Offset;
 	u32 Size;
-	FIL File;
+	s32 File;
 } FileCache;
 
 #define FILECACHE_MAX	5

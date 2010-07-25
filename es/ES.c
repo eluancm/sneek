@@ -789,8 +789,9 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 		goto ES_DIVerfiy_end;
 	}
 
-	for( r = 0; r < TMD->ContentCount; ++r )
-		memcpy( Hashes + r * 20, (u8*)TMD + 0x1F4 + r*0x24, 20 );
+	int i;
+	for( i = 0; i < TMD->ContentCount; ++i )
+		memcpy( Hashes + i * 20, (u8*)TMD + 0x1F4 + i*0x24, 20 );
 	
 	DITicket = (u8*)malloca( TICKET_SIZE, 0x40 );
 	
@@ -1443,7 +1444,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	u32 LoadDI=0;
 
-	_sprintf( path, "/di.bin" );
+	_sprintf( path, "/sneek/di.bin" );
 	u8 *difile = NANDLoadFile( path, size );
 	if( difile != NULL )
 	{
@@ -1470,7 +1471,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 		//Load special DI module
 		if( TMD->Contents[i].Index == 1 && LoadDI )
 		{
-			_sprintf( path, "/di.bin" );
+			_sprintf( path, "/sneek/di.bin" );
 		} else {
 			//check if shared!
 			if( TMD->Contents[i].Type & CONTENT_SHARED )
@@ -1492,12 +1493,12 @@ s32 ES_LoadModules( u32 KernelVersion )
 				_sprintf( path, "/title/00000001/%08x/content/%08x.app", KernelVersion, TMD->Contents[i].ID );
 			}
 		}
-		dbgprintf("ES:Loaded Module(%d):\"%s\" ", i, path );
+		dbgprintf("ES:Loaded Module(%d):\"%s\"\n", i, path );
 		r = LoadModule( path );
-		dbgprintf("ret:%d\n", r );
 		if( r < 0 )
 		{
 			dbgprintf("ES:Fatal error: module failed to start!\n");
+			dbgprintf("ret:%d\n", r );
 			while(1);
 		}
 	}
@@ -1525,7 +1526,7 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 		if( TMD == NULL )
 		{
 			dbgprintf("ES:Couldn't find TMD of BC!\n");
-			_sprintf( path, "/boot2.bin");
+			_sprintf( path, "/sneek/kernel.bin");
 			free( size );
 
 		} else {
@@ -1540,9 +1541,9 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 		//now load IOS kernel
 		IOSBoot( path, 0, GetKernelVersion() );			
 	
-		dbgprintf("ES:Booting file failed!\nES:Loading boot2.bin.." );
+		dbgprintf("ES:Booting file failed!\nES:Loading kernel.bin.." );
 
-		_sprintf( path, "/boot2.bin");
+		_sprintf( path, "/sneek/kernel.bin");
 		IOSBoot( path, 0, GetKernelVersion() );
 
 		while(1);
@@ -1568,7 +1569,7 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 		return r;
 
 	//now load IOS kernel
-	if( IOSBoot( "/boot2.bin", 0, GetKernelVersion() ) < 0 )
+	if( IOSBoot( "/sneek/kernel.bin", 0, GetKernelVersion() ) < 0 )
 		return ES_FATAL;
 
 	while(1);

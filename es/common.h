@@ -12,7 +12,7 @@ extern void *memset8( void *dst, int x, size_t len );
 
 void udelay(int us);
 
-#define TICKET_SIZE	0x2A4
+#define TICKET_SIZE		0x2A4
 
 enum ContentType
 {

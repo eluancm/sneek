@@ -330,6 +330,10 @@ static u8 swi_v70[] =
 {
 	0xFF, 0xFF, 0x1F, 0x20,
 };
+unsigned char swi_v80[] =
+{
+	0xFF, 0xFF, 0x1F, 0x20,
+};
 
 static u8 swipatch_v2[] =
 {
@@ -344,6 +348,10 @@ static u8 swipatch_v70[] =
 	0xFF, 0xFF, 0x7B, 0x98,
 };
 
+unsigned char swipatch_v80[] =
+{
+	0xFF, 0xFF, 0x7B, 0xD0,
+};
 static u8 EXISendBuffer[] =
 {
     0xE9, 0xAD, 0x40, 0x1F, 0xE1, 0x5E, 0x30, 0xB2, 0xE2, 0x03, 0x30, 0xFF, 0xE3, 0x53, 0x00, 0xAB, 
@@ -375,7 +383,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 
 	FIL f;
 
-	if( f_open( &f, "/boot2.bin", FA_READ ) == FR_OK )
+	if( f_open( &f, "/sneek/kernel.bin", FA_READ ) == FR_OK )
 	{
 		unsigned int read;
 		int fres = f_read( &f, (void*)0x11000000, f.fsize, &read );
@@ -418,6 +426,12 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 			num_matches++;
 			memcpy(ptr+i, swipatch_v70, sizeof(swipatch_v70));
 			gecko_printf("Found SWI v70 offset @%08x\n", (u32)ptr+i);
+		}
+		if( memcmp(ptr+i, swi_v80, sizeof(swi_v80) ) == 0)
+		{
+			num_matches++;
+			memcpy(ptr+i, swipatch_v80, sizeof(swipatch_v80));
+			gecko_printf("Found SWI v80 offset @%08x\n", (u32)ptr+i);
 		}
 
 		if( memcmp(ptr+i, rawData, sizeof(rawData)) == 0)

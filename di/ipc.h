@@ -6,6 +6,12 @@ struct ioctl_vector {
 	unsigned int len;
 } __attribute__((packed));
 
+/* IOCTL vector */
+typedef struct iovec {
+	void *data;
+	u32   len;
+} ioctlv;
+
 struct ipcmessage
 {
 	unsigned int command;			// 0

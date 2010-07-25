@@ -27,8 +27,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 
 FATFS fatfs;
-static FIL f;
-static u8 GamePath[64];
 
 static char Heap[0x100] ALIGNED(32);
 void *QueueSpace = NULL;
@@ -263,5 +261,5 @@ void _main(void)
 		}
 	}
 
-	return 0;
+	return;
 }

@@ -18,6 +18,7 @@ u32 Freeze;
 u32 value;
 u32 *offset;
 
+extern u32 FSUSB;
 
 u32 PosValX;
 u32 Hits;
@@ -244,7 +245,11 @@ void SMenuDraw( void )
 		if( FB[i] == 0 )
 			continue;
 
-		PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+		if(FSUSB)
+			PrintFormat( FB[i], MENU_POS_X, 40, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+		else
+			PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+
 		PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
 
 		switch( ShowMenu )

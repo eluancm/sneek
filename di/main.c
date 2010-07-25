@@ -26,8 +26,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ehci.h"
 #include "gecko.h"
 #include "alloc.h"
-#include "ff.h"
 #include "dip.h"
+#include "DIGlue.h"
 
 
 extern DIConfig *DICfg;;
@@ -71,9 +71,7 @@ s32 RegisterDevices( void *QueueSpace )
 char __aeabi_unwind_cpp_pr0[0];
 void _main(void)
 {
-	FATFS fatfs;
-	u32 read;
-	struct ipcmessage *IPCMessage=NULL;
+	struct ipcmessage *IPCMessage = NULL;
 
 	ThreadSetPriority( 0, 0xF4 );
 
@@ -86,7 +84,7 @@ void _main(void)
 	if( GetThreadID() != 3 || GetProcessID() != 7 )
 	{
 		dbgprintf("PID:%d TID:%d\n", GetProcessID(), GetThreadID() );
-		DIP_Fatal("main()", __LINE__, __FILE__, 0, "PID must be 7 and TID must be 3!");
+		//DIP_Fatal("main()", __LINE__, __FILE__, 0, "PID must be 7 and TID must be 3!");
 	}
 
 	HeapInit();
@@ -102,71 +100,53 @@ void _main(void)
 	dbgprintf("DIP:EnableVideo(1):%d\n", ret );
 
 	IRQ_Enable_18();
-	s32 fres = f_mount(0, &fatfs );
-	dbgprintf("DIP:f_mount():%d\n", fres);
 
-	if( fres != FR_OK )
-	{
-		DIP_Fatal("main()", __LINE__, __FILE__, 0, "Could not find any USB device!");
-		ThreadCancel( 0, 0x77 );
-	}
+	DVDInit();
 
 	DICfg = (DIConfig*)malloca( sizeof(u32) * 4, 32 );
-
-	FIL fi;
-
-	fres = f_open( &fi, "/sneek/diconfig.bin", FA_WRITE|FA_READ );
-
-	switch( fres )
+	
+	s32 fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_READ );
+	if( fd < 0 )
 	{
-		case FR_OK:
-			break;
-		case FR_NO_PATH:	//Folder sneek doesn't exit!
-		case FR_NO_FILE:
+		if( fd == DVD_NO_FILE )
 		{
-			f_mkdir("/sneek");
-			if( f_open( &fi, "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ  ) != FR_OK )
+			DVDCreateDir( "/sneek" );
+			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ  );
+			if( fd < 0 )
 			{
 				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
 				while(1);
-			}
-		} break;
-		default:
-			dbgprintf("DIP:Unhandled error %d when trying to create/open diconfig.bin file!\n", fres );
-			while(1);
-			break;
+			}			
+		}
 	}
 
-	if( fi.fsize >= 0x10 )
+	if( DVDGetSize(fd) >= 0x10 )
 	{
-		f_read( &fi, DICfg, sizeof(u32) * 4, &read );
-
+		ret = DVDRead( fd,  DICfg, sizeof(u32) * 4 );
 	} else {
 
-		dbgprintf("DIP:Created new DI-Config\n");
+		dbgprintf("DIP:Creating new DI-Config\n");
 
 		DICfg->Region = EUR;
 		DICfg->SlotID = 0;
 		DICfg->Config = CONFIG_PATCH_MPVIDEO;
 		DICfg->Gamecount = 0;
 
-		f_write( &fi, DICfg, sizeof(u32) * 4, &read );
+		ret = DVDWrite( fd, DICfg, sizeof(u32) * 4 );
 	}
 		
 	//check if new games were installed
 
 	u32 GameCount=0;
-	DIR d;
-	if( f_opendir( &d, "/games" ) != FR_OK )
+	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
 	{
 		dbgprintf("DIP:Could not open game dir!\n");
 		while(1);
 	}
 
-	FILINFO FInfo;
-	while( f_readdir( &d, &FInfo ) == FR_OK )
+	while( DVDReadDir() == DVD_SUCCESS )
 	{
-		if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
+		if( DVDDirIsFile() )		// skip files
 			continue;
 
 		GameCount++;
@@ -178,27 +158,26 @@ void _main(void)
 	{
 		dbgprintf("DIP:Updating game info cache...");
 
-		f_lseek( &fi, 0x10 );
+		DVDSeek( fd, 0, 0x10 );
 
-		FIL f;
-		FILINFO FInfo;
-		char *LPath = malloca( 128, 32 );
-		char *GInfo = malloca( 0x60, 32 );
+		char *LPath = (char*)malloca( 128, 32 );
+		char *GInfo = (char*)malloca( 0x60, 32 );
 
-		if( f_opendir( &d, "/games" ) == FR_OK )
+		if( DVDOpenDir( "/games" ) == DVD_SUCCESS )
 		{
-			while( f_readdir( &d, &FInfo ) == FR_OK )
+			while( DVDReadDir() == DVD_SUCCESS )
 			{
-				if( (FInfo.fattrib & AM_DIR) == 0 )		// skip files
+				if( DVDDirIsFile() )		// skip files
 					continue;
 
-				sprintf( LPath, "/games/%s/sys/boot.bin", FInfo.fname );
+				sprintf( LPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
 
-				if( f_open( &f, LPath, FA_READ ) == FR_OK )
+				s32 bi = DVDOpen( LPath, FA_READ );
+				if( bi >= 0 )
 				{
-					f_read( &f, GInfo, 0x60, &read );
-					f_write( &fi, GInfo, 0x60, &read );
-					f_close( &f );
+					ret = DVDRead( bi, GInfo, 0x60 );
+					ret = DVDWrite( fd, GInfo, 0x60 );
+					DVDClose( bi );
 				}
 			}
 		}
@@ -209,30 +188,25 @@ void _main(void)
 		DICfg->Gamecount = GameCount;
 		if( DICfg->SlotID >= DICfg->Gamecount )
 			DICfg->SlotID = 0;
-
-		f_lseek( &fi, 0 );
-		f_write( &fi, DICfg, 0x10, &read );
+		
+		DVDSeek( fd, 0, 0 );
+		DVDWrite( fd, DICfg, 0x10 );
 
 		dbgprintf("done\n");
 	}
 
-	f_close( &fi );
+	DVDClose( fd );
 
 	dbgprintf("DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
 
-	fres = DVDSelectGame( DICfg->SlotID );
+	s32 fres = DVDSelectGame( DICfg->SlotID );
 
 	dbgprintf("DIP:DVDSelectGame(%d):%d\n", DICfg->SlotID, fres );
 
 	while (1)
 	{
-		ret = MessageQueueReceive( QueueID, &IPCMessage, 0);
-		if( ret != 0 )
-		{
-			dbgprintf("DIP: mqueue_recv(%d) FAILED:%d\n", QueueID, ret );
-			continue;
-		}
-
+		ret = MessageQueueReceive( QueueID, &IPCMessage, 0 );
+		
 		switch( IPCMessage->command )
 		{
 			case IOS_OPEN:
@@ -266,9 +240,8 @@ void _main(void)
 			case IOS_WRITE:
 			case IOS_SEEK:
 			default:
-				dbgprintf("DIP: unimplemented/invalid msg: %08x\n", IPCMessage->command );
-				MessageQueueAck( IPCMessage, -4);
-				while(1);
+				MessageQueueAck( IPCMessage, -4 );
+				break;
 		}
 	}
 }

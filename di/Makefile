@@ -6,11 +6,11 @@ SSTRIP	=	$(DEVKITARM)/bin/arm-eabi-strip
 
 CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
-LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,iosmodule.map -n
+LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,iosmodule.ld,-Map,dimodule.map -n
 LIBS	=	-lgcc
 
-TARGET	=	iosmodule.elf
-OBJECTS	=	start.o dip.o alloc.o diskio.o ff.o main.o syscalls.o utils_asm.o gecko.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
+TARGET	=	dimodule.elf
+OBJECTS	=	start.o dip.o alloc.o diskio.o ff.o FS.o DIGlue.o main.o syscalls.o utils_asm.o gecko.o vsprintf.o string.o tiny_ehci_glue.o usb_os.o
 
 .PHONY: FORCE
 

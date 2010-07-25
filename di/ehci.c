@@ -26,6 +26,9 @@
 */
 
 /* magic numbers that can affect system performance */
+
+#undef DEBUG
+
 #define	EHCI_TUNE_CERR		3	/* 0-3 qtd retries; 0 == don't stop */
 #define	EHCI_TUNE_RL_HS		4	/* nak throttle; see 4.9 */
 #define	EHCI_TUNE_RL_TT		0

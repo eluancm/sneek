@@ -32,6 +32,8 @@ typedef struct
 	u32 len;
 } vector;
 
+u32 HAXHandle;
+
 void FFS_Ioctlv(struct IPCMessage *msg)
 {
 	u32 InCount		= msg->ioctlv.argc_in;
@@ -51,6 +53,14 @@ void FFS_Ioctlv(struct IPCMessage *msg)
 
 	switch(msg->ioctl.command)
 	{
+		case 0x60:
+		{
+			HAXHandle = FS_Open( (char*)(v[0].data), (u32)(v[1].data) );
+#ifdef DEBUG
+			dbgprintf("FS_Open(%s, %02X):%d\n", (char*)(v[0].data), (u32)(v[1].data), HAXHandle );
+#endif
+			ret = HAXHandle;
+		} break;
 		case IOCTL_READDIR:
 		{
 			if( InCount == 1 && OutCount == 1 )
@@ -409,7 +419,6 @@ void FFS_Ioctl(struct IPCMessage *msg)
 
 	mqueue_ack( (void *)msg, ret);
 }
-
 u32 FS_CheckHandle( s32 fd )
 {
 	if( fd < 0 || fd >= MAX_FILE)
@@ -698,6 +707,9 @@ s32 FS_Close( s32 FileHandle )
 }
 s32 FS_Open( char *Path, u8 Mode )
 {
+	if( strncmp( Path, "/AX", 3 ) == 0 )
+		return HAXHandle;
+
 	// Is it a device?
 	if( strncmp( Path, "/dev/", 5 ) == 0 )
 	{
