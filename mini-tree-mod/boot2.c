@@ -306,79 +306,12 @@ void boot2_init(void) {
 	boot2_initialized = 1;
 }
 
-static u32 match[] = {
-	0xBC024708,
-	1,
-	2,
-};
-
-static u32 patch[] = {
-	0xBC024708,
-	0x10001,
-	0x4a4f4449,
-};
-
-static u8 swi_v2[] =
-{
-	0xFF, 0xFF, 0x18, 0x90,
-};
-static u8 swi_v4[] =
-{
-	0xFF, 0xFF, 0x1D, 0x60,
-};
-static u8 swi_v70[] =
-{
-	0xFF, 0xFF, 0x1F, 0x20,
-};
-unsigned char swi_v80[] =
-{
-	0xFF, 0xFF, 0x1F, 0x20,
-};
-
-static u8 swipatch_v2[] =
-{
-	0xFF, 0xFF, 0x69, 0xF4,
-};
-static u8 swipatch_v4[] =
-{
-	0xFF, 0xFF, 0x79, 0xB4,
-};
-static u8 swipatch_v70[] =
-{
-	0xFF, 0xFF, 0x7B, 0x98,
-};
-
-unsigned char swipatch_v80[] =
-{
-	0xFF, 0xFF, 0x7B, 0xD0,
-};
-static u8 EXISendBuffer[] =
-{
-    0xE9, 0xAD, 0x40, 0x1F, 0xE1, 0x5E, 0x30, 0xB2, 0xE2, 0x03, 0x30, 0xFF, 0xE3, 0x53, 0x00, 0xAB, 
-    0x1A, 0x00, 0x00, 0x07, 0xE3, 0x50, 0x00, 0x04, 0x1A, 0x00, 0x00, 0x05, 0xE5, 0x9F, 0x30, 0x58, 
-    0xE5, 0xD1, 0x20, 0x00, 0xEB, 0x00, 0x00, 0x04, 0xE2, 0x81, 0x10, 0x01, 0xE3, 0x52, 0x00, 0x00, 
-    0x1A, 0xFF, 0xFF, 0xFA, 0xE8, 0x3D, 0x40, 0x1F, 0xE1, 0xB0, 0xF0, 0x0E, 0xE3, 0xA0, 0x00, 0xD0, 
-    0xE5, 0x83, 0x00, 0x00, 0xE3, 0xA0, 0x02, 0x0B, 0xE1, 0x80, 0x0A, 0x02, 0xE5, 0x83, 0x00, 0x10, 
-    0xE3, 0xA0, 0x00, 0x19, 0xE5, 0x83, 0x00, 0x0C, 0xE5, 0x93, 0x00, 0x0C, 0xE3, 0x10, 0x00, 0x01, 
-    0x1A, 0xFF, 0xFF, 0xFC, 0xE5, 0x93, 0x00, 0x10, 0xE3, 0x10, 0x03, 0x01, 0xE3, 0xA0, 0x00, 0x00, 
-    0xE5, 0x83, 0x00, 0x00, 0x0A, 0xFF, 0xFF, 0xF0, 0xE1, 0xA0, 0xF0, 0x0E, 0x0D, 0x80, 0x68, 0x14, 
-};
-static u8 rawData[] =
-{
-	0x46, 0x72,
-	0x1C, 0x01,
-	0x20, 0x05,
-};
-
 u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 	u8 *ptr;
 	u32 i, num_matches=0;
 	ioshdr *hdr;
 	
-	patch[1] = tid_hi;
-	patch[2] = tid_lo;
-
-	gecko_printf("booting boot2 with title %08x-%08x\n", tid_hi, tid_lo);
+	gecko_printf("booting /sneek/kernel.bin\n");
 	mem_protect(1, (void *)0x11000000, (void *)0x13FFFFFF);
 
 	FIL f;
@@ -389,71 +322,17 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo) {
 		int fres = f_read( &f, (void*)0x11000000, f.fsize, &read );
 		gecko_printf("f_read( %p, %p, %d, %d):%d\n", &f, (void*)0x11000000, f.fsize, read, fres );
 		f_close( &f );
-	}/* else {
-		gecko_printf("Loading internal boot2...\n");
-		aes_reset();
-		aes_set_iv(boot2_iv);
-		aes_set_key(boot2_key);
-		aes_decrypt(boot2_content, (void *)0x11000000, boot2_content_size / 16, 0);
-	}*/
+	}
 
 	hdr = (ioshdr *)0x11000000;
 	ptr = (u8 *)0x11000000 + hdr->hdrsize + hdr->loadersize;
 
-
-	for (i = 0; i < sizeof(boot2); i += 1)
-	{
-		if (memcmp(ptr+i, match, sizeof(match)) == 0) {
-			num_matches++;
-			memcpy(ptr+i, patch, sizeof(patch));
-			gecko_printf("patched data @%08x\n", (u32)ptr+i);
-		}
-
-		if( memcmp(ptr+i, swi_v2, sizeof(swi_v2) ) == 0)
-		{
-			num_matches++;
-			memcpy(ptr+i, swipatch_v2, sizeof(swipatch_v2));
-			gecko_printf("Found SWI v2 offset @%08x\n", (u32)ptr+i);
-		}
-		if( memcmp(ptr+i, swi_v4, sizeof(swi_v4) ) == 0)
-		{
-			num_matches++;
-			memcpy(ptr+i, swipatch_v4, sizeof(swipatch_v4));
-			gecko_printf("Found SWI v4 offset @%08x\n", (u32)ptr+i);
-		}
-		if( memcmp(ptr+i, swi_v70, sizeof(swi_v70) ) == 0)
-		{
-			num_matches++;
-			memcpy(ptr+i, swipatch_v70, sizeof(swipatch_v70));
-			gecko_printf("Found SWI v70 offset @%08x\n", (u32)ptr+i);
-		}
-		if( memcmp(ptr+i, swi_v80, sizeof(swi_v80) ) == 0)
-		{
-			num_matches++;
-			memcpy(ptr+i, swipatch_v80, sizeof(swipatch_v80));
-			gecko_printf("Found SWI v80 offset @%08x\n", (u32)ptr+i);
-		}
-
-		if( memcmp(ptr+i, rawData, sizeof(rawData)) == 0)
-		{
-			num_matches++;
-			memcpy(ptr+i, EXISendBuffer, sizeof(EXISendBuffer));
-			gecko_printf("Found Syscall @%08x\n", (u32)ptr+i);
-		}
-	}
-
 	gecko_printf("HdrSize:%04X LdrSize:%04X\n", hdr->hdrsize, hdr->loadersize );
 
-	//if (num_matches != 1)
-	//{
-	//	gecko_printf("Wrong number of patches (matched %d times, expected 1), panicking\n", num_matches);
-	//	panic2(0, PANIC_PATCHFAIL);
-	//}
-	
 	hdr->argument = 0x42;
 
 	u32 vector = 0x11000000 + hdr->hdrsize;
-	gecko_printf("boot2 is at 0x%08x\n", vector);
+	gecko_printf("Loaded to 0x%08x\n", vector);
 	return vector;
 }
 
