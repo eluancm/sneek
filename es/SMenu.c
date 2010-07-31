@@ -12,7 +12,7 @@ u32 ShowMenu=0;
 u32 SLock=0;
 s32 PosX=0,ScrollX=0;
 
-u32 FB[MAX_FB];
+u32 *FB;
 
 u32 Freeze;
 u32 value;
@@ -48,80 +48,80 @@ unsigned char VISetFB[] =
 	0x38, 0xC7, 0x00, 0x4C, 
 };
 
-s32 SMenuFindOffsets( void *ptr, u32 size )
+u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 {
+
 	u32 i;
 	u32 r13  = 0;
 
 	FBOffset = 0;
 	FBEnable = 0;
 	WPad	 = (u32*)NULL;
+		
+	//dbgprintf("ES:Start:%p Len:%08X\n", ptr, SearchSize );
 
-	for( i = 0; i < size; i+=4 )
+	while(1)
 	{
-		if( *(u32*)(ptr+i) >> 16 == 0x3DA0 && r13 == 0 )
+		for( i = 0; i < SearchSize; i+=4 )
 		{
-			r13 = ((*(u32*)(ptr+i)) & 0xFFFF) << 16;
-			r13|= (*(u32*)(ptr+i+4)) & 0xFFFF;
-			dbgprintf("r13:%08X\n", i );
+			if( *(u32*)(ptr+i) >> 16 == 0x3DA0 && r13 == 0 )
+			{
+				r13 = ((*(u32*)(ptr+i)) & 0xFFFF) << 16;
+				r13|= (*(u32*)(ptr+i+4)) & 0xFFFF;
+			}
+
+			if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
+			{
+				FBEnable = ( *(u32*)(ptr+i+sizeof(VISetFB)) );
+				FBEnable = ((~FBEnable) & 0xFFFF) + 1;
+				FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
+
+				FBOffset = FBEnable + 0x18;
+			}
+
+
+			//Wpad pattern new
+			if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x1C03		&&		//  mulli   %r0, %r3, 0x688
+				(*(u32*)(ptr+i+0x04)) >> 16 == 0x3C60		&&		//  lis     %r3, inside_kpads@h
+				(*(u32*)(ptr+i+0x08)) >> 16 == 0x3863		&&		//  addi    %r3, %r3, inside_kpads@l
+				(*(u32*)(ptr+i+0x0C))	    == 0x7C630214	&&		//  add     %r3, %r3, %r0
+				(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
+				(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
+				)
+			{
+				if( *(u32*)(ptr+i+0x08) & 0x8000 )
+					WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
+				else
+					WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
+			}
+
+			//WPad pattern old
+			if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x3C80		&&		//  lis     %r3, inside_kpads@h
+				(*(u32*)(ptr+i+0x04))		== 0x5460502A	&&		//  slwi    %r0, %r3, 10
+				(*(u32*)(ptr+i+0x08)) >> 16 == 0x3884		&&		//  addi    %r3, %r3, inside_kpads@l
+				(*(u32*)(ptr+i+0x0C))	    == 0x7C640214	&&		//  add     %r3, %r4, %r0
+				(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
+				(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
+				)
+			{
+				if( *(u32*)(ptr+i+0x08) & 0x8000 )
+					WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
+				else
+					WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
+			}
+
+			if( r13 && FBEnable && FBOffset && WPad != NULL )
+			{
+				return 1;
+			}
 		}
-
-		if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
-		{
-			FBEnable = ( *(u32*)(ptr+i+sizeof(VISetFB)) );
-			FBEnable = ((~FBEnable) & 0xFFFF) + 1;
-			FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
-			dbgprintf("FBe:%08X\n", i );
-
-			FBOffset = FBEnable + 0x18;
-		}
-
-		//Wpad pattern new
-		if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x1C03		&&		//  mulli   %r0, %r3, 0x688
-			(*(u32*)(ptr+i+0x04)) >> 16 == 0x3C60		&&		//  lis     %r3, inside_kpads@h
-			(*(u32*)(ptr+i+0x08)) >> 16 == 0x3863		&&		//  addi    %r3, %r3, inside_kpads@l
-			(*(u32*)(ptr+i+0x0C))	    == 0x7C630214	&&		//  add     %r3, %r3, %r0
-			(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
-			(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
-			)
-		{
-			if( *(u32*)(ptr+i+0x08) & 0x8000 )
-				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
-			else
-				WPad = (u32*)( ((((*(u32*)(ptr+i+0x04)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
-		}
-
-		//WPad pattern old
-		if( (*(u32*)(ptr+i+0x00)) >> 16 == 0x3C80		&&		//  lis     %r3, inside_kpads@h
-			(*(u32*)(ptr+i+0x04))		== 0x5460502A	&&		//  slwi    %r0, %r3, 10
-			(*(u32*)(ptr+i+0x08)) >> 16 == 0x3884		&&		//  addi    %r3, %r3, inside_kpads@l
-			(*(u32*)(ptr+i+0x0C))	    == 0x7C640214	&&		//  add     %r3, %r4, %r0
-			(*(u32*)(ptr+i+0x10)) >> 16 == 0xD023		&&		//  stfs    %fp1, 0xF0(%r3)
-			(*(u32*)(ptr+i+0x18))	    == 0x4E800020			//  blr
-			)
-		{
-			if( *(u32*)(ptr+i+0x08) & 0x8000 )
-				WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) - (((~(*(u32*)(ptr+i+0x08))) & 0xFFFF)+1) ) & 0x7FFFFFF );
-			else
-				WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
-		}
-
-		if( r13 && FBEnable && FBOffset && WPad )
-			break;
 	}
-
-	dbgprintf("ES:r13     :%08X\n", r13 );
-	dbgprintf("ES:FBEnable:%08X\n", FBEnable );
-	dbgprintf("ES:FBOffset:%08X\n", FBOffset );
-	dbgprintf("ES:WPad    :%p\n",	WPad );
-
-	if( r13 && FBEnable && FBOffset && (WPad != NULL) )
-		return 1;
-
 	return 0;
 }
 s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 {
+	int i;
+
 	value	= 0;
 	Freeze	= 0;
 	ShowMenu= 0;
@@ -131,13 +131,14 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 	PosValX	= 0;
 	Hits	= 0;
 	edit	= 0;
-	FB[0]	= 0;
-	FB[1]	= 0;
-	FB[2]	= 0;
 	DICfg	= NULL;
 
-	Offsets	  = (u32*)malloca( sizeof(u32)*MAX_HITS, 32 );
-	GameCount = (u32*)malloca( sizeof(u32), 32 );
+	Offsets		= (u32*)malloca( sizeof(u32) * MAX_HITS, 32 );
+	GameCount	= (u32*)malloca( sizeof(u32), 32 );
+	FB			= (u32*)malloca( sizeof(u32) * MAX_FB, 32 );
+
+	for( i=0; i < MAX_FB; ++i )
+		FB[i] = 0;
 
 //Patches and SNEEK Menu
 	switch( TitleID )
@@ -240,15 +241,23 @@ void SMenuDraw( void )
 	if( ShowMenu == 0 )
 		return;
 
+	if( DICfg == NULL )
+		return;
+
 	for( i=0; i < MAX_FB; i++)
 	{
 		if( FB[i] == 0 )
 			continue;
 
+		if( DICfg->Region > ALL )
+			DICfg->Region = ALL;
+
 		if(FSUSB)
+		{
 			PrintFormat( FB[i], MENU_POS_X, 40, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
-		else
+		} else {
 			PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+		}
 
 		PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
 

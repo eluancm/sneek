@@ -1,8 +1,8 @@
 	.section ".text"
 	.align	4
 	.arm
-	.global syscall_00
-syscall_00:
+	.global thread_create
+thread_create:
 	.long 0xe6000010
 	bx lr
 

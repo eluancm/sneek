@@ -1190,29 +1190,29 @@ int _main( int argc, char *argv[] )
 	size		= (u32*) malloca( sizeof(u32), 32 );
 	iTitleID	= (u64*) malloca( sizeof(u64), 32 );
 	
-	dbgprintf("ES:TitleID:%08x-%08x\n", (u32)((TitleID)>>32), (u32)(TitleID) );
+	dbgprintf("ES:TitleID:%08x-%08x version:%d\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
 
 	ret = 0;
 	u32 MenuType = 0;
+	u32 StartTimer = 1;
 
+	SMenuInit( TitleID, TitleVersion );
+
+	if( LoadFont( "/sneek/font.bin" ) )	// without a font no point in displaying the menu
+	{
+		TimerRestart( Timer, 0, 10000000 );
+	}
+	
 	if( TitleID == 0x0000000100000002LL )
 	{
 		//Disable SD access for system menu, as it breaks channel/game loading
 		if( *SDStatus == 1 )
 			*SDStatus = 2;
-		ret = SMenuFindOffsets( (void*)0x01330000, 0x003D0000 );
-	} else {
-		ret = SMenuFindOffsets( (void*)0x00000000, 0x01200000 );
-		MenuType = 1;
-	}
 
-	if( ret != 0 )
-	{
-		if( SMenuInit( TitleID, TitleVersion ) )
-		{
-			if( LoadFont( "/sneek/font.bin" ) )
-				TimerRestart( Timer, 0, 10000 );
-		}
+		MenuType = 0;
+		
+	} else {
+		MenuType = 1;
 	}
 
 	dbgprintf("ES:looping!\n");
@@ -1230,6 +1230,19 @@ int _main( int argc, char *argv[] )
 		{
 			TimerStop( Timer );
 
+			if( StartTimer )
+			{
+				StartTimer = 0;
+				if( MenuType == 0 )
+				{
+					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
+						continue;
+				} else {
+					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
+						continue;
+				}
+			}
+			
 			SMenuAddFramebuffer();
 			if( MenuType == 0 )
 			{
@@ -1245,6 +1258,7 @@ int _main( int argc, char *argv[] )
 			continue;
 		}
 	
+		//dbgprintf("ES:Command:%02X\n", message->command );
 		//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d ioctlv:\"%X\"\n", queueid, ret, message->command, message->ioctlv.command );
 
 		switch( message->command )
@@ -1308,6 +1322,7 @@ int _main( int argc, char *argv[] )
 			default:
 				dbgprintf("ES:unimplemented/invalid msg: %08x argv[0]:%08x\n", message->command, message->args[0] );
 				mqueue_ack( (void *)message, FS_EINVAL );
+			break;
 		}
 	}
 

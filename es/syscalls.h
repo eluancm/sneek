@@ -3,8 +3,7 @@
 
 #include "global.h"
 
-#define thread_create( proc, priority, stack, stacksize, arg, autostart ) syscall_00( proc, priority, stack, stacksize, arg, autostart )
-u32 syscall_00( u32 (*proc)(void* arg), u8 priority, u32* stack, u32 stacksize, void* arg, bool autostart );
+u32 thread_create( u32 (*proc)(void* arg), u8 priority, u32* stack, u32 stacksize, void* arg, bool autostart );
 
 void syscall_01(void);
 
