@@ -522,7 +522,7 @@ s32 DVDLowReadDiscID( u32 Offset, u32 Length, void *ptr )
 	{
 		return DI_FATAL;
 	} else {
-		dbgprintf("DVDRead:%d\n", DVDRead( fd, ptr, Length ) );
+		DVDRead( fd, ptr, Length );
 		DVDClose( fd );
 	}
 

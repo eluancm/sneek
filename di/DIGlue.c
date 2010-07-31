@@ -186,7 +186,7 @@ s32 DVDOpenDir( char *Path )
 		if( Entries != NULL )
 			hfree(Entries);
 
-		Entries = (char*)halloca( *EntryCount * 13, 32 );
+		Entries = (char*)halloca( *EntryCount * 64, 32 );
 
 		ret = ISFS_ReadDir( name, Entries, EntryCount );
 		if( ret < 0 )
@@ -239,7 +239,10 @@ s32 DVDDirIsFile( void )
 		else
 			return 0;
 	} else {
-		return 0;
+		/*
+			This is a hack since it would be very complicated to figure out if an entry is a file or a folder
+		*/
+		return 0;	
 	}
 	return DVD_FATAL;
 }

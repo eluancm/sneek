@@ -113,20 +113,6 @@ void FFS_Ioctlv(struct IPCMessage *msg)
 			dbgprintf("FFS:FS_GetUsage(\"%s\"):%d FileCount:%d FileSize:%d\n", (char*)(v[0].data), ret, *(u32*)(v[2].data), *(u32*)(v[1].data) );
 #endif
 		} break;
-
-		//case 0x20:
-		//{
-		//	u32 *data = (u32*)(v[0].data);
-		//	ret = disk_read( 0, (u8*)(v[1].data), (data[3]>>9), v[1].len>>9 );
-		////	dbgprintf("FFS:disk_read( %d, %p, %08X, %08X )\n", 0, (u8*)(v[1].data), (data[3]>>9)+0x2000, v[1].len>>9 );
-		//} break;
-		//case 0x21:
-		//{
-		//	u32 *data = (u32*)(v[0].data);
-		//	//dbgprintf("FFS:disk_write( %d, %p, %08X, %08X )\n", 0, (u8*)((data[6]&(~(1<<31)))), (data[3]>>9)+0x2000, data[4] );
-		//	ret = disk_write( 0, (u8*)((data[6]&(~(1<<31)))), (data[3]>>9), data[4] );
-		//} break;
-
 		default:
 		{
 			//dbgprintf("FFS:IOS_Ioctlv( %d, 0x%x 0x%x 0x%x 0x%p )\n", msg->fd, msg->ioctl.command, InCount, OutCount, msg->ioctlv.argv );
@@ -716,13 +702,11 @@ s32 FS_Open( char *Path, u8 Mode )
 		if( strncmp( Path+5, "fs", 2) == 0)
 		{
 			return FS_FD;
-		}/* else if( strncmp(CMessage->open.device+5, "flash", 5) == 0) {
-			return FL_FD;			
-		} else if( strncmp(CMessage->open.device+5, "boot2", 5) == 0) {
+		}/* else if( strncmp( Path+5, "flash", 5 ) == 0 ) {
+			return FS_ENOENT;		
+		} else if( strncmp( Path+5, "boot2", 5 ) == 0) {
 			return B2_FD;
-		} else if( strncmp( Path+5, "sdio", 4 ) == 0) {
-			return SD_FD;
-		}*/ else {
+		} else {
 			// Not a devicepath of ours, dispatch it to the syscall again..
 			return FS_ENOENT;
 		}

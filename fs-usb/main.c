@@ -151,13 +151,13 @@ void _main(void)
 		ThreadCancel( 0, 0x77 );
 	}
 
-	//dbgprintf("FFS:Mounting SD...\n");
+	//dbgprintf("FFS:Mounting USB...\n");
 	ret = f_mount(0, &fatfs);
 	//dbgprintf("FFS:f_mount():%d\n", fres);
 
 	if(ret != FR_OK)
 	{
-		dbgprintf("FFS:Error %d while trying to mount SD\n", ret );
+		dbgprintf("FFS:Error %d while trying to mount USB\n", ret );
 		ThreadCancel( 0, 0x77 );
 	}
 
@@ -180,7 +180,7 @@ void _main(void)
 			//dbgprintf("FFS:mqueue_recv(%d) FAILED:%d\n", QueueID, ret);
 			continue;
 		}
-
+		
 		switch (CMessage->command)
 		{
 			case IOS_OPEN:

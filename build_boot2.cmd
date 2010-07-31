@@ -26,6 +26,6 @@ echo elfins: Creating boot2_usb.bin (USB as NAND)
 ELFIns\elfins 0000000E-TMP.app boot2_usb.bin es\esmodule.elf fs-usb\iosmodule.elf > NUL
 
 echo elfins: Creating di.bin
-ELFIns\elfins 00000001.app di.bin di\iosmodule.elf > NUL
+ELFIns\elfins 00000001.app di.bin di\dimodule.elf > NUL
 
 del 0000000E-TMP.app

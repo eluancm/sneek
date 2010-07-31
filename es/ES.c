@@ -137,7 +137,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 			dbgprintf("ES:Failed to open:\"%s\":%d\n", path, *size );
 			free( path );
 			free( size );
-			return ES_FATAL;
+			PanicBlink( 0, 1,-1);
 		}
 
 		IOSVersion = *(u32*)(data+0x188);
@@ -158,7 +158,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		dbgprintf("ES:Failed to open:\"%s\":%d\n", path, *size );
 		free( path );
 		free( size );
-		return ES_FATAL;
+		PanicBlink( 0, 1,1,-1);
 	}
 
 	*KernelVersion = *(u16*)(data+0x1DC);
@@ -176,6 +176,8 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 	s32 r = ES_LoadModules( IOSVersion );
 	dbgprintf("ES:ES_LoadModules(%d):%d\n", IOSVersion, r );
+	if( r < 0 )
+		PanicBlink( 0, 1,1,1,1,-1 );
 
 	_sprintf( path, "/sys/disc.sys" );
 	
@@ -185,7 +187,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		u8 *data = NANDLoadFile( path, size );
 		if( data != NULL )
 		{
-			*TitleID = *(vu64*)data;//Set TitleID to disc Title
+			*TitleID = *(vu64*)data;		//Set TitleID to disc Title
 
 			r = LoadPPC( data+0x29A );
 			dbgprintf("ES:Disc->LoadPPC(%p):%d\n", data+0x29A, r );
@@ -1546,6 +1548,7 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 		_sprintf( path, "/sneek/kernel.bin");
 		IOSBoot( path, 0, GetKernelVersion() );
 
+		PanicBlink( 0, 1,1,1,-1 );
 		while(1);
 	}
 
@@ -1569,8 +1572,9 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 		return r;
 
 	//now load IOS kernel
-	if( IOSBoot( "/sneek/kernel.bin", 0, GetKernelVersion() ) < 0 )
-		return ES_FATAL;
+	IOSBoot( "/sneek/kernel.bin", 0, GetKernelVersion() );
+	
+	PanicBlink( 0, 1,1,1,-1 );
 
 	while(1);
 }
