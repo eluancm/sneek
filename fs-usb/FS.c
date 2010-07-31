@@ -706,7 +706,7 @@ s32 FS_Open( char *Path, u8 Mode )
 			return FS_ENOENT;		
 		} else if( strncmp( Path+5, "boot2", 5 ) == 0) {
 			return B2_FD;
-		} else {
+		}*/ else {
 			// Not a devicepath of ours, dispatch it to the syscall again..
 			return FS_ENOENT;
 		}
