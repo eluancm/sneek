@@ -653,7 +653,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 				if( r < 0 )
 				{
-					dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, r );
+					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
 				}
 			}
@@ -664,7 +664,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 				if( r < 0 )
 				{
-					dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, r );
+					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
 				}
 			}
@@ -675,7 +675,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 				if( r < 0 )
 				{
-					dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, r );
+					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
 				}
 			}
@@ -686,7 +686,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
 				if( r < 0 )
 				{
-					dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, r );
+					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
 				}
 			}
@@ -694,11 +694,11 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 		} break;
 		case FS_SUCCESS:
 		{
-			dbgprintf("ISFS_GetUsage(\"%s\"):%d\n", path, r );
+			//;dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
 		} break;
 		default:
 		{
-			dbgprintf("ISFS_GetUsage(\"%s\"):%d\n", path, r );
+			dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
 		} break;
 	}
 
@@ -718,7 +718,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 			r = NANDWriteFileSafe( path, TMD, tmd_size );
 			if( r < 0 )
 			{
-				dbgprintf("NANDWriteFileSafe(\"%s\"):%d\n", path, r );
+				dbgprintf("ES:NANDWriteFileSafe(\"%s\"):%d\n", path, r );
 				goto ES_DIVerfiy_end;
 			}
 		}
@@ -727,7 +727,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 		r = NANDWriteFileSafe( path, TMD, tmd_size );
 		if( r < 0 )
 		{
-			dbgprintf("NANDWriteFileSafe(\"%s\"):%d\n", path, r );
+			dbgprintf("ES:NANDWriteFileSafe(\"%s\"):%d\n", path, r );
 			goto ES_DIVerfiy_end;
 		}
 	}
@@ -735,16 +735,16 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 	r = CreateKey( Key, 0, 0 );
 	if( r < 0 )
 	{
-		dbgprintf("CreateKey():%d\n", r );
-		dbgprintf("keyid:%p:%08x\n", Key, *Key );
+		dbgprintf("ES:CreateKey():%d\n", r );
+		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
 		return r;
 	}
 
 	r = syscall_71( *Key, 8 );
 	if( r < 0 )
 	{
-		dbgprintf("keyid:%p:%08x\n", Key, *Key );
-		dbgprintf("syscall_71():%d\n", r);
+		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
+		dbgprintf("ES:syscall_71():%d\n", r);
 		return r;
 	}
 
@@ -757,28 +757,28 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 	r = syscall_5d( *Key, 0, 4, 1, 0, sTitleID, encTitleKey );
 	if( r < 0 )
 	{
-		dbgprintf("syscall_5d():%d\n", r);
+		dbgprintf("ES:syscall_5d():%d\n", r);
 		goto ES_DIVerfiy_end1;
 	}
 
 	r = ES_GetUID( &(TMD->TitleID), &UID );
 	if( r < 0 )
 	{
-		dbgprintf("ES_GetUID():%d\n", r );
+		dbgprintf("ES:ES_GetUID():%d\n", r );
 		goto ES_DIVerfiy_end;
 	}
 
 	r = SetUID( 0xF, UID );
 	if( r < 0 )
 	{
-		dbgprintf("SetUID( 0xF, %04X ):%d\n", UID, r );
+		dbgprintf("ES:SetUID( 0xF, %04X ):%d\n", UID, r );
 		goto ES_DIVerfiy_end;
 	}
 
 	r = _cc_ahbMemFlush( 0xF, TMD->GroupID );
 	if( r < 0 )
 	{
-		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, TMD->GroupID, r );
+		dbgprintf("ES:_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, TMD->GroupID, r );
 		goto ES_DIVerfiy_end;
 	}
 

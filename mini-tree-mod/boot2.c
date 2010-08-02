@@ -331,7 +331,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo)
 		gecko_printf("failed to open/read:/sneek/kernel.bin\n");
 		gecko_printf("Can't continue.");
 
-		panic2( 0, 1,1,1,-1 );	//	3-Short flashes
+		panic2( 0, 1,1,1,1,1-1 );	//	5-Short flashes
 
 		while(1);
 	}

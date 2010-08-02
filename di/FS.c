@@ -84,7 +84,7 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 		v[1].len  = sizeof( u32 * );
 
 		v[2].data = (u32)name_list;
-		v[2].len  = *num*13;
+		v[2].len  = *num*64;
 		v[3].data = (u32)num;
 		v[3].len  = sizeof( u32 * );
 

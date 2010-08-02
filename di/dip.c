@@ -79,8 +79,13 @@ s32 DVDSelectGame( int SlotID )
 			s32 fd = DVDOpen( str, DREAD );
 			if( fd < 0 )
 			{
-				DIP_Fatal("DVDSelectGame()",__LINE__,__FILE__, fd, "Failed to open apploader.img!");
-				while(1);
+				dbgprintf("DIP:Could not open \"%s\"\n", str );
+
+				ChangeDisc = 0;
+				DICover |= 1;
+
+				free( str );
+				return DI_FATAL;
 			}
 
 			ApploaderSize = DVDGetSize( fd ) >> 2;
