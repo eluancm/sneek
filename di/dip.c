@@ -46,15 +46,128 @@ u32 Partition = 0;
 u32 Motor = 0;
 u32 Disc = 0;
 u64 PartitionOffset=0;
-u64 PartitionDataOffset=0;
-u32 PartitionTableOffset=0;
 
+s32 DVDUpdateCache( void )
+{		
+	//check if new games were installed
+	u32 GameCount=0;
+	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
+	{
+		dbgprintf("DIP:Could not open game dir!\n");
+		return DI_FATAL;
+	}
+
+	while( DVDReadDir() == DVD_SUCCESS )
+	{
+		if( DVDDirIsFile() )		// skip files
+			continue;
+
+		GameCount++;
+	}
+
+	s32 fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_READ );
+	if( fd < 0 )
+	{
+		if( fd == DVD_NO_FILE )
+		{
+			DVDCreateDir( "/sneek" );
+			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ );
+			if( fd < 0 )
+			{
+				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
+				return DI_FATAL;
+			}			
+		}
+	}
+
+	if( DVDGetSize(fd) >= 0x10 )
+	{
+		DVDRead( fd, DICfg, sizeof(u32) * 4 );
+
+		if( DVDGetSize(fd) != GameCount * 0x60 + 0x10 )
+		{
+			DVDClose( fd );
+			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ );
+			if( fd < 0 )
+			{
+				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
+				return DI_FATAL;
+			}
+			DVDWrite( fd, DICfg, sizeof(u32) * 4 );
+		}
+
+	} else {
+
+		dbgprintf("DIP:Creating new DI-Config\n");
+
+		DICfg->Region = EUR;
+		DICfg->SlotID = 0;
+		DICfg->Config = CONFIG_PATCH_MPVIDEO;
+		DICfg->Gamecount = 0;
+
+		DVDWrite( fd, DICfg, sizeof(u32) * 4 );
+	}
+
+	dbgprintf("DIP:Installed Games:%d\tGames in cache:%d\n", GameCount, DICfg->Gamecount );
+
+	if( GameCount != DICfg->Gamecount )
+	{
+		dbgprintf("DIP:Updating game info cache...");
+
+		DVDSeek( fd, 0, 0x10 );
+
+		char *LPath = (char*)malloca( 128, 32 );
+		char *GInfo = (char*)malloca( 0x60, 32 );
+
+		if( DVDOpenDir( "/games" ) == DVD_SUCCESS )
+		{
+			while( DVDReadDir() == DVD_SUCCESS )
+			{
+				if( DVDDirIsFile() )		// skip files
+					continue;
+
+				sprintf( LPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
+
+				s32 bi = DVDOpen( LPath, FA_READ );
+				if( bi >= 0 )
+				{
+					DVDRead( bi, GInfo, 0x60 );
+					DVDWrite( fd, GInfo, 0x60 );
+					DVDClose( bi );
+				}
+			}
+		}
+
+		free( LPath );
+		free( GInfo );
+
+		DICfg->Gamecount = GameCount;
+
+		if( DICfg->SlotID >= DICfg->Gamecount )
+			DICfg->SlotID = 0;
+
+		if( DICfg->Region > LTN )
+			DICfg->Region = EUR;
+		
+		DVDSeek( fd, 0, 0 );
+		DVDWrite( fd, DICfg, 0x10 );
+
+		dbgprintf("done\n");
+	}
+
+	DVDClose( fd );
+
+	return DI_SUCCESS;
+}
 s32 DVDSelectGame( int SlotID )
 {
 	u32 count = 0;
 
 	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
 	{
+		//set to NO DISC
+		ChangeDisc = 0;
+		DICover |= 1;
 		return DI_FATAL;
 	}
 
@@ -114,6 +227,11 @@ s32 DVDSelectGame( int SlotID )
 		}
 		count++;
 	}
+
+	//SlotID not found, set to NO DISC
+
+	ChangeDisc = 0;
+	DICover |= 1;
 
 	return DI_FATAL;
 }
@@ -575,6 +693,15 @@ int DIP_Ioctl( struct ipcmessage *msg )
 	{
 		case DVD_WRITE_CONFIG:
 		{
+			//Added for slow harddrives
+			case DVD_CONNECTED:
+			{
+			  if( HardDriveConnected )
+				  ret = 1;
+			  else
+				  ret = 0;
+				dbgprintf("DIP:DVDConnected():%d\n", ret );
+			} break;
 			u32 *vec = (u32*)msg->ioctl.buffer_in;
 			fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_OPEN_EXISTING );
 			if( fd < 0 )

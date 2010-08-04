@@ -26,16 +26,60 @@ s32 ISFS_IsUSB( void )
 
 void DVDInit( void )
 {
-	int i;
+	int i=0;
+	s32 fres = FR_DISK_ERR;
+	int MountFail=0;
 
 	// Probe for UNEEK
 	if( ISFS_IsUSB() == FS_ENOENT2 )
 	{
 		dbgprintf("DIP:Found FS-SD\n");
 		FSMode = SNEEK;
+		
+		HardDriveConnected = 0;
 
-		s32 fres = f_mount(0, &fatfs );
-		dbgprintf("DIP:f_mount():%d\n", fres);
+		while(!HardDriveConnected)
+		{
+			while(1)
+			{
+				fres = f_mount(0, &fatfs );
+				dbgprintf("DIP:f_mount():%d\n", fres );
+				if( fres == FR_OK )
+					break;
+				else
+					MountFail++;
+
+				if( MountFail == 10 )
+				{
+					dbgprintf("DIP:too much fail! looping now!\n");
+					while(1);
+				}
+
+				udelay(500000);
+			}
+
+			//try to open a file, it doesn't have to exist, just testing if FS works
+			FIL f;
+			fres = f_open( &f, "/randmb.in", FA_READ|FA_OPEN_EXISTING );
+			switch(fres)
+			{
+				case FR_OK:
+					f_close( &f );
+				case FR_NO_PATH:
+				case FR_NO_FILE:
+				{
+					HardDriveConnected = 1;
+					fres = FR_OK;
+				} break;
+				default:
+				case FR_DISK_ERR:
+				{
+					dbgprintf("DIP: Disk error\n", fres );
+					f_mount(0,0);
+					udelay(500000);
+				} break;
+			}
+		}
 
 		if( fres != FR_OK )
 		{

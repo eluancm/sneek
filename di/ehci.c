@@ -644,13 +644,16 @@ int ehci_reset_port(int port)
     }
     ehci_dbg ( "port %d has usb2 device connected! reset it...\n", port);
     ehci_writel( 0x1803,status_reg);
-    msleep(100);
+    while ((ehci_readl(status_reg) & 0x1801) != 0x1801){
+      ehci_dbg ( "Waiting for port %d to settle...(%04x)\n", port, ehci_readl(status_reg));
+      ehci_writel( 0x1803,status_reg);
+      msleep(500);
+    }
     ehci_writel( 0x1903,status_reg);
     //ehci_writel( PORT_OWNER|PORT_POWER|PORT_RESET,status_reg);
     msleep(50);// wait 50ms for the reset sequence
     ehci_writel( 0x1001,status_reg);
-    //ehci_writel( ehci_readl(status_reg)& (~PORT_RESET),status_reg);
-    retval = handshake( status_reg, PORT_RESET, 0, 750);
+    retval = handshake( status_reg, PORT_RESET, 0, 2000);
 
     if (retval != 0)
 	{

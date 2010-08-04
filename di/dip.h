@@ -70,6 +70,7 @@ enum opcodes
 	DVD_INSERT_DISC			= 0x28,
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
+	DVD_CONNECTED			= 0x32, //Check if the harddrive is connected yet
 };
 
 enum GameRegion 
@@ -151,8 +152,11 @@ typedef struct
 	u32 DataSize;
 } PartitionInfo;
 
+u8 HardDriveConnected;//holds status of USB harddrive
+
 int DIP_Ioctl( struct ipcmessage * );
 int DIP_Ioctlv( struct ipcmessage * );
+s32 DVDUpdateCache( void );
 s32 DVDSelectGame( int SlotID );
 s32 DVDLowReadFiles( u32 Offset, u32 Length, void *ptr );
 s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr );

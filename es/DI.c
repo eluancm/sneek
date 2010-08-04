@@ -142,3 +142,16 @@ s32 DVDSelectGame( u32 SlotID )
 
 	return r;
 }
+
+s32 DVDConnected( void )
+{
+	s32 fd = IOS_Open("/dev/di", 0 );
+	if( fd < 0 )
+		return fd;
+
+	s32 r = IOS_Ioctl( fd, DVD_CONNECTED, NULL, 0, NULL, 0);
+	
+	IOS_Close( fd );
+
+	return r;
+}

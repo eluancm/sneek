@@ -1440,6 +1440,15 @@ s32 ES_LoadModules( u32 KernelVersion )
 		return *size;
 	}
 
+	if( TMD->ContentCount == 3 )	// STUB detected!
+	{
+		dbgprintf("ES:STUB IOS detected, falling back to IOS35\n");
+		free( path );
+		free( KeyID );
+		free( size );
+		return ES_LoadModules( 35 );
+	}
+
 	dbgprintf("ES:ContentCount:%d\n", TMD->ContentCount );
 
 	//Check if di.bin is present
@@ -1463,7 +1472,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 		if( TMD->BootIndex == TMD->Contents[i].Index )
 			continue;
 
-		//Skip SD module
+		//Skip SD module if FS module is using SD
 		if( TMD->Contents[i].Index == 4 )
 		{
 			if( ISFS_IsUSB() == FS_ENOENT2 )
@@ -1502,6 +1511,16 @@ s32 ES_LoadModules( u32 KernelVersion )
 			dbgprintf("ES:Fatal error: module failed to start!\n");
 			dbgprintf("ret:%d\n", r );
 			while(1);
+		}
+		
+		if( TMD->Contents[i].Index == 1 && LoadDI && ISFS_IsUSB() == FS_ENOENT2 )	//Only wait when in SNEEK+DI mode
+		{
+			dbgprintf("ES:Waiting for DI to init device...");
+
+			while(!DVDConnected())
+				udelay(500000);
+
+			dbgprintf("done!\n");
 		}
 	}
 
@@ -1646,9 +1665,9 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	dbgprintf("ES:NANDLoadFile:%p size:%d\n", TIK_Data, *size );
 
 	r = ES_GetUID( TitleID, &UID );
-	dbgprintf("ES:ES_GetUID:%d\n", r );
 	if( r < 0 )
 	{
+		dbgprintf("ES:ES_GetUID:%d\n", r );
 		free( TIK_Data );
 		free( TMD_Data );
 		free( size );
@@ -1657,9 +1676,9 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	}
 
 	r = SetUID( 0xF, UID );
-	dbgprintf("ES:SetUID( 0xF, 0x%04X ):%d\n", UID, r );
 	if( r < 0 )
 	{
+		dbgprintf("ES:SetUID( 0xF, 0x%04X ):%d\n", UID, r );
 		free( TIK_Data );
 		free( TMD_Data );
 		free( size );

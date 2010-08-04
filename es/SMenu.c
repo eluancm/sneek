@@ -169,6 +169,9 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//Disc Region free hack
 					*(u32*)0x0137DE28 = 0x4800001C;
 					*(u32*)0x0137E7A4 = 0x38000001;
+
+					//Disable bannerbomb fix
+					*(u32*)0x01380FC4 = 0x4E800020;
 					
 					FBSize		= 320*480*4;
 

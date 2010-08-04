@@ -72,6 +72,31 @@ char *path=NULL;
 u32 *size=NULL;
 u64 *iTitleID=NULL;
 
+//unsigned char sig_fwrite[32] =
+//{
+//    0x94, 0x21, 0xFF, 0xD0,
+//	0x7C, 0x08, 0x02, 0xA6,
+//	0x90, 0x01, 0x00, 0x34,
+//	0xBF, 0x21, 0x00, 0x14, 
+//    0x7C, 0x9B, 0x23, 0x78,
+//	0x7C, 0xDC, 0x33, 0x78,
+//	0x7C, 0x7A, 0x1B, 0x78,
+//	0x7C, 0xB9, 0x2B, 0x78, 
+//} ;
+//
+//unsigned char patch_fwrite[144] =
+//{
+//    0x7C, 0x85, 0x21, 0xD7, 0x40, 0x81, 0x00, 0x84, 0x3C, 0xE0, 0xCD, 0x00, 0x3D, 0x40, 0xCD, 0x00, 
+//    0x3D, 0x60, 0xCD, 0x00, 0x60, 0xE7, 0x68, 0x14, 0x61, 0x4A, 0x68, 0x24, 0x61, 0x6B, 0x68, 0x20, 
+//    0x38, 0xC0, 0x00, 0x00, 0x7C, 0x06, 0x18, 0xAE, 0x54, 0x00, 0xA0, 0x16, 0x64, 0x08, 0xB0, 0x00, 
+//    0x38, 0x00, 0x00, 0xD0, 0x90, 0x07, 0x00, 0x00, 0x7C, 0x00, 0x06, 0xAC, 0x91, 0x0A, 0x00, 0x00, 
+//    0x7C, 0x00, 0x06, 0xAC, 0x38, 0x00, 0x00, 0x19, 0x90, 0x0B, 0x00, 0x00, 0x7C, 0x00, 0x06, 0xAC, 
+//    0x80, 0x0B, 0x00, 0x00, 0x7C, 0x00, 0x04, 0xAC, 0x70, 0x09, 0x00, 0x01, 0x40, 0x82, 0xFF, 0xF4, 
+//    0x80, 0x0A, 0x00, 0x00, 0x7C, 0x00, 0x04, 0xAC, 0x39, 0x20, 0x00, 0x00, 0x91, 0x27, 0x00, 0x00, 
+//    0x7C, 0x00, 0x06, 0xAC, 0x74, 0x09, 0x04, 0x00, 0x41, 0x82, 0xFF, 0xB8, 0x38, 0xC6, 0x00, 0x01, 
+//    0x7F, 0x86, 0x20, 0x00, 0x40, 0x9E, 0xFF, 0xA0, 0x7C, 0xA3, 0x2B, 0x78, 0x4E, 0x80, 0x00, 0x20, 
+//};
+
 void ES_Ioctlv( struct ipcmessage *msg )
 {
 	u32 InCount		= msg->ioctlv.argc_in;
@@ -868,6 +893,27 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_READCONTENT:
 		{
 			ret = IOS_Read( *(u32*)(v[0].data), (u8*)(v[1].data), v[1].len );
+
+			//int i;
+			//for( i=0; i < v[1].len; i+=4 )
+			//{
+			//	if( memcmp( (void*)((u8*)(v[1].data)+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
+			//	{
+			//		dbgprintf("ES:[patcher] Found __fwrite pattern:%08X\n",  (u32)((u8*)(v[1].data)+i) | 0x80000000 );
+			//		memcpy( (void*)((u8*)(v[1].data)+i), patch_fwrite, sizeof(patch_fwrite) );
+			//	}
+			//	if( *(vu32*)((u8*)(v[1].data)+i) == 0x3C608000 )
+			//	{
+			//		if( ((*(vu32*)((u8*)(v[1].data)+i+4) & 0xFC1FFFFF ) == 0x800300CC) && ((*(vu32*)((u8*)(v[1].data)+i+8) >> 24) == 0x54 ) )
+			//		{
+			//			//dbgprintf("ES:[patcher] Found VI pattern:%08X\n", (u32)((u8*)(v[1].data)+i) | 0x80000000 );
+			//			*(vu32*)0xCC = 1;
+			//			dbgprintf("ES:VideoMode:%d\n", *(vu32*)0xCC );
+			//			//*(vu32*)((u8*)(v[1].data)+i+4) = 0x5400F0BE | ((*(vu32*)((u8*)(v[1].data)+i+4) & 0x3E00000) >> 5 );
+			//		}
+			//	}
+			//}
+
 			dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(v[0].data), v[1].data, v[1].len, ret );
 		} break;
 		case IOCTL_ES_OPENCONTENT:
@@ -914,7 +960,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			if( ret >= 0 )
 			{
 				ret = SetUID( 0xF, UID );
-				dbgprintf("ES:SetUID( 0xF, %04X ):%d\n", UID, ret );
+
 				if( ret >= 0 )
 				{
 					_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(TitleID>>32), (u32)TitleID );
@@ -928,6 +974,8 @@ void ES_Ioctlv( struct ipcmessage *msg )
 							dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(u16*)(TMD_Data+0x198), ret );
 						free( TMD_Data );
 					}
+				} else {
+					dbgprintf("ES:SetUID( 0xF, %04X ):%d\n", UID, ret );
 				}
 			}
 
@@ -1179,10 +1227,10 @@ int _main( int argc, char *argv[] )
 
 	ES_BootSystem( &TitleID, &KernelVersion );
 
-	SDStatus = malloca( sizeof(u32), 0x40 );
+	SDStatus = (u32*)malloca( sizeof(u32), 0x40 );
 	*SDStatus = 0x00000002;
 
-	HCR = malloca( sizeof(u32)*0x30, 0x40 );
+	HCR = (u32*)malloca( sizeof(u32)*0x30, 0x40 );
 	memset32( HCR, 0, sizeof(u32)*0x30 );
 	
 //Used in Ioctlvs
@@ -1238,7 +1286,7 @@ int _main( int argc, char *argv[] )
 					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
 						continue;
 				} else {
-					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
+					//if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
 						continue;
 				}
 			}
@@ -1248,11 +1296,11 @@ int _main( int argc, char *argv[] )
 			{
 				SMenuDraw();
 				SMenuReadPad();
-			} else if( MenuType == 1 ) {
+			}/* else if( MenuType == 1 ) {
 
 				SCheatDraw();
 				SCheatReadPad();
-			}
+			}*/
 
 			TimerRestart( Timer, 0, 2500 );
 			continue;

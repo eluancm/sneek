@@ -86,6 +86,7 @@ enum DIOpcodes
 	DVD_INSERT_DISC			= 0x28,
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
+	DVD_CONNECTED			= 0x32,
 };
 enum DIError
 {
@@ -119,5 +120,6 @@ s32 DVDInsertDisc( void );
 s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data );
 s32 DVDWriteDIConfig( void *DIConfig );
 s32 DVDSelectGame( u32 SlotID );
+s32 DVDConnected( void );
 
 #endif

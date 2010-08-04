@@ -69,6 +69,7 @@ s32 RegisterDevices( void *QueueSpace )
 	return QueueID;
 }
 char __aeabi_unwind_cpp_pr0[0];
+
 void _main(void)
 {
 	struct ipcmessage *IPCMessage = NULL;
@@ -84,7 +85,6 @@ void _main(void)
 	if( GetThreadID() != 3 || GetProcessID() != 7 )
 	{
 		dbgprintf("PID:%d TID:%d\n", GetProcessID(), GetThreadID() );
-		//DIP_Fatal("main()", __LINE__, __FILE__, 0, "PID must be 7 and TID must be 3!");
 	}
 
 	HeapInit();
@@ -98,103 +98,12 @@ void _main(void)
 	
 	s32 ret = EnableVideo(1);
 	dbgprintf("DIP:EnableVideo(1):%d\n", ret );
-
-	IRQ_Enable_18();
-
+	
 	DVDInit();
-	
-	//check if new games were installed
-	u32 GameCount=0;
-	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
-	{
-		dbgprintf("DIP:Could not open game dir!\n");
-		while(1);
-	}
 
-	while( DVDReadDir() == DVD_SUCCESS )
-	{
-		if( DVDDirIsFile() )		// skip files
-			continue;
-
-		GameCount++;
-	}
-	
 	DICfg = (DIConfig*)malloca( sizeof(u32) * 4, 32 );
-	
-	s32 fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_READ );
-	if( fd < 0 )
-	{
-		if( fd == DVD_NO_FILE )
-		{
-			DVDCreateDir( "/sneek" );
-			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ  );
-			if( fd < 0 )
-			{
-				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
-				while(1);
-			}			
-		}
-	}
 
-	if( DVDGetSize(fd) == GameCount * 0x60 + 0x10 )
-	{
-		ret = DVDRead( fd,  DICfg, sizeof(u32) * 4 );
-	} else {
-
-		dbgprintf("DIP:Creating new DI-Config\n");
-
-		DICfg->Region = EUR;
-		DICfg->SlotID = 0;
-		DICfg->Config = CONFIG_PATCH_MPVIDEO;
-		DICfg->Gamecount = 0;
-
-		ret = DVDWrite( fd, DICfg, sizeof(u32) * 4 );
-	}
-
-	dbgprintf("DIP:%d:%d\n", GameCount, DICfg->Gamecount );
-
-	if( GameCount != DICfg->Gamecount )
-	{
-		dbgprintf("DIP:Updating game info cache...");
-
-		DVDSeek( fd, 0, 0x10 );
-
-		char *LPath = (char*)malloca( 128, 32 );
-		char *GInfo = (char*)malloca( 0x60, 32 );
-
-		if( DVDOpenDir( "/games" ) == DVD_SUCCESS )
-		{
-			while( DVDReadDir() == DVD_SUCCESS )
-			{
-				if( DVDDirIsFile() )		// skip files
-					continue;
-
-				sprintf( LPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
-
-				s32 bi = DVDOpen( LPath, FA_READ );
-				if( bi >= 0 )
-				{
-					ret = DVDRead( bi, GInfo, 0x60 );
-					ret = DVDWrite( fd, GInfo, 0x60 );
-					DVDClose( bi );
-				}
-			}
-		}
-
-		free( LPath );
-		free( GInfo );
-
-		DICfg->Gamecount = GameCount;
-		if( DICfg->SlotID >= DICfg->Gamecount )
-			DICfg->SlotID = 0;
-		
-		DVDSeek( fd, 0, 0 );
-		DVDWrite( fd, DICfg, 0x10 );
-
-		dbgprintf("done\n");
-	}
-
-	DVDClose( fd );
+	DVDUpdateCache();
 
 	dbgprintf("DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
 
