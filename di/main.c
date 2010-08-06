@@ -81,12 +81,7 @@ void _main(void)
 #else
 	dbgprintf("$IOSVersion: DIP: %s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
-
-	if( GetThreadID() != 3 || GetProcessID() != 7 )
-	{
-		dbgprintf("PID:%d TID:%d\n", GetProcessID(), GetThreadID() );
-	}
-
+	
 	HeapInit();
 
 	void *QueueSpace = halloc( 0x20 );
