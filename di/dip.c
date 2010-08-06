@@ -691,17 +691,17 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			
 	switch(msg->ioctl.command)
 	{
+		//Added for slow harddrives
+		case DVD_CONNECTED:
+		{
+			if( HardDriveConnected )
+				ret = 1;
+			else
+				ret = 0;
+			dbgprintf("DIP:DVDConnected():%d\n", ret );
+		} break;
 		case DVD_WRITE_CONFIG:
 		{
-			//Added for slow harddrives
-			case DVD_CONNECTED:
-			{
-			  if( HardDriveConnected )
-				  ret = 1;
-			  else
-				  ret = 0;
-				dbgprintf("DIP:DVDConnected():%d\n", ret );
-			} break;
 			u32 *vec = (u32*)msg->ioctl.buffer_in;
 			fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_OPEN_EXISTING );
 			if( fd < 0 )
