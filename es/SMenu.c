@@ -9,6 +9,10 @@ u32 *WPad		= NULL;
 u32 *GameCount;
 
 u32 ShowMenu=0;
+u32 MenuType=0;
+u32 DVDStatus = 0;
+u32 DVDType = 0;
+u32 DVDError=0;
 u32 SLock=0;
 s32 PosX=0,ScrollX=0;
 
@@ -125,12 +129,15 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 	value	= 0;
 	Freeze	= 0;
 	ShowMenu= 0;
+	MenuType= 0;
 	SLock	= 0;
 	PosX	= 0;
 	ScrollX	= 0;
 	PosValX	= 0;
 	Hits	= 0;
 	edit	= 0;
+	DVDStatus = 0;
+	DVDError=0;
 	DICfg	= NULL;
 
 	Offsets		= (u32*)malloca( sizeof(u32) * MAX_HITS, 32 );
@@ -158,7 +165,7 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//*(u32*)0x013799A8 = 0x60000000;
 
 					//BS2Report
-					//*(u32*)0x137AEC4 = 0x481B22BC;
+					*(u32*)0x137AEC4 = 0x481B22BC;
 					
 					FBSize		= 320*480*4;
 
@@ -234,6 +241,45 @@ void SMenuAddFramebuffer( void )
 		}
 	}
 }
+s32 DVDDumpPart( char *Filename, u64 offset, u64 len )
+{
+	s32 fd = DVDOpen( Filename );
+
+	if( fd == DI_FATAL )
+	{
+		dbgprintf("DVDOpen():%d\n", fd );
+		DVDError = DI_FATAL|(fd<<16);
+		return -1;
+	}
+
+	char *buffer = (char*)0x01000000;
+
+	u64 i=0;
+	for( i = offset; i < offset+len; i++ )
+	{
+		s32 ret = DVDLowRead( buffer, i*READSIZE, READSIZE );
+		if( ret != 0 )
+		{
+			dbgprintf("DVDLowRead():%d\n", ret );
+			DVDError = DVDLowRequestError();
+			break;
+		}
+								
+		ret = DVDWrite( fd, buffer, READSIZE );
+		if( ret != READSIZE )
+		{
+			dbgprintf("DVDWrite():%d\n", ret );
+			DVDError = DI_FATAL|(ret<<16);
+			break;
+		}
+		if( (i%16) == 0 )
+			dbgprintf("\rDumping:%s %X%08X/%X%08X", Filename, (u32)(i>>32), (u32)i, (u32)((offset+len)>>32), (u32)(offset+len) );
+	}
+
+	DVDClose(fd);
+
+	return 1;
+}
 void SMenuDraw( void )
 {
 	u32 i,j;
@@ -257,16 +303,14 @@ void SMenuDraw( void )
 
 		if(FSUSB)
 		{
-			PrintFormat( FB[i], MENU_POS_X, 40, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+			PrintFormat( FB[i], MENU_POS_X, 20, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
 		} else {
-			PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+			PrintFormat( FB[i], MENU_POS_X, 20, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
 		}
 
-		PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
-
-		switch( ShowMenu )
+		switch( MenuType )
 		{
-			case 1:
+			case 0:
 			{
 				u32 gRegion = 0;
 
@@ -295,7 +339,9 @@ void SMenuDraw( void )
 						break;
 				}
 
-				PrintFormat( FB[i], MENU_POS_X, 40+16, "GameRegion:%s", RegionStr[gRegion] );
+				PrintFormat( FB[i], MENU_POS_X, 20+16, "Press PLUS for settings  Press MINUS for dumping" );
+				
+				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "GameRegion:%s", RegionStr[gRegion] );
 
 				for( j=0; j<20; ++j )
 				{
@@ -312,10 +358,13 @@ void SMenuDraw( void )
 					if( j == PosX )
 						PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
 				}
+
+				PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
+
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
 
-			case 2:
+			case 1:
 			{
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Game Region     :%s", RegionStr[DICfg->Region] );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "__fwrite patch  :%s", (DICfg->Config&CONFIG_PATCH_FWRITE) ? "On" : "Off" );
@@ -328,9 +377,162 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+60, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
+
+			case 2:
+			{
+				PrintFormat( FB[i], MENU_POS_X, 40+16, "Dumping mode");
+				if( DVDStatus == 0 )
+				{
+					DVDEjectDisc();
+
+					DVDInit();
+					DVDStatus = 1;					
+				}
+
+				if( DIP_COVER & 1 )
+				{
+					PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Please insert a disc" );
+					DVDStatus = 1;
+					DVDError  = 0;
+				} else {
+
+					if( DVDError )
+					{
+						switch(DVDError>>24)
+						{
+							//case 0x03:
+							//	DVDError = 0;
+							//break;
+							default:
+								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "DVDCommand failed with:%08X", DVDError );	
+							break;
+						}					
+					} else {
+						switch( DVDStatus )
+						{
+							case 1:
+							{
+								DVDLowReset();
+
+								s32 r = DVDLowReadDiscID( (void*)0 );
+								dbgprintf("DVDLowReadDiscID():%d\n", r );
+								dbgprintf("DIP_STATUS:%X\n", DIP_STATUS );
+								dbgprintf("DIP_IMM:%X\n", DIP_IMM );
+								dbgprintf("DIP_CONFIG:%X\n", DIP_CONFIG );
+								dbgprintf("DIP_CONTROL:%X\n", DIP_CONTROL );
+
+								if( r != DI_SUCCESS )
+								{
+									DVDError = DVDLowRequestError();
+									dbgprintf("DVDLowRequestError():%X\n", DVDError );
+								} else {
+
+									hexdump( (void*)0, 0x20);
+
+									//Detect disc type
+									if( *(u32*)0x18 == 0x5D1C9EA3 )
+									{
+										//try a read outside the normal single layer area
+										char *buffer = (char*)0x01000000;
+										r = DVDLowRead( buffer, 0x172A33100LL, 0x8000 );
+										if( r != 0 )
+										{
+											r = DVDLowRequestError();
+											if( r == 0x052100 )
+												DVDType = 2;
+											else 
+												DVDError = r;
+										} else {
+											DVDType = 3;
+										}										
+
+									} else if( *(u32*)0x1C == 0xC2339F3D ) {
+										DVDType = 1;
+									}
+									DVDStatus = 2;
+								}
+							} break;
+							case 2:
+							{
+								switch(DVDType)
+								{
+									case 1:
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(GC)", (char*)0 );
+									break;
+									case 2:
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(WII-SL)", (char*)0 );
+									break;
+									case 3:
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(WII-DL)", (char*)0 );
+									break;
+									default:
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "UNKNOWN disc type!");
+									break;
+								}
+							} break;
+							case 3:
+							{
+								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumping: %s please wait", (char*)0 );
+
+								char *DiscName = (char*)malloca( 64, 32 );
+
+								switch( DVDType )
+								{
+									case 1:	// GC		0x57058000,44555
+									{
+										_sprintf( DiscName, "/%s.bin", (void*)0 );
+										DVDDumpPart( DiscName, 0, 44555 );
+
+									} break;
+									case 2:	// WII-SL	0x118240000, 143432
+									{
+										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 0 );
+										DVDDumpPart( DiscName, 0, 131071 );
+
+										if(DVDError)
+											break;
+
+										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 1 );
+										DVDDumpPart( DiscName, 131071, 12361 );
+
+									} break;
+									case 3:	// WII-DL	0x1FB4E0000, 259740 
+									{
+										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 0 );
+										DVDDumpPart( DiscName, 0, 131071 );
+
+										if(DVDError)
+											break;
+
+										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 1 );
+										DVDDumpPart( DiscName, 131071, 128669 );
+
+									} break;
+								}
+
+								free(DiscName);
+
+								DVDStatus = 4;
+
+							} break;
+							case 4:
+							{
+								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumped: %s ", (char*)0 );
+							} break;
+						}
+					}
+				}
+
+			} break;
+			default:
+			{
+				MenuType = 0;
+				ShowMenu = 0;
+			} break;
 		}
 	}
 }
+
 void SMenuReadPad ( void )
 {
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
@@ -359,20 +561,42 @@ void SMenuReadPad ( void )
 			SLock = 1;
 		}
 
-		if( ShowMenu && (GCPad.B || (*WPad&WPAD_BUTTON_B) ) && SLock == 0 )
+		if( !ShowMenu )
+			return;
+		
+		if( (GCPad.B || (*WPad&WPAD_BUTTON_B) ) && SLock == 0 )
 		{
-			if(ShowMenu==1)
-				ShowMenu=2;
-			else
-				ShowMenu=1;
-			PosX=0;
-			ScrollX=0;
-			SLock = 1;
+			if( MenuType == 0 )
+				ShowMenu = 0;
+
+			MenuType = 0;
+
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
 		}
 
-		switch( ShowMenu )
+		if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 )
 		{
-			case 1:			// Game list
+			MenuType = 1;
+
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+		}
+
+		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 )
+		{
+			MenuType = 2;
+
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+		}
+
+		switch( MenuType )
+		{
+			case 0:			// Game list
 			{
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
@@ -428,7 +652,7 @@ void SMenuReadPad ( void )
 					SLock = 1; 
 				}
 			} break;
-			case 2:		//SNEEK Settings
+			case 1:		//SNEEK Settings
 			{
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
@@ -538,6 +762,16 @@ void SMenuReadPad ( void )
 					SLock = 1;
 				} 
 
+			} break;
+			case 2:
+			{
+				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+				{
+					if( DVDStatus == 2 && DVDType > 0 )
+						DVDStatus = 3;
+
+					SLock = 1;
+				}
 			} break;
 		}
 	}

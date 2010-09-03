@@ -26,18 +26,10 @@
 
 void BUG(void)
 {
-        debug_printf("bug\n");
-//        stack_trace();
         while(1);
 }
 #define BUG_ON(a) if(a)BUG()
-/*void udelay(int usec)
-{
-        u32 tmr;
-        tmr = get_timer();
-        tmr+=2*usec;
-        while(get_timer() <= tmr);
-}*/
+
 void msleep(int msec)//@todo not really sleeping..
 {
         u32 tmr;
@@ -53,16 +45,7 @@ extern u32 ios_thread_stack;
 
 void print_hex_dump_bytes(char *header,int prefix,u8 *buf,int len)
 {
-        int i;
-        if (len>0x100)len=0x100;
-        debug_printf("%s  %08X\n",header,(u32)buf);
-        for (i=0;i<len;i++){
-                debug_printf("%02x ",buf[i]);
-                if((i&0xf) == 0xf) 
-                        debug_printf("\n");
-        }
-        debug_printf("\n");
-                
+	return;                
 }
 #define DUMP_PREFIX_OFFSET 1
 #include "ehci.h"
@@ -80,7 +63,7 @@ int tiny_ehci_init(void)
 {
 	int retval;
 	ehci = &_ehci;
-
+	
 	//memset(ehci,0,sizeof(*ehci));
 	if(usb_os_init()<0)
 			return 0;

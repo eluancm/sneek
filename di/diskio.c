@@ -34,7 +34,7 @@ DSTATUS disk_initialize (BYTE drv)
 	u32 s_size;
 	u32 s_cnt = USBStorage_Get_Capacity(&s_size);
 	
-	dbgprintf("DIP: Drive size: %dMB SectorSize:%d\n", s_cnt / 1024 * s_size / 1024, s_size);
+	//dbgprintf("DIP: Drive size: %dMB SectorSize:%d\n", s_cnt / 1024 * s_size / 1024, s_size);
 
 	return r;
 }
@@ -48,7 +48,7 @@ DSTATUS disk_status (BYTE drv)
 DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 {
 	u32 *buffer = malloca( count*512, 0x40 );
-
+	
 	USBStorage_Read_Sectors( sector, count, buffer );
 	memcpy( buff, buffer, count*512 );
 	free( buffer );

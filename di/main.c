@@ -92,7 +92,6 @@ void _main(void)
 	}
 	
 	s32 ret = EnableVideo(1);
-	dbgprintf("DIP:EnableVideo(1):%d\n", ret );
 	
 	DVDInit();
 
@@ -116,10 +115,8 @@ void _main(void)
 			{
 				if( strncmp("/dev/di", IPCMessage->open.device, 8 ) == 0 )
 				{
-					//dbgprintf("DIP:IOS_Open(\"%s\"):%d\n", IPCMessage->open.device, 24 );
 					MessageQueueAck( IPCMessage, 24 );
 				} else {
-					//dbgprintf("DIP:IOS_Open(\"%s\"):%d\n", IPCMessage->open.device, -6 );
 					MessageQueueAck( IPCMessage, -6 );
 				}
 				
@@ -127,7 +124,6 @@ void _main(void)
 
 			case IOS_CLOSE:
 			{
-				//dbgprintf("DIP:IOS_Close(%d)\n", IPCMessage->fd );
 				MessageQueueAck( IPCMessage, 0 );
 			} break;
 

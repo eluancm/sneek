@@ -20,34 +20,34 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 #include "gecko.h"
 
-void EXISendByte( char byte )
-{
-	u32 EXI = 0xD806814;
-
-loop:
-	*(vu32*)EXI			= 0xD0;
-	*(vu32*)(EXI+0x10)	= 0xB0000000 | (byte<<20);
-	*(vu32*)(EXI+0x0C)	= 0x19;
-
-	while( *(vu32*)(EXI+0x0C)&1 );
-
-	u32 loop =  *(vu32*)(EXI+0x10)&0x4000000;
-	
-	*(vu32*)EXI	= 0;
-
-	if( !loop )
-		goto loop;
-
-	return;
-}
-void GeckoSendBuffer( char *buffer )
-{
-	int i = 0;
-	while( buffer[i] != '\0' )
-	{
-		EXISendByte( buffer[i] );
-		++i;
-	}
-
-	return;
-}
+//void EXISendByte( char byte )
+//{
+//	u32 EXI = 0xD806814;
+//
+//loop:
+//	*(vu32*)EXI			= 0xD0;
+//	*(vu32*)(EXI+0x10)	= 0xB0000000 | (byte<<20);
+//	*(vu32*)(EXI+0x0C)	= 0x19;
+//
+//	while( *(vu32*)(EXI+0x0C)&1 );
+//
+//	u32 loop =  *(vu32*)(EXI+0x10)&0x4000000;
+//	
+//	*(vu32*)EXI	= 0;
+//
+//	if( !loop )
+//		goto loop;
+//
+//	return;
+//}
+//void GeckoSendBuffer( char *buffer )
+//{
+//	int i = 0;
+//	while( buffer[i] != '\0' )
+//	{
+//		EXISendByte( buffer[i] );
+//		++i;
+//	}
+//
+//	return;
+//}

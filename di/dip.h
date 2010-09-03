@@ -57,7 +57,7 @@ enum opcodes
 	DVD_READ_UNENCRYPTED	= 0x8D,
 	DVD_REPORTKEY			= 0xA4,
 	DVD_LOW_SEEK			= 0xAB,
-	DVD_READ				= 0xD0,
+	//DVD_READ				= 0xD0,
 	DVD_READ_CONFIG			= 0xD1,
 	DVD_READ_BCA			= 0xDA,
 	DVD_GET_ERROR			= 0xE0,
@@ -71,6 +71,12 @@ enum opcodes
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
 	DVD_CONNECTED			= 0x32, //Check if the harddrive is connected yet
+
+	DVD_OPEN				= 0x40,
+	DVD_READ				= 0x41,
+	DVD_WRITE				= 0x42,
+	DVD_CLOSE				= 0x43,
+
 };
 
 enum GameRegion 

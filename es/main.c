@@ -564,20 +564,20 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			ret = ISFS_CreateFile( path, 0, 3, 3, 3 );
 			if( ret < 0 )
 			{
-				dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
+				dbgprintf("ES:ISFS_CreateFile(\"%s\"):%d\n", path, ret );
 			} else {
 
 				s32 fd = IOS_Open( path, 2 );
 				if( fd < 0 )
 				{
-					dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
+					dbgprintf("ES:IOS_Open(\"%s\"):%d\n", path, fd );
 					ret = fd;
 				} else {
 
 					ret = IOS_Write( fd, ticket, v[0].len );
 					if( ret < 0 || ret != v[0].len )
 					{
-						dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, ticket, v[0].len, ret );
+						dbgprintf("ES:IOS_Write( %d, %p, %d):%d\n", fd, ticket, v[0].len, ret );
 					} else {
 						ret = ES_SUCCESS;
 					}
@@ -595,7 +595,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 							ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
 							if( ret < 0 )
 							{
-								dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
+								dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
 								break;
 							}
 						} /* !! fallthrough !! */
@@ -609,7 +609,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 							//this function moves the file, overwriting the target
 							ret = ISFS_Rename( path, dstpath );
 							if( ret < 0 )
-								dbgprintf("ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
+								dbgprintf("ES:ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
 
 							free( dstpath );
 
@@ -624,38 +624,35 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			_sprintf( path, "/title/%08x/%08x/content", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
 
 			//Check if folder exists
-			switch( ISFS_GetUsage( path, NULL, NULL ) )
+			s32 fres = ISFS_GetUsage( path, NULL, NULL );
+			switch( fres )
 			{
 				case FS_ENOENT2:
 				{
 					//Create folders!
 					_sprintf( path, "/title/%08x", *(vu32*)(ticket+0x01dc) );
-					if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
+					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
+					if( ret < 0 )
 					{
-						ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-						if( ret < 0 )
-						{
-							dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-							break;
-						}
+						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
+						break;
 					}
 
 					_sprintf( path, "/title/%08x/%08x", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
-					if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
+					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
+					if( ret < 0 )
 					{
-						ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-						if( ret < 0 )
-						{
-							dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-							break;
-						}
+						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
+						break;
 					}
+					
 				} break;
 				case FS_SUCCESS:
 				{
 					ret = ES_SUCCESS;
 				} break;
 				default:
+					dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, fres );
 					ret = ES_FATAL;
 				break;
 			}
@@ -1265,6 +1262,8 @@ int _main( int argc, char *argv[] )
 
 	dbgprintf("ES:looping!\n");
 
+	u32 HBCHax=0;
+
 	while (1)
 	{
 		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
@@ -1305,7 +1304,7 @@ int _main( int argc, char *argv[] )
 			TimerRestart( Timer, 0, 2500 );
 			continue;
 		}
-	
+
 		//dbgprintf("ES:Command:%02X\n", message->command );
 		//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d ioctlv:\"%X\"\n", queueid, ret, message->command, message->ioctlv.command );
 

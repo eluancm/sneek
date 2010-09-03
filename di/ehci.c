@@ -617,13 +617,13 @@ s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpD
 	urb.transfer_buffer_length = wLength;
 	urb.transfer_buffer = rpData;
 
-	if (verbose)
-		ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
+	//if (verbose)
+	//	ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
 
 	ret = ehci_do_urb(dev,&urb);
 
-	if (verbose)
-		ehci_dbg ( "==>%d\n", ret);
+	//if (verbose)
+	//	ehci_dbg ( "==>%d\n", ret);
 
 	return ret;
 }

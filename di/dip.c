@@ -956,6 +956,30 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 
 	switch(msg->ioctl.command)
 	{
+		case DVD_CLOSE:
+		{
+			DVDClose( (u32)(v[0].data) );
+			ret = DI_SUCCESS;
+		} break;
+		case DVD_WRITE:
+		{
+			//dbgprintf("DVDWrite( %d, %p, %d)\n", (u32)(v[0].data), (u8*)(v[1].data), v[1].len );
+			ret = DVDWrite( (u32)(v[0].data), (u8*)(v[1].data), v[1].len );
+		} break;
+		case DVD_READ:
+		{
+			ret = DVD_FATAL;
+		} break;
+		case DVD_OPEN:
+		{
+			s32 fd = DVDOpen( (char*)(v[0].data), FA_WRITE|FA_READ|FA_CREATE_ALWAYS );
+			if( fd < 0 )
+			{
+				ret = DI_FATAL;
+				break;
+			}
+			ret = fd;
+		} break;
 		case DVD_OPEN_PARTITION:
 		{
 			if( Partition == 1 )

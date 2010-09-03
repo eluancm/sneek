@@ -74,7 +74,7 @@ enum DIOpcodes
 	DVD_ENABLE_VIDEO		= 0x8E,
 	DVD_REPORTKEY			= 0xA4,
 	DVD_LOW_SEEK			= 0xAB,
-	DVD_READ				= 0xD0,
+	//DVD_READ				= 0xD0,
 	DVD_READ_CONFIG			= 0xD1,
 	DVD_READ_BCA			= 0xDA,
 	DVD_GET_ERROR			= 0xE0,
@@ -87,6 +87,11 @@ enum DIOpcodes
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
 	DVD_CONNECTED			= 0x32,
+
+	DVD_OPEN				= 0x40,
+	DVD_READ				= 0x41,
+	DVD_WRITE				= 0x42,
+	DVD_CLOSE				= 0x43,
 };
 enum DIError
 {
@@ -95,21 +100,36 @@ enum DIError
 	DI_FATAL				= 0x40,
 };
 
-#define		DI_BASE		0x0D806000
+#define		READSIZE	(32*1024)
 
-#define		DI_STATUS	(*(vu32*)(DI_BASE+0x00))
-#define		DI_COVER	(*(vu32*)(DI_BASE+0x04))
-#define		DI_CMD_0	(*(vu32*)(DI_BASE+0x08))
-#define		DI_CMD_1	(*(vu32*)(DI_BASE+0x0C))
-#define		DI_CMD_2	(*(vu32*)(DI_BASE+0x10))
-#define		DI_DMA_ADR	(*(vu32*)(DI_BASE+0x14))
-#define		DI_DMA_LEN	(*(vu32*)(DI_BASE+0x18))
-#define		DI_CONTROL	(*(vu32*)(DI_BASE+0x1C))
-#define		DI_IMM		(*(vu32*)(DI_BASE+0x20))
-#define		DI_CONFIG	(*(vu32*)(DI_BASE+0x24))
+#define		DIP_BASE	0x0D806000
+
+#define		DIP_STATUS	(*(vu32*)(DIP_BASE+0x00))
+#define		DIP_COVER	(*(vu32*)(DIP_BASE+0x04))
+#define		DIP_CMD_0	(*(vu32*)(DIP_BASE+0x08))
+#define		DIP_CMD_1	(*(vu32*)(DIP_BASE+0x0C))
+#define		DIP_CMD_2	(*(vu32*)(DIP_BASE+0x10))
+#define		DIP_DMA_ADR	(*(vu32*)(DIP_BASE+0x14))
+#define		DIP_DMA_LEN	(*(vu32*)(DIP_BASE+0x18))
+#define		DIP_CONTROL	(*(vu32*)(DIP_BASE+0x1C))
+#define		DIP_IMM		(*(vu32*)(DIP_BASE+0x20))
+#define		DIP_CONFIG	(*(vu32*)(DIP_BASE+0x24))
 
 #define		DMA_READ		3
 #define		IMM_READ		1
+
+u32 DVDLowReadDiscID( void *data );
+u32 DVDLowGetStatus( u32 slot );
+u32 DVDLowSeek( u64 offset );
+u32 DVDLowRequestError( void );
+s32 InitRegisters( void );
+void DVDInit( void );
+void DVDLowReset( void );
+u32 DVDLowRead( void *data, u64 offset, u32 length );
+
+s32 DVDOpen( char *FileName );
+s32 DVDWrite( s32 fd, void *ptr, u32 len );
+s32 DVDClose( s32 fd );
 
 s32 DVDLowEnableVideo( u32 Mode );
 s32 DVDGetGameCount( u32 *Mode );
