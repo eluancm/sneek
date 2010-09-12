@@ -23,8 +23,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 static FIL fd_stack[MAX_FILE] ALIGNED(32);
 
 //#define USEATTR
-#undef DEBUG
-//#define EDEBUG
+//#undef DEBUG
+#define EDEBUG
 
 typedef struct
 {

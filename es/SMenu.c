@@ -165,7 +165,7 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//*(u32*)0x013799A8 = 0x60000000;
 
 					//BS2Report
-					*(u32*)0x137AEC4 = 0x481B22BC;
+					//*(u32*)0x137AEC4 = 0x481B22BC;
 					
 					FBSize		= 320*480*4;
 
@@ -241,13 +241,14 @@ void SMenuAddFramebuffer( void )
 		}
 	}
 }
+u32 DVDErrorSkip=0;
 s32 DVDDumpPart( char *Filename, u64 offset, u64 len )
 {
 	s32 fd = DVDOpen( Filename );
 
 	if( fd == DI_FATAL )
 	{
-		dbgprintf("DVDOpen():%d\n", fd );
+		dbgprintf("ES:DVDOpen():%d\n", fd );
 		DVDError = DI_FATAL|(fd<<16);
 		return -1;
 	}
@@ -260,20 +261,39 @@ s32 DVDDumpPart( char *Filename, u64 offset, u64 len )
 		s32 ret = DVDLowRead( buffer, i*READSIZE, READSIZE );
 		if( ret != 0 )
 		{
-			dbgprintf("DVDLowRead():%d\n", ret );
 			DVDError = DVDLowRequestError();
-			break;
+			if( DVDError == 0x0030200 )
+			{
+				if( DVDErrorSkip == 1 )
+				{
+					memset32( buffer, 0, READSIZE );
+				} else {
+					if( (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) )
+					{
+						dbgprintf("\nES:Enabled error skipping\n");
+						DVDErrorSkip = 1;
+					} else {
+						dbgprintf("\nES:DVDLowRead():%d\n", ret );
+						dbgprintf("ES:DVDError:%X\n", DVDError );
+						break;
+					}
+				}
+			} else {
+				dbgprintf("\nES:DVDLowRead():%d\n", ret );
+				dbgprintf("ES:DVDError:%X\n", DVDError );
+				break;
+			}
 		}
 								
 		ret = DVDWrite( fd, buffer, READSIZE );
 		if( ret != READSIZE )
 		{
-			dbgprintf("DVDWrite():%d\n", ret );
+			dbgprintf("\nES:DVDWrite():%d\n", ret );
 			DVDError = DI_FATAL|(ret<<16);
 			break;
 		}
 		if( (i%16) == 0 )
-			dbgprintf("\rDumping:%s %X%08X/%X%08X", Filename, (u32)(i>>32), (u32)i, (u32)((offset+len)>>32), (u32)(offset+len) );
+			dbgprintf("\rES:Dumping:%s %X%08X/%X%08X", Filename, (u32)(i>>32), (u32)i, (u32)((offset+len)>>32), (u32)(offset+len) );
 	}
 
 	DVDClose(fd);
@@ -370,9 +390,10 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "__fwrite patch  :%s", (DICfg->Config&CONFIG_PATCH_FWRITE) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "MotionPlus video:%s", (DICfg->Config&CONFIG_PATCH_MPVIDEO) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*3, "Video mode patch:%s", (DICfg->Config&CONFIG_PATCH_VIDEO) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*4, "Error skipping  :%s", (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) ? "On" : "Off" );
 
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*5, "save config" );
-			//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*6, "recreate game info cache" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*6, "save config" );
+			//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*7, "recreate game info cache" );
 
 				PrintFormat( FB[i], MENU_POS_X+60, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -457,13 +478,13 @@ void SMenuDraw( void )
 								switch(DVDType)
 								{
 									case 1:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(GC)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(GC)", (char*)0 );
 									break;
 									case 2:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(WII-SL)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(WII-SL)", (char*)0 );
 									break;
 									case 3:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %s(WII-DL)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(WII-DL)", (char*)0 );
 									break;
 									default:
 										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "UNKNOWN disc type!");
@@ -472,7 +493,7 @@ void SMenuDraw( void )
 							} break;
 							case 3:
 							{
-								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumping: %s please wait", (char*)0 );
+								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumping: %.6s please wait", (char*)0 );
 
 								char *DiscName = (char*)malloca( 64, 32 );
 
@@ -480,31 +501,31 @@ void SMenuDraw( void )
 								{
 									case 1:	// GC		0x57058000,44555
 									{
-										_sprintf( DiscName, "/%s.bin", (void*)0 );
+										_sprintf( DiscName, "/%.6s.bin", (void*)0 );
 										DVDDumpPart( DiscName, 0, 44555 );
 
 									} break;
 									case 2:	// WII-SL	0x118240000, 143432
 									{
-										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 0 );
+										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 0 );
 										DVDDumpPart( DiscName, 0, 131071 );
 
 										if(DVDError)
 											break;
 
-										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 1 );
+										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 1 );
 										DVDDumpPart( DiscName, 131071, 12361 );
 
 									} break;
 									case 3:	// WII-DL	0x1FB4E0000, 259740 
 									{
-										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 0 );
+										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 0 );
 										DVDDumpPart( DiscName, 0, 131071 );
 
 										if(DVDError)
 											break;
 
-										_sprintf( DiscName, "/%s_%02X.bin", (void*)0, 1 );
+										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 1 );
 										DVDDumpPart( DiscName, 131071, 128669 );
 
 									} break;
@@ -517,7 +538,7 @@ void SMenuDraw( void )
 							} break;
 							case 4:
 							{
-								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumped: %s ", (char*)0 );
+								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumped: %.6s ", (char*)0 );
 							} break;
 						}
 					}
@@ -680,6 +701,10 @@ void SMenuReadPad ( void )
 						} break;
 						case 5:
 						{
+							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
+						} break;
+						case 6:
+						{
 							DVDWriteDIConfig( DICfg );
 						} break;
 					}
@@ -690,22 +715,22 @@ void SMenuReadPad ( void )
 					if( PosX )
 						PosX--;
 					else
-						PosX = 5;
+						PosX = 6;
 
-					if( PosX == 4 )
-						PosX  = 3;
+					if( PosX == 5 )
+						PosX  = 4;
 
 					SLock = 1;
 				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 				{
-					if( PosX >= 5 )
+					if( PosX >= 6 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 
-					if( PosX == 4 )
-						PosX  = 5;
+					if( PosX == 5 )
+						PosX  = 6;
 
 					SLock = 1;
 				}
@@ -733,6 +758,10 @@ void SMenuReadPad ( void )
 						{
 							DICfg->Config ^= CONFIG_PATCH_VIDEO;
 						} break;
+						case 4:
+						{
+							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
+						} break;
 					}
 					SLock = 1;
 				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
@@ -757,6 +786,10 @@ void SMenuReadPad ( void )
 						case 3:
 						{
 							DICfg->Config ^= CONFIG_PATCH_VIDEO;
+						} break;
+						case 4:
+						{
+							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
 						} break;
 					}
 					SLock = 1;

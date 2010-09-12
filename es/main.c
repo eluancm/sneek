@@ -106,7 +106,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 	u32 i;
 
 	//dbgprintf("ES:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv);
-	//	
+	////	
 	//for( i=0; i<InCount+OutCount; ++i)
 	//{
 	//	dbgprintf("data:%p len:%d\n", v[i].data, v[i].len );
@@ -593,7 +593,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 						{
 							//Create folder!
 							ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-							if( ret < 0 )
+							if( ret < 0 && ret != FS_EEXIST2 )
 							{
 								dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
 								break;
@@ -632,7 +632,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 					//Create folders!
 					_sprintf( path, "/title/%08x", *(vu32*)(ticket+0x01dc) );
 					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-					if( ret < 0 )
+					if( ret < 0 && ret != FS_EEXIST2 )
 					{
 						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
 						break;
@@ -640,7 +640,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 					_sprintf( path, "/title/%08x/%08x", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
 					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-					if( ret < 0 )
+					if( ret < 0 && ret != FS_EEXIST2 )
 					{
 						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
 						break;
@@ -748,19 +748,19 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
-			u8 *data = NANDLoadFile( path, size );
-			if( data != NULL )
+			TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+			if( TMD != NULL )
 			{
 				*(u32*)(v[1].data) = 0;
 			
-				for( i=0; i < *(u16*)(data+0x1DE); ++i )
+				for( i=0; i < TMD->ContentCount; ++i )
 				{	
-					if( (*(u16*)(data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
+					if( TMD->Contents[i].Type & CONTENT_SHARED )
 					{
-						if( ES_CheckSharedContent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
+						if( ES_CheckSharedContent( TMD->Contents[i].SHA1 ) == 1 )
 							(*(u32*)(v[1].data))++;
 					} else {
-						_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(data+0x18C), *(u32*)(data+0x190), *(u32*)(data+0x1E4+i*0x24) );
+						_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)((TMD->TitleID)>>32), (u32)(TMD->TitleID), TMD->Contents[i].ID );
 						s32 fd = IOS_Open( path, 1 );
 						if( fd >= 0 )
 						{
@@ -771,7 +771,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				}
 				
 				ret = ES_SUCCESS;
-				free( data );
+				free( TMD );
 
 			} else {
 				ret = *size;
@@ -838,14 +838,14 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
-			u8 *data = NANDLoadFile( path, size );
-			if( data == NULL )
+			TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+			if( TMD == NULL )
 			{
 				ret = *size;
 			} else {
-				*(u32*)(v[1].data) = *(u16*)(data+0x1DE)*16+0x5C;
+				*(u32*)(v[1].data) = TMD->ContentCount*16+0x5C;
 
-				free( data );
+				free( TMD );
 				ret = ES_SUCCESS;
 			}
 
@@ -961,15 +961,15 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				if( ret >= 0 )
 				{
 					_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(TitleID>>32), (u32)TitleID );
-					u8 *TMD_Data = NANDLoadFile( path, size );
-					if( TMD_Data == NULL )
+					TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+					if( TMD == NULL )
 					{
 						ret = *size;
 					} else {
-						ret = _cc_ahbMemFlush( 0xF, *(u16*)(TMD_Data+0x198) );
+						ret = _cc_ahbMemFlush( 0xF, TMD->GroupID );
 						if( ret < 0 )
-							dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(u16*)(TMD_Data+0x198), ret );
-						free( TMD_Data );
+							dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, TMD->GroupID, ret );
+						free( TMD );
 					}
 				} else {
 					dbgprintf("ES:SetUID( 0xF, %04X ):%d\n", UID, ret );
@@ -1224,6 +1224,7 @@ int _main( int argc, char *argv[] )
 
 	ES_BootSystem( &TitleID, &KernelVersion );
 
+//SD Card 
 	SDStatus = (u32*)malloca( sizeof(u32), 0x40 );
 	*SDStatus = 0x00000002;
 
@@ -1261,9 +1262,7 @@ int _main( int argc, char *argv[] )
 	}
 
 	dbgprintf("ES:looping!\n");
-
-	u32 HBCHax=0;
-
+	
 	while (1)
 	{
 		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
@@ -1312,7 +1311,7 @@ int _main( int argc, char *argv[] )
 		{
 			case IOS_OPEN:
 			{
-				//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d device:\"%s\"\n", queueid, ret, message->command, message->open.device );
+				//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d device:\"%s\":%d\n", queueid, ret, message->command, message->open.device, message->open.mode );
 				// Is it our device?
 				if( strncmp( message->open.device, "/dev/es", 7 ) == 0 )
 				{

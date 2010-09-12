@@ -25,10 +25,10 @@ u32 *KeyID=NULL;
 
 u16 TitleVersion;
 
-static u8  *DITicket=NULL;
-static u8  *CNTMap=NULL;
-static u32 *CNTSize=NULL;
-static u32 *CNTMapDirty=NULL;
+static u8  *DITicket;
+static u8  *CNTMap;
+static u32 *CNTSize;
+static u32 *CNTMapDirty;
 
 void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
 {
@@ -48,8 +48,8 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 	u32 *size = (u32*)malloca( 4, 32 );
 	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(TitleID>>32), (u32)TitleID );
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	TitleMetaData *TMD = (TitleMetaData*)NANDLoadFile( path, size );
+	if( TMD == NULL )
 	{
 		s32 ret = *size;
 		free( size );
@@ -59,14 +59,14 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 
 	u32 i=0;
 	s32 ret=0;
-	for( i=0; i < *(u16*)(data+0x1DE); ++i )
+	for( i=0; i < TMD->ContentCount; ++i )
 	{
-		if( *(u16*)(data+0x1E8+i*0x24) == ContentID )
+		if( TMD->Contents[i].Index == ContentID )
 		{
 			//dbgprintf("ContentCnt:%d Index:%d cIndex:%d type:%04x\n", *(vu16*)(data+0x1DE), *(vu32*)(v[0].data), *(vu16*)(data+0x1E8+i*0x24), *(vu16*)(data+0x1EA+i*0x24) );
-			if( (*(u16*)(data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
+			if( TMD->Contents[i].Type & CONTENT_SHARED )
 			{
-				ret = ES_GetS1ContentID( (u8*)(data+0x1F4+i*0x24) );
+				ret = ES_GetS1ContentID( TMD->Contents[i].SHA1 );
 				if( ret >= 0 )
 				{
 					_sprintf( path, "/shared1/%08x.app", ret );
@@ -74,12 +74,12 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 					//dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
 				} else {
 					dbgprintf("ES:iOpenContent->Fatal Error: tried to open nonexisting content!\n");
-					hexdump( (u8*)(data+0x1F4+i*0x24), 0x14 );
-					while(1);
+					hexdump( TMD->Contents[i].SHA1, 0x14 );
+					ret = ES_NFOUND;
 				}
 
 			} else {	// not-shared
-				_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(TitleID>>32), (u32)TitleID, *(u32*)(data+0x1E4+i*0x24) );
+				_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(TitleID>>32), (u32)TitleID, TMD->Contents[i].ID );
 				ret = IOS_Open( path, 1 );
 				//dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
 			}
@@ -88,7 +88,7 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 		}
 	}
 
-	free( data );
+	free( TMD );
 	free( size );
 	free( path );
 
@@ -97,20 +97,21 @@ s32 ES_OpenContent( u64 TitleID, u32 ContentID )
 }
 s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 {
-	CNTMap=NULL;
-	CNTMapDirty=NULL;
-	CNTSize=NULL;
-	DITicket=NULL;
-	KeyID=NULL;
+	CNTMap		= (u8*)NULL;
+	CNTMapDirty	= (u32*)NULL;
+	CNTSize		= (u32*)NULL;
+	DITicket	= (u8*)NULL;
+	KeyID		= (u32*)NULL;
 
 	u32 LaunchDisc = 0;
+	u32 IOSVersion = 0;
 
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32 *size	= (u32*)malloca( 4, 32 );
 
-	CNTSize = (u32*)malloca( 4, 32 );
-	CNTMapDirty = (u32*)malloca( 4, 32 );
-	*CNTMapDirty = 1;
+	CNTSize		= (u32*)malloca( 4, 32 );
+	CNTMapDirty	= (u32*)malloca( 4, 32 );
+	*CNTMapDirty= 1;
 
 	if( ES_CheckBootOption( "/sys/launch.sys", TitleID ) == 0 )
 	{
@@ -119,20 +120,18 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 	dbgprintf("ES:Booting %08x-%08x...\n", (u32)(*TitleID>>32), (u32)*TitleID );
 
-	u32 IOSVersion = 0;
-	
-	if( (u32)(*TitleID>>32) == 1 && (u32)(*TitleID) != 2 )	//IOS loading requested
+	if( (u32)(*TitleID>>32) == 1 && (u32)(*TitleID) != 2 )	//	IOS loading requested
 	{
 		IOSVersion = (u32)(*TitleID);
 		LaunchDisc = 1;
 
 	} else {
-		//Get tmd from title and build kernelversion
 
+		//get required IOS version from title TMD
 		_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*TitleID>>32), (u32)(*TitleID) );
 
-		u8 *data = NANDLoadFile( path, size );
-		if( data == NULL )
+		TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+		if( TMD == NULL )
 		{
 			dbgprintf("ES:Failed to open:\"%s\":%d\n", path, *size );
 			free( path );
@@ -140,20 +139,19 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 			PanicBlink( 0, 1,-1);
 		}
 
-		IOSVersion = *(u32*)(data+0x188);
-		TitleVersion = *(u16*)(data+0x1DC);
+		IOSVersion		= (u32)TMD->SystemVersion;
+		TitleVersion	= TMD->TitleVersion;
 
-		free( data );
+		free( TMD );
 	}
 
-	dbgprintf("ES:IOSVersion:%d\n", IOSVersion );
-	dbgprintf("ES:TitleVersion:%d\n", TitleVersion );
-
+	dbgprintf("ES:Loading IOS%d v%d...\n", IOSVersion, TitleVersion);
+	
 	//Load TMD of the requested IOS and build KernelVersion
 	_sprintf( path, "/title/00000001/%08x/content/title.tmd", IOSVersion );
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+	if( TMD == NULL )
 	{
 		dbgprintf("ES:Failed to open:\"%s\":%d\n", path, *size );
 		free( path );
@@ -161,17 +159,18 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		PanicBlink( 0, 1,1,-1);
 	}
 
-	*KernelVersion = *(u16*)(data+0x1DC);
+	*KernelVersion = TMD->TitleVersion;
 	*KernelVersion|= IOSVersion<<16;
 	SetKernelVersion( *KernelVersion );
 
 	u32 version = GetKernelVersion();
 	dbgprintf("ES:KernelVersion:%08X, %d\n", version, (version<<8)>>0x18 );
 
-	free( data );
+	free( TMD );
 
-	//Load modules
-	if( IOSVersion < 28 )
+	//SNEEK does not support single module IOSs so we just load IOS35 instead
+	//IOS58 is also not supported
+	if( IOSVersion < 28 || IOSVersion == 58 )
 		IOSVersion = 35;
 
 	s32 r = ES_LoadModules( IOSVersion );
@@ -187,7 +186,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		u8 *data = NANDLoadFile( path, size );
 		if( data != NULL )
 		{
-			*TitleID = *(vu64*)data;		//Set TitleID to disc Title
+			*TitleID = *(vu64*)data;		// Set TitleID to disc Title
 
 			r = LoadPPC( data+0x29A );
 			dbgprintf("ES:Disc->LoadPPC(%p):%d\n", data+0x29A, r );
@@ -202,7 +201,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 			return ES_SUCCESS;
 		}
 	}
-
+	
 	ISFS_Delete( path );
 
 	r = ES_LaunchSYS( TitleID );
@@ -215,11 +214,11 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 }
 s32 ES_Sign( u64 *TitleID, u8 *data, u32 len, u8 *sign, u8 *cert )
 {
-	u8 *shac = (u8*)malloca( 0x60, 0x40 );
-	u8 *hash = (u8*)malloca( 0x14, 0x40 );
-	u32 *Key = (u32*)malloca( sizeof( u32 ), 0x40 );
-	char *issuer = (char*)malloca( 0x40, 0x40 );
-	u8 *NewCert = (u8*)malloca( 0x180, 0x40 );
+	u8 *shac	= (u8*)malloca( 0x60, 0x40 );
+	u8 *hash	= (u8*)malloca( 0x14, 0x40 );
+	u32 *Key	= (u32*)malloca( sizeof( u32 ), 0x40 );
+	char *issuer= (char*)malloca( 0x40, 0x40 );
+	u8 *NewCert	= (u8*)malloca( 0x180, 0x40 );
 
 	memset32( issuer, 0, 0x40 );
 
@@ -265,33 +264,33 @@ ES_Sign_CleanUp:
 }
 s32 ES_GetTitles( u64 *Titles )
 {
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32 *size	= (u32*)malloca( 4, 32 );
+	u32 TitleCount=0;
+	u32 i;
 
 	_sprintf( path, "/sys/uid.sys");
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	UIDSYS *uid = (UIDSYS *)NANDLoadFile( path, size );
+	if( uid == NULL )
 	{
 		free( path );
 		free( size );
 		return ES_FATAL;
 	}
 	
-	u32 TitleCount=0;
-	u32 i;
-	for( i=0; i<*size; i+=12 )
+	for( i=0; i*12 < *size; i++ )
 	{
-		_sprintf( path, "/title/%08x/%08x/content/title.tmd", *(u32*)(data+i), *(u32*)(data+i+4) );
+		_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(uid[i].TitleID>>32), (u32)uid[i].TitleID );
 		s32 fd = IOS_Open( path, 1 );
 		if( fd >= 0 )
 		{
-			Titles[TitleCount++] = *(u64*)(data+i);
+			Titles[TitleCount++] = uid[i].TitleID;
 			IOS_Close( fd );
 		}
 	}
 
-	free( data );
+	free( uid );
 	free( path );
 	free( size );
 
@@ -299,33 +298,33 @@ s32 ES_GetTitles( u64 *Titles )
 }
 s32 ES_GetOwnedTitles( u64 *Titles )
 {
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32 *size	= (u32*)malloca( 4, 32 );
+	u32 TitleCount=0;
+	u32 i;
 
 	_sprintf( path, "/sys/uid.sys");
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	UIDSYS *uid = (UIDSYS *)NANDLoadFile( path, size );
+	if( uid == NULL )
 	{
 		free( path );
 		free( size );
 		return ES_FATAL;
 	}
-	
-	u32 TitleCount=0;
-	u32 i;
-	for( i=0; i<*size; i+=12 )
+
+	for( i=0; i*12 < *size; i++ )
 	{
-		_sprintf( path, "/ticket/%08x/%08x.tik", *(u32*)(data+i), *(u32*)(data+i+4) );
+		_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(uid[i].TitleID>>32), (u32)uid[i].TitleID );
 		s32 fd = IOS_Open( path, 1 );
 		if( fd >= 0 )
 		{
-			Titles[TitleCount++] = *(u64*)(data+i);
+			Titles[TitleCount++] = uid[i].TitleID;
 			IOS_Close( fd );
 		}
 	}
 
-	free( data );
+	free( uid );
 	free( path );
 	free( size );
 
@@ -339,12 +338,12 @@ s32 ES_GetOwnedTitles( u64 *Titles )
 s32 ES_GetNumTitles( u32 *TitleCount )
 {
 	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	u32 *size = (u32*)malloca( sizeof(u32), 32 );
 
 	_sprintf( path, "/sys/uid.sys");
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	UIDSYS *uid = (UIDSYS *)NANDLoadFile( path, size );
+	if( uid == NULL )
 	{
 		free( path );
 		free( size );
@@ -353,9 +352,9 @@ s32 ES_GetNumTitles( u32 *TitleCount )
 	
 	*TitleCount=0;
 	u32 i;
-	for( i=0; i<*size; i+=12 )
+	for( i=0; i*12 < *size; i++ )
 	{
-		_sprintf( path, "/title/%08x/%08x/content/title.tmd", *(u32*)(data+i), *(u32*)(data+i+4) );
+		_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(uid[i].TitleID>>32), (u32)uid[i].TitleID );
 		s32 fd = IOS_Open( path, 1 );
 		if( fd >= 0 )
 		{
@@ -364,7 +363,7 @@ s32 ES_GetNumTitles( u32 *TitleCount )
 		}
 	}
 
-	free( data );
+	free( uid );
 	free( path );
 	free( size );
 
@@ -377,8 +376,10 @@ s32 ES_GetNumTitles( u32 *TitleCount )
 */
 s32 ES_GetNumOwnedTitles( u32 *TitleCount )
 {
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32 *size	= (u32*)malloca( 4, 32 );
+	*TitleCount=0;
+	u32 i;
 
 	_sprintf( path, "/sys/uid.sys");
 
@@ -389,9 +390,6 @@ s32 ES_GetNumOwnedTitles( u32 *TitleCount )
 		free( size );
 		return ES_FATAL;
 	}
-	
-	*TitleCount=0;
-	u32 i;
 	for( i=0; i<*size; i+=12 )
 	{
 		_sprintf( path, "/ticket/%08x/%08x.tik", *(u32*)(data+i), *(u32*)(data+i+4) );
@@ -412,7 +410,8 @@ s32 ES_GetNumOwnedTitles( u32 *TitleCount )
 void iES_GetTMDView( TitleMetaData *TMD, u8 *oTMDView )
 {
 	u32 TMDViewSize = (TMD->ContentCount<<4) + 0x5C;
-	u8 *TMDView = (u8*)malloca( TMDViewSize, 32 );
+	u8 *TMDView		= (u8*)malloca( TMDViewSize, 32 );
+
 	memset32( TMDView, 0, TMDViewSize );
 
 	TMDView[0] = TMD->Version;
@@ -450,8 +449,8 @@ void iES_GetTMDView( TitleMetaData *TMD, u8 *oTMDView )
 }
 s32 ES_GetTMDView( u64 *TitleID, u8 *oTMDView )
 {
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32 *size	= (u32*) malloca( 4, 32 );
 
 	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*TitleID>>32), (u32)*TitleID );
 
@@ -481,9 +480,7 @@ void iES_GetTicketView( u8 *Ticket, u8 *oTicketView )
 	*(u64*)(TikView+0x04) = *(u64*)(Ticket+0x1D0);
 	*(u32*)(TikView+0x0C) = *(u32*)(Ticket+0x1D8);
 	*(u64*)(TikView+0x10) = *(u64*)(Ticket+0x1DC);
-
-	memcpy( TikView+0x18, Ticket+0x1E4, 2 );
-
+	*(u16*)(TikView+0x18) = *(u16*)(Ticket+0x1E4);
 	*(u16*)(TikView+0x1A) = *(u16*)(Ticket+0x1E6);
 	*(u32*)(TikView+0x1C) = *(u32*)(Ticket+0x1E8);
 	*(u32*)(TikView+0x20) = *(u32*)(Ticket+0x1EC);
@@ -519,13 +516,13 @@ s32 ES_DIGetTicketView( u64 *TitleID, u8 *oTikView )
 }
 s32 ES_GetUID( u64 *TitleID, u16 *UID )
 {
-	char *path		= (char*)malloca( 0x40, 32 );
-	u32  *size		= (u32*)malloca( sizeof(u32), 32 );
+	char *path	= (char*)malloca( 0x40, 32 );
+	u32  *size	= (u32*) malloca( sizeof(u32), 32 );
 
 	_sprintf( path, "/sys/uid.sys");
 
-	u8 *data = NANDLoadFile( path, size );
-	if( data == NULL )
+	UIDSYS *uid = (UIDSYS *)NANDLoadFile( path, size );
+	if( uid == NULL )
 	{
 		if( *size == -106 )		// uid.sys does not exist, create it and add default 1-2 entry
 		{
@@ -557,7 +554,7 @@ s32 ES_GetUID( u64 *TitleID, u16 *UID )
 				IOS_Close( fd );
 
 				_sprintf( path, "/sys/uid.sys");
-				data = NANDLoadFile( path, size );
+				uid = (UIDSYS *)NANDLoadFile( path, size );
 			}
 
 		} else {
@@ -571,16 +568,16 @@ s32 ES_GetUID( u64 *TitleID, u16 *UID )
 	*UID = 0xdead;
 
 	u32 i;
-	for( i=0; i < *size/12; ++i )
+	for( i=0; i * 12 < *size; ++i )
 	{
-		if( *(u64*)(data+i*12) == *TitleID )
+		if( uid[i].TitleID == *TitleID )
 		{
-			*UID = *(u16*)(data+i*12+10);
+			*UID = uid[i].GroupID;
 			break;
 		}
 	}
 
-	free( data );
+	free( uid );
 
 	if( *UID == 0xdead )	// Title has no UID yet, add it
 	{
@@ -651,7 +648,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 )
+				if( r < 0 && r != FS_EEXIST2 )
 				{
 					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
@@ -662,7 +659,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 )
+				if( r < 0 && r != FS_EEXIST2 )
 				{
 					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
@@ -673,7 +670,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 )
+				if( r < 0 && r != FS_EEXIST2 )
 				{
 					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
@@ -684,7 +681,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
 			{
 				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 )
+				if( r < 0 && r != FS_EEXIST2 )
 				{
 					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 					goto ES_DIVerfiy_end;
@@ -895,7 +892,7 @@ s32 ES_CheckSharedContent( void *ContentHash )
 	}
 	return 0;
 }
-s32 ES_AddTitleFinish( void *TMD )
+s32 ES_AddTitleFinish( TitleMetaData *TMD )
 {
 	char *path		= (char*)malloca( 0x40, 32 );
 	char *pathdst	= (char*)malloca( 0x40, 32 );
@@ -903,12 +900,12 @@ s32 ES_AddTitleFinish( void *TMD )
 	s32 r = ES_FATAL;
 	u32 i;
 
-	for( i=0; i < *(vu16*)(TMD+0x1DE); ++i )
+	for( i=0; i < TMD->ContentCount; ++i )
 	{
-		if( ((*(vu16*)(TMD+0x1EA+i*0x24)) & 0x8000) == 0x8000 )
+		if( TMD->Contents[i].Type & CONTENT_SHARED )
 		{
 			//move to shared1
-			switch( ES_CheckSharedContent( (u8*)(TMD+0x1F4+i*0x24) ) )
+			switch( ES_CheckSharedContent( TMD->Contents[i].SHA1 ) )
 			{
 				case 0:	// Content not yet in shared1 oh-shi
 				{
@@ -917,7 +914,7 @@ s32 ES_AddTitleFinish( void *TMD )
 					s32 size = IOS_Seek( fd, 0, SEEK_END );
 
 					//Now write file to shared1
-					_sprintf( path, "/tmp/%08x.app", *(u32*)(TMD+0x1E4+i*0x24) );
+					_sprintf( path, "/tmp/%08x.app", TMD->Contents[i].ID );
 					_sprintf( pathdst, "/shared1/%08x.app", size/0x1c );
 
 					r = ISFS_Rename( path, pathdst );
@@ -934,8 +931,8 @@ s32 ES_AddTitleFinish( void *TMD )
 					u8 *Entry = (u8*)malloca( 0x1C, 32 );
 
 					_sprintf( (char*)Entry, "%08x", size/0x1c );
-					dbgprintf("Adding new shared1 content:\"%s.app\"\n", Entry );
-					memcpy( Entry+8, (u8*)(TMD+0x1F4+i*0x24), 0x14 );
+					dbgprintf("ES:Adding new shared1 content:\"%s.app\"\n", Entry );
+					memcpy( Entry+8, TMD->Contents[i].SHA1, 0x14 );
 
 					r = IOS_Write( fd, Entry, 0x1c );
 
@@ -945,14 +942,14 @@ s32 ES_AddTitleFinish( void *TMD )
 
 					*CNTMapDirty = 1;
 
-					dbgprintf("ES:AddTitleFinish() CID:%08x Installed to shared1 dir\n", *(u32*)(TMD+0x1E4+i*0x24) );
+					dbgprintf("ES:AddTitleFinish() CID:%08x Installed to shared1 dir\n", TMD->Contents[i].ID );
 
 					r = ES_SUCCESS;
 
 				} break;
 				case 1:	// content already in shared1, move on
-					dbgprintf("ES:AddTitleFinish() CID:%08x already installed!\n", *(u32*)(TMD+0x1E4+i*0x24) );
-					_sprintf( path, "/tmp/%08x.app", *(u32*)(TMD+0x1E4+i*0x24) );
+					dbgprintf("ES:AddTitleFinish() CID:%08x already installed!\n", TMD->Contents[i].ID );
+					_sprintf( path, "/tmp/%08x.app", TMD->Contents[i].ID );
 					ISFS_Delete( path );
 					break;
 				default:
@@ -961,8 +958,8 @@ s32 ES_AddTitleFinish( void *TMD )
 			}
 		} else {
 			
-			_sprintf( path, "/tmp/%08x.app", *(u32*)(TMD+0x1E4+i*0x24) );
-			_sprintf( pathdst, "/title/%08x/%08x/content/%08x.app", *(u32*)(TMD+0x18C), *(u32*)(TMD+0x190), *(u32*)(TMD+0x1E4+i*0x24) );
+			_sprintf( path, "/tmp/%08x.app", TMD->Contents[i].ID );
+			_sprintf( pathdst, "/title/%08x/%08x/content/%08x.app", (u32)(TMD->TitleID>>32), (u32)TMD->TitleID, TMD->Contents[i].ID );
 
 			s32 fd = IOS_Open(pathdst,1);
 			if( fd < 0 )
@@ -974,14 +971,14 @@ s32 ES_AddTitleFinish( void *TMD )
 					break;
 				}
 
-				dbgprintf("ES:AddTitleFinish() CID:%08x Installed to content dir\n", *(u32*)(TMD+0x1E4+i*0x24) );
+				dbgprintf("ES:AddTitleFinish() CID:%08x Installed to content dir\n", TMD->Contents[i].ID );
 
 			} else {
 				
 				IOS_Close( fd );
 				ISFS_Delete( path );
 
-				dbgprintf("ES:AddTitleFinish() CID:%08x already installed!\n", *(u32*)(TMD+0x1E4+i*0x24) );
+				dbgprintf("ES:AddTitleFinish() CID:%08x already installed!\n", TMD->Contents[i].ID );
 
 				r = ES_SUCCESS;
 			}
@@ -992,7 +989,7 @@ s32 ES_AddTitleFinish( void *TMD )
 	if( r == ES_SUCCESS )
 	{
 		_sprintf( path, "/tmp/title.tmd" );
-		_sprintf( pathdst, "/title/%08x/%08x/content/title.tmd", *(u32*)(TMD+0x18C), *(u32*)(TMD+0x190) );
+		_sprintf( pathdst, "/title/%08x/%08x/content/title.tmd", (u32)(TMD->TitleID>>32), (u32)TMD->TitleID );
 
 		r = ISFS_Rename( path, pathdst );
 		if( r < 0 )
@@ -1072,7 +1069,7 @@ s32 ES_AddTitleFinish( void *TMD )
 //}
 s32 ES_CreateKey( u8 *Ticket )
 {
-	u8 *sTitleID = (u8*)malloca( 0x10, 0x20 );
+	u8 *sTitleID	= (u8*)malloca( 0x10, 0x20 );
 	u8 *encTitleKey = (u8*)malloca( 0x10, 0x20 );
 
 	memset32( sTitleID, 0, 0x10 );
@@ -1158,7 +1155,7 @@ s32 doTicketMagic( u8 *Ticket )
 /*
 	Decrypt and creata a sha1 for the decrypted data
 */
-s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD )
+s32 ES_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 {
 	if( Ticket == NULL || TMD == NULL )
 		return ES_FATAL;
@@ -1204,23 +1201,24 @@ s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD )
 	u32 i;
 	u32 FileSize = 0;
 
-	for( i=0; i < *(vu16*)(TMD+0x1DE); ++i )
+	for( i=0; i < TMD->ContentCount; ++i )
 	{
-		if( *(vu32*)(TMD+0x1E4+i*0x24) == cid )
+		if( TMD->Contents[i].ID == cid )
 		{
-			*(u16*)iv	= *(u16*)(TMD+0x1E8+i*0x24);
-			FileSize	= *(u32*)(TMD+0x1F0+i*0x24);
-			dbgprintf("ES:Found index:%d Size:%d\n",  *(u16*)(TMD+0x1E8+i*0x24), FileSize );
+			*(u16*)iv	= TMD->Contents[i].Index;
+			FileSize	= (u32)TMD->Contents[i].Size;
+			dbgprintf("ES:Found CID:%d Size:%d\n",  TMD->Contents[i].Index, FileSize );
 			break;
 		}
 	}
+
 	if( FileSize == 0 )
 	{
-		dbgprintf("FileSize is zero, cid not found in TMD!\n");
+		dbgprintf("ES:CID not found in TMD!\n");
 		IOS_Close( out );
 		IOS_Close( in );
 		free( path );
-		return -1017;
+		return ES_FATAL;
 	}
 
 	u8 *SHA1i = malloca( 0x60, 0x40 );
@@ -1231,7 +1229,7 @@ s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD )
 	r = sha1( SHA1i, 0, 0, SHA_INIT, Object );
 	if( r < 0 )
 	{
-		dbgprintf("sha1():%d\n", r );
+		dbgprintf("ES:sha1():%d\n", r );
 		free( SHA1i );
 		free( hash );
 		free( Object );
@@ -1347,17 +1345,18 @@ s32 ES_AddContentFinish( u32 cid, u8 *Ticket, u8 *TMD )
 
 	r = ES_EHASH;
 
-	//check sha1
-	for( i=0; i < *(vu16*)(TMD+0x1DE); ++i )
+	// check sha1 for the current content
+	for( i=0; i < TMD->ContentCount; ++i )
 	{
-		if( *(vu32*)(TMD+0x1E4+i*0x24) == cid )
+		if( TMD->Contents[i].ID == cid )
 		{
-			if( memcmp( hash, (u8*)(TMD+0x1F4+i*0x24), 0x14 ) == 0 )
+			if( memcmp( hash, TMD->Contents[i].SHA1, 0x14 ) == 0 )
 				r = ES_SUCCESS;
 			else {
-				dbgprintf("TMD HASH (cid:%d):\n", i);
-				hexdump( (u8*)(TMD+0x1F4+i*0x24), 0x14 );
-				dbgprintf("CALC HASH:\n");
+				dbgprintf("ES:Content SHA1 mismatch!\n");
+				dbgprintf("ES:TMD HASH (cid:%d):\n", i);
+				hexdump( TMD->Contents[i].SHA1, 0x14 );
+				dbgprintf("ES:CALC HASH:\n");
 				hexdump( hash, 0x14 );
 			}
 			break;
@@ -1386,12 +1385,12 @@ s32 ES_AddContentData(s32 cfd, void *data, u32 data_size )
 	s32 fd = IOS_Open( path, 2 );
 	if( fd < 0 )
 	{
-		if( fd == -106 )
+		if( fd == ES_NFOUND )
 		{
 			r = ISFS_CreateFile( path, 0, 3, 3, 3 );
-			if( r < 0)
+			if( r < 0 )
 			{
-				dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, r );
+				dbgprintf("ES:ISFS_CreateFile(\"%s\"):%d\n", path, r );
 				free( path );
 				return r;
 			}
@@ -1399,7 +1398,7 @@ s32 ES_AddContentData(s32 cfd, void *data, u32 data_size )
 			fd = IOS_Open( path, 2 );
 
 		} else {
-			dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
+			dbgprintf("ES:IOS_Open(\"%s\"):%d\n", path, fd );
 			free( path );
 			return fd;
 		}
@@ -1411,7 +1410,7 @@ s32 ES_AddContentData(s32 cfd, void *data, u32 data_size )
 	r = IOS_Write( fd, data, data_size );
 	if( r < 0 || r != data_size )
 	{
-		dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, data, data_size, r );
+		dbgprintf("ES:IOS_Write( %d, %p, %d):%d\n", fd, data, data_size, r );
 		IOS_Close( fd );
 		free( path );
 		return r;
@@ -1426,9 +1425,9 @@ s32 ES_LoadModules( u32 KernelVersion )
 {
 	//used later for decrypted
 	KeyID = (u32*)malloca( sizeof(u32), 0x40 );
+	char *path = malloca( 0x70, 0x40 );
 
 	//load TMD
-	char *path = malloca( 0x70, 0x40 );
 	
 	_sprintf( path, "/title/00000001/%08x/content/title.tmd", KernelVersion );
 
@@ -1599,8 +1598,8 @@ s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 }
 s32 ES_CheckBootOption( char *Path, u64 *TitleID )
 {
-	char *path = (char*)malloca( 0x70, 0x40);
-	u32 *size = (u32*)malloca( sizeof(u32), 0x40 );
+	char *path	= (char*)malloca( 0x70, 0x40);
+	u32 *size	= (u32*)malloca( sizeof(u32), 0x40 );
 
 	_sprintf( path, Path );
 
@@ -1627,26 +1626,27 @@ s32 ES_CheckBootOption( char *Path, u64 *TitleID )
 }
 s32 ES_LaunchSYS( u64 *TitleID )
 {
-	char *path = malloca( 0x70, 0x40);
-	u32 *size = (u32*)malloca( sizeof(u32), 0x40 );
+	char *path	= malloca( 0x70, 0x40);
+	u32 *size	= (u32*)malloca( sizeof(u32), 0x40 );
+
 //Load TMD
 	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*TitleID>>32), (u32)(*TitleID) );
 
-	u8 *TMD_Data = NANDLoadFile( path, size );
-	if( TMD_Data == NULL )
+	TitleMetaData *TMD = (TitleMetaData*)NANDLoadFile( path, size );
+	if( TMD == NULL )
 	{
 		free( path );
 		return *size;
 	}
 
 //Load PPC
-	s32 r = LoadPPC( TMD_Data+0x1BA );
+	s32 r = LoadPPC( (u8*)TMD+0x1BA );
 	dbgprintf("ES:ES_LaunchSYS->LoadPPC:%d\n", r );
 	if( r < 0 )
 	{
 		free( size );
 		free( path );
-		free( TMD_Data );
+		free( TMD );
 		return r;
 	}
 
@@ -1656,8 +1656,8 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	u8 *TIK_Data = NANDLoadFile( path, size );
 	if( TIK_Data == NULL )
 	{
-		free( TMD_Data );
 		free( path );
+		free( TMD );
 		return *size;
 	}
 
@@ -1668,8 +1668,9 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	if( r < 0 )
 	{
 		dbgprintf("ES:ES_GetUID:%d\n", r );
+
 		free( TIK_Data );
-		free( TMD_Data );
+		free( TMD );
 		free( size );
 		free( path );
 		return r;
@@ -1679,25 +1680,28 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	if( r < 0 )
 	{
 		dbgprintf("ES:SetUID( 0xF, 0x%04X ):%d\n", UID, r );
+
 		free( TIK_Data );
-		free( TMD_Data );
+		free( TMD );
 		free( size );
 		free( path );
 		return r;
 	}
 
-	r = _cc_ahbMemFlush( 0xF, *(vu16*)(TMD_Data+0x198) );
+	r = _cc_ahbMemFlush( 0xF, *(vu16*)((u8*)TMD+0x198) );
 	if( r < 0 )
 	{
-		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(vu16*)(TMD_Data+0x198), r );
+		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(vu16*)((u8*)TMD+0x198), r );
+
 		free( TIK_Data );
-		free( TMD_Data );
+		free( TMD );
 		free( size );
 		free( path );
 		return r;
 	}
 
-	if( (s32)((*(vu32*)(TMD_Data+0x1D8)) << 0x1F) > 0 )
+//Disable AHB_PROT
+	if( TMD->AccessRights & 1 )
 		DoStuff(0);
 	else
 		DoStuff(1);
@@ -1715,11 +1719,11 @@ s32 ES_LaunchSYS( u64 *TitleID )
 
 //Find boot index
 	u32 i;
-	for( i=0; i < *(vu16*)(TMD_Data+0x1DE); ++i )
+	for( i=0; i < TMD->ContentCount; ++i )
 	{
-		if( *(vu16*)(TMD_Data+0x1E0) == *(vu16*)(TMD_Data+0x1E8+0x24*i) )
+		if( TMD->BootIndex == TMD->Contents[i].Index )
 		{
-			i = *(vu32*)(TMD_Data+0x1E4+0x24*i);
+			i = TMD->Contents[i].ID;
 			break;
 		}
 	}
@@ -1739,7 +1743,7 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	}
 
 	free( TIK_Data );
-	free( TMD_Data );
+	free( TMD );
 	free( size );
 	free( path );
 

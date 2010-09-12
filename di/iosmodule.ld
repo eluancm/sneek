@@ -86,9 +86,10 @@ SECTIONS
 		__stack_addr = .;
 	} >stk :stk
 
-	.ARM.exidx :
+	/DISCARD/ :
 	{
-		*(.ARM.exidx* .gnu.linkonce.armexidx.*)
-	} >code :code
+		*(.ARM.exidx*)
+		*(.ARM.extab*)
+	}
 }
 

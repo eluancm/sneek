@@ -43,9 +43,10 @@ enum GameRegion
 
 enum SNEEKConfig
 {
-	CONFIG_PATCH_FWRITE	= (1<<0),
-	CONFIG_PATCH_MPVIDEO= (1<<1),
-	CONFIG_PATCH_VIDEO	= (1<<2),
+	CONFIG_PATCH_FWRITE		= (1<<0),
+	CONFIG_PATCH_MPVIDEO	= (1<<1),
+	CONFIG_PATCH_VIDEO		= (1<<2),
+	CONFIG_DUMP_ERROR_SKIP	= (1<<3),
 };
 
 typedef struct

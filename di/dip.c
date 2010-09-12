@@ -663,6 +663,9 @@ s32 DVDLowReadDiscID( u32 Offset, u32 Length, void *ptr )
 		DiscType = DISC_INV;
 	}
 
+	//secret haxx for some games ;), try zelda and connect GC controllers to port 3&4
+	*(vu32*)4 = *(vu32*)4 | 0x99;
+
 	return DI_SUCCESS;
 }
 

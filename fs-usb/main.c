@@ -37,7 +37,7 @@ int ehc_loop(void);
 
 int verbose=0;
 
-#undef DEBUG
+//#undef DEBUG
 
 void udelay(int us)
 {
