@@ -241,65 +241,21 @@ void SMenuAddFramebuffer( void )
 		}
 	}
 }
+
 u32 DVDErrorSkip=0;
-s32 DVDDumpPart( char *Filename, u64 offset, u64 len )
-{
-	s32 fd = DVDOpen( Filename );
+u32 DVDErrorRetry=0;
+u32 DVDTimer = 0;
+u32 DVDTimeStart = 0;
+u32 DVDSectorSize = 0;
+u32 DVDOffset = 0;
+u32 DVDOldOffset = 0;
+u32 DVDSpeed = 0;
+u32 DVDTimeLeft = 0;
+s32 DVDHandle = 0;
+char *DiscName	= (char*)NULL;
+char *DVDTitle	= (char*)NULL;
+char *DVDBuffer	= (char*)NULL;
 
-	if( fd == DI_FATAL )
-	{
-		dbgprintf("ES:DVDOpen():%d\n", fd );
-		DVDError = DI_FATAL|(fd<<16);
-		return -1;
-	}
-
-	char *buffer = (char*)0x01000000;
-
-	u64 i=0;
-	for( i = offset; i < offset+len; i++ )
-	{
-		s32 ret = DVDLowRead( buffer, i*READSIZE, READSIZE );
-		if( ret != 0 )
-		{
-			DVDError = DVDLowRequestError();
-			if( DVDError == 0x0030200 )
-			{
-				if( DVDErrorSkip == 1 )
-				{
-					memset32( buffer, 0, READSIZE );
-				} else {
-					if( (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) )
-					{
-						dbgprintf("\nES:Enabled error skipping\n");
-						DVDErrorSkip = 1;
-					} else {
-						dbgprintf("\nES:DVDLowRead():%d\n", ret );
-						dbgprintf("ES:DVDError:%X\n", DVDError );
-						break;
-					}
-				}
-			} else {
-				dbgprintf("\nES:DVDLowRead():%d\n", ret );
-				dbgprintf("ES:DVDError:%X\n", DVDError );
-				break;
-			}
-		}
-								
-		ret = DVDWrite( fd, buffer, READSIZE );
-		if( ret != READSIZE )
-		{
-			dbgprintf("\nES:DVDWrite():%d\n", ret );
-			DVDError = DI_FATAL|(ret<<16);
-			break;
-		}
-		if( (i%16) == 0 )
-			dbgprintf("\rES:Dumping:%s %X%08X/%X%08X", Filename, (u32)(i>>32), (u32)i, (u32)((offset+len)>>32), (u32)(offset+len) );
-	}
-
-	DVDClose(fd);
-
-	return 1;
-}
 void SMenuDraw( void )
 {
 	u32 i,j;
@@ -401,7 +357,6 @@ void SMenuDraw( void )
 
 			case 2:
 			{
-				PrintFormat( FB[i], MENU_POS_X, 40+16, "Dumping mode");
 				if( DVDStatus == 0 )
 				{
 					DVDEjectDisc();
@@ -413,17 +368,16 @@ void SMenuDraw( void )
 				if( DIP_COVER & 1 )
 				{
 					PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Please insert a disc" );
+
 					DVDStatus = 1;
 					DVDError  = 0;
+
 				} else {
 
 					if( DVDError )
 					{
-						switch(DVDError>>24)
+						switch(DVDError)
 						{
-							//case 0x03:
-							//	DVDError = 0;
-							//break;
 							default:
 								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "DVDCommand failed with:%08X", DVDError );	
 							break;
@@ -436,14 +390,9 @@ void SMenuDraw( void )
 								DVDLowReset();
 
 								s32 r = DVDLowReadDiscID( (void*)0 );
-								dbgprintf("DVDLowReadDiscID():%d\n", r );
-								dbgprintf("DIP_STATUS:%X\n", DIP_STATUS );
-								dbgprintf("DIP_IMM:%X\n", DIP_IMM );
-								dbgprintf("DIP_CONFIG:%X\n", DIP_CONFIG );
-								dbgprintf("DIP_CONTROL:%X\n", DIP_CONTROL );
-
 								if( r != DI_SUCCESS )
 								{
+									dbgprintf("DVDLowReadDiscID():%d\n", r );
 									DVDError = DVDLowRequestError();
 									dbgprintf("DVDLowRequestError():%X\n", DVDError );
 								} else {
@@ -454,8 +403,7 @@ void SMenuDraw( void )
 									if( *(u32*)0x18 == 0x5D1C9EA3 )
 									{
 										//try a read outside the normal single layer area
-										char *buffer = (char*)0x01000000;
-										r = DVDLowRead( buffer, 0x172A33100LL, 0x8000 );
+										r = DVDLowRead( (char*)0x01000000, 0x172A33100LL, 0x8000 );
 										if( r != 0 )
 										{
 											r = DVDLowRequestError();
@@ -470,7 +418,14 @@ void SMenuDraw( void )
 									} else if( *(u32*)0x1C == 0xC2339F3D ) {
 										DVDType = 1;
 									}
+
 									DVDStatus = 2;
+
+									r = DVDLowRead( (char*)(0x01000000+READSIZE), 0x20, 0x40 );
+									if( r == DI_SUCCESS )
+										DVDTitle = (char*)(0x01000000+READSIZE);
+
+									DVDTimer = *(vu32*)0x0d800010;
 								}
 							} break;
 							case 2:
@@ -478,67 +433,165 @@ void SMenuDraw( void )
 								switch(DVDType)
 								{
 									case 1:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(GC)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(GC)", DVDTitle );
 									break;
 									case 2:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(WII-SL)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(WII-SL)", DVDTitle );
 									break;
 									case 3:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Press A to dump: %.6s(WII-DL)", (char*)0 );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(WII-DL)", DVDTitle );
 									break;
 									default:
-										PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "UNKNOWN disc type!");
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "UNKNOWN disc type!");
 									break;
 								}
+								
 							} break;
-							case 3:
+							case 3:		// Setup ripping 
 							{
-								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumping: %.6s please wait", (char*)0 );
-
-								char *DiscName = (char*)malloca( 64, 32 );
+								DiscName = (char*)malloca( 64, 32 );
 
 								switch( DVDType )
 								{
 									case 1:	// GC		0x57058000,44555
 									{
-										_sprintf( DiscName, "/%.6s.bin", (void*)0 );
-										DVDDumpPart( DiscName, 0, 44555 );
+										_sprintf( DiscName, "/%.6s.gcm", (void*)0 );
 
+										DVDSectorSize = 44555;
+										DVDStatus = 4;
 									} break;
 									case 2:	// WII-SL	0x118240000, 143432
 									{
-										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 0 );
-										DVDDumpPart( DiscName, 0, 131071 );
+										_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
 
-										if(DVDError)
-											break;
-
-										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 1 );
-										DVDDumpPart( DiscName, 131071, 12361 );
-
+										DVDSectorSize = 143432;
+										DVDStatus = 4;
 									} break;
 									case 3:	// WII-DL	0x1FB4E0000, 259740 
 									{
-										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 0 );
-										DVDDumpPart( DiscName, 0, 131071 );
+										_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
 
-										if(DVDError)
-											break;
-
-										_sprintf( DiscName, "/%.6s_%02X.bin", (void*)0, 1 );
-										DVDDumpPart( DiscName, 131071, 128669 );
-
+										DVDSectorSize = 259740;
+										DVDStatus = 4;
 									} break;
 								}
 
-								free(DiscName);
+								if( DVDStatus == 4 )
+								{
+									DVDHandle = DVDOpen( DiscName );
+									if( DVDHandle < 0 )
+									{
+										dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
+										DVDError = DI_FATAL|(DVDHandle<<16);
+										break;
+									}
 
-								DVDStatus = 4;
+									DVDErrorRetry = 0;
+									DVDBuffer = (char*)0x01000000;
+									memset32( DVDBuffer, 0, READSIZE );
+									DVDTimer = *(vu32*)0x0d800010;
+									DVDTimeStart = DVDTimer;
+								}
 
 							} break;
 							case 4:
 							{
-								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Dumped: %.6s ", (char*)0 );
+								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumping:  %.25s", DVDTitle );
+								if( DVDSpeed / 1024 / 1024 )
+									PrintFormat( FB[i], MENU_POS_X, 104+16*2, "Speed:    %u.%uMB/s ", DVDSpeed / 1024 / 1024, (DVDSpeed / 1024) % 1024 );
+								else
+									PrintFormat( FB[i], MENU_POS_X, 104+16*2, "Speed:    %uKB/s ", DVDSpeed / 1024 );
+								PrintFormat( FB[i], MENU_POS_X, 104+16*3, "Progress: %u%%", DVDOffset*100 / DVDSectorSize );
+								PrintFormat( FB[i], MENU_POS_X, 104+16*4, "Time left:%02d:%02d:%02d", DVDTimeLeft/3600, (DVDTimeLeft/60)%60, DVDTimeLeft%60%60 );
+
+								if( (DVDOffset%16) == 0 )
+									dbgprintf("\rES:Dumping:%s %08X/%08X", DiscName, DVDOffset, DVDSectorSize );
+
+								if( i == 0 )
+								{
+									if( (*(vu32*)0x0d800010 - DVDTimer) / 1897704 > 0 )
+									{	
+										DVDSpeed	= ( DVDOffset - DVDOldOffset ) * READSIZE;
+										DVDTimeLeft = ( DVDSectorSize - DVDOffset ) / ( DVDSpeed / READSIZE );
+
+										DVDOldOffset=  DVDOffset;
+										DVDTimer	= *(vu32*)0x0d800010;
+									}
+
+									s32 ret = DVDLowRead( DVDBuffer, (u64)DVDOffset * READSIZE, READSIZE );
+									if( ret != 0 )
+									{
+										DVDError = DVDLowRequestError();
+										if( DVDError == 0x0030200 )
+										{
+											if( DVDErrorSkip == 1 )
+											{
+												memset32( DVDBuffer, 0, READSIZE );
+											} else {
+												if( DICfg->Config & CONFIG_DUMP_ERROR_SKIP )
+												{
+													dbgprintf("\nES:Enabled error skipping\n");
+													DVDErrorSkip = 1;
+												} else {
+													dbgprintf("\nES:DVDLowRead():%d\n", ret );
+													dbgprintf("ES:DVDError:%X\n", DVDError );
+													break;
+												}
+											}
+
+										} else if ( DVDError == 0x0030201 && DVDErrorRetry < 5 ) {
+
+											dbgprintf("\nES:DVDLowRead failed:%x Retry:%d\n", DVDError, DVDErrorRetry );
+											DVDError = 0;
+											DVDErrorRetry++;
+											DVDOffset--;
+											continue;
+
+										} else {
+
+											dbgprintf("\nES:DVDLowRead():%d\n", ret );
+											dbgprintf("ES:DVDError:%X\n", DVDError );
+											break;
+
+										}
+									}
+
+									ret = DVDWrite( DVDHandle, DVDBuffer, READSIZE );
+									if( ret != READSIZE )
+									{
+										dbgprintf("\nES:DVDWrite():%d\n", ret );
+										DVDError = DI_FATAL|(ret<<16);
+										break;
+									}
+
+									DVDOffset++;
+									if( DVDOffset == 131071 )
+									{
+										DVDClose( DVDHandle );
+
+										_sprintf( DiscName, "/%.6s_1.iso", (void*)0 );
+										DVDHandle = DVDOpen( DiscName );
+										if( DVDHandle < 0 )
+										{
+											dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
+											DVDError = DI_FATAL|(DVDHandle<<16);
+											break;
+										}
+
+									}
+									if( DVDOffset >= DVDSectorSize )
+									{
+										DVDClose( DVDHandle );
+										free( DiscName );
+										DVDStatus = 5;
+										break;
+									}
+								}
+
+							} break;
+							case 5:
+							{
+								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumped:   %.25s", DVDTitle );
 							} break;
 						}
 					}
@@ -553,7 +606,6 @@ void SMenuDraw( void )
 		}
 	}
 }
-
 void SMenuReadPad ( void )
 {
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
@@ -801,8 +853,9 @@ void SMenuReadPad ( void )
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
 					if( DVDStatus == 2 && DVDType > 0 )
+					{
 						DVDStatus = 3;
-
+					}
 					SLock = 1;
 				}
 			} break;

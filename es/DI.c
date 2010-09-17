@@ -364,7 +364,7 @@ s32 InitRegisters( void )
 	DVDEnableTransferIRQ();
 
 	r = DIP_STATUS;
-	dbgprintf("DIP_STATUS:%08X\n", r );
+	//dbgprintf("DIP_STATUS:%08X\n", r );
 
 	if( ((r << 28) >> 31) == 0 )
 	{
@@ -383,7 +383,7 @@ s32 InitRegisters( void )
 	DVDEnableCoverIRQ();
 	CoverDisableIRQ();
 	r = DIP_STATUS;
-	dbgprintf("DIP_STATUS:%08X\n", r );
+	//dbgprintf("DIP_STATUS:%08X\n", r );
 
 	if( (r << 29) >> 31 )
 	{
@@ -431,12 +431,12 @@ void DVDInit( void )
 		IRQ18();
 
 	u32 r = DIResetCheck(); 
-	dbgprintf("DIResetCheck():%d\n", r );
+	//dbgprintf("DIResetCheck():%d\n", r );
 
 	if( (r << 24) != 0 )
 	{
 		r = DIP_COVER;
-		dbgprintf("DIP_COVER():%d\n", r );
+		//dbgprintf("DIP_COVER():%d\n", r );
 		if( r&2 )
 		{
 			CoverDisableIRQ();
@@ -451,7 +451,7 @@ void DVDInit( void )
 	} else {
 		
 		s32 r = DIP_COVER;
-		dbgprintf("DIP_COVER():%d\n", r );
+		//dbgprintf("DIP_COVER():%d\n", r );
 		if( (r << 30) >> 31 )
 		{
 			CoverDisableIRQ();
