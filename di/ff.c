@@ -133,6 +133,14 @@ char *StrChr (const char* str, int chr) {
 
 
 
+/* Name status flags */
+#define NS			11		/* Offset of name status byte */
+#define NS_LOSS		0x01	/* Out of 8.3 format */
+#define NS_LFN		0x02	/* Force to create LFN entry */
+#define NS_LAST		0x04	/* Last segment */
+#define NS_BODY		0x08	/* Lower case flag (body) */
+#define NS_EXT		0x10	/* Lower case flag (ext) */
+#define NS_DOT		0x20	/* Dot entry */
 
 /*--------------------------------------------------------------------------
 
@@ -621,6 +629,19 @@ FRESULT dir_next (	/* FR_OK:Succeeded, FR_NO_FILE:End of table, FR_DENIED:EOT an
 static
 const BYTE LfnOfs[] = {1,3,5,7,9,14,16,18,20,22,24,28,30};	/* Offset of LFN chars in the directory entry */
 
+inline char toupper(const char toUpper)
+{
+    if ((toUpper >= 'a') && (toUpper <= 'z'))
+        return (toUpper - 0x20);
+    return toUpper;
+}
+
+unsigned short ff_wtoupper(unsigned short a)
+{
+    if(a>=256) return a;
+    return toupper(a);
+}
+
 
 static
 BOOL test_lfn (			/* TRUE:Matched, FALSE:Not matched */
@@ -629,21 +650,26 @@ BOOL test_lfn (			/* TRUE:Matched, FALSE:Not matched */
 )
 {
 	int i, s;
-	WCHAR wc1, wc2;
+	WCHAR wc, uc;
 
 
-	i = ((dir[LDIR_Ord] & 0xBF) - 1) * 13;	/* Offset in the LFN buffer */
-	s = 0;
+	i = ((dir[LDIR_Ord] & 0xBF) - 1) * 13;	/* Get offset in the LFN buffer */
+	s = 0; wc = 1;
 	do {
-		if (i >= _MAX_LFN) return FALSE;	/* Out of buffer range? */
-		wc1 = LD_WORD(dir+LfnOfs[s]);		/* Get both characters to compare */
-		wc2 = lfnbuf[i++];
-		if (IsLower(wc1)) wc1 -= 0x20;		/* Compare it (ignore case) */
-		if (IsLower(wc2)) wc2 -= 0x20;
-		if (wc1 != wc2) return FALSE;
-	} while (++s < 13 && wc1);				/* Repeat until last char or a NUL char is processed */
+		uc = LD_WORD(dir+LfnOfs[s]);	/* Pick an LFN character from the entry */
+		if (wc) {	/* Last char has not been processed */
+			wc = ff_wtoupper(uc);		/* Convert it to upper case */
+			if (i >= _MAX_LFN || wc != ff_wtoupper(lfnbuf[i++]))	/* Compare it */
+				return FALSE;				/* Not matched */
+		} else {
+			if (uc != 0xFFFF) return FALSE;	/* Check filler */
+		}
+	} while (++s < 13);				/* Repeat until all chars in the entry are checked */
 
-	return TRUE;							/* The LFN entry matched */
+	if ((dir[LDIR_Ord] & 0x40) && wc && lfnbuf[i])	/* Last segment matched but different length */
+		return FALSE;
+
+	return TRUE;						/* The part of LFN matched */
 }
 
 
@@ -781,47 +807,49 @@ FRESULT dir_find (
 )
 {
 	FRESULT res;
-	BYTE a, c, stat, ord, sum, *dir;
+	BYTE c, *dir;
+#if _USE_LFN
+	BYTE a, ord, sum;
+#endif
 
-	ord = sum = 0xFF; stat = *(dj->fn+11);
+	res = dir_seek(dj, 0);			/* Rewind directory object */
+	if (res != FR_OK) return res;
+
+#if _USE_LFN
+	ord = sum = 0xFF;
+#endif
 	do {
 		res = move_window(dj->fs, dj->sect);
 		if (res != FR_OK) break;
 		dir = dj->dir;					/* Ptr to the directory entry of current index */
 		c = dir[DIR_Name];
 		if (c == 0) { res = FR_NO_FILE; break; }	/* Reached to end of table */
-		a = dir[DIR_Attr] & AM_MASK;
 #if _USE_LFN	/* LFN configuration */
-		if (c == 0xE5 || c == '.' || ((a & AM_VOL) && a != AM_LFN)) {	/* An entry without valid data */
+		a = dir[DIR_Attr] & AM_MASK;
+		if (c == 0xE5 || ((a & AM_VOL) && a != AM_LFN)) {	/* An entry without valid data */
 			ord = 0xFF;
 		} else {
 			if (a == AM_LFN) {			/* An LFN entry is found */
 				if (dj->lfn) {
 					if (c & 0x40) {		/* Is it start of LFN sequence? */
 						sum = dir[LDIR_Chksum];
-						c &= 0xBF; ord = c;		/* LFN start order */
+						c &= 0xBF; ord = c;	/* LFN start order */
 						dj->lfn_idx = dj->index;
 					}
-					/* Check LFN validity. Compare LFN if it is out of 8.3 format */
-					ord = (c == ord && sum == dir[LDIR_Chksum] && (!(stat & 1) || test_lfn(dj->lfn, dir))) ? ord - 1 : 0xFF;
+					/* Check validity of the LFN entry and compare it with given name */
+					ord = (c == ord && sum == dir[LDIR_Chksum] && test_lfn(dj->lfn, dir)) ? ord - 1 : 0xFF;
 				}
 			} else {					/* An SFN entry is found */
-				if (ord || sum != sum_sfn(dir)) {	/* Did not LFN match? */
-					dj->lfn_idx = 0xFFFF;
-					ord = 0xFF;
-				}
-				if (stat & 1) {			/* Match LFN if it is out of 8.3 format */
-					if (ord == 0) break;
-				} else {				/* Match SFN if LFN is in 8.3 format */
-					if (!MemCmp(dir, dj->fn, 11)) break;
-				}
+				if (!ord && sum == sum_sfn(dir)) break;	/* LFN matched? */
+				ord = 0xFF; dj->lfn_idx = 0xFFFF;	/* Reset LFN sequence */
+				if (!(dj->fn[NS] & NS_LOSS) && !MemCmp(dir, dj->fn, 11)) break;	/* SFN matched? */
 			}
 		}
-#else	/* Non LFN configuration */
-		if (c != 0xE5 && c != '.' && !(a & AM_VOL) && !MemCmp(dir, dj->fn, 11)) /* Is it a valid entry? */
+#else		/* Non LFN configuration */
+		if (!(dir[DIR_Attr] & AM_VOL) && !mem_cmp(dir, dj->fn, 11)) /* Is it a valid entry? */
 			break;
 #endif
-		res = dir_next(dj, FALSE);				/* Next entry */
+		res = dir_next(dj, 0);		/* Next entry */
 	} while (res == FR_OK);
 
 	return res;
@@ -1290,7 +1318,7 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 )
 {
 	FRESULT res;
-	BYTE *dir, stat;
+	BYTE *dir, ns;
 
 
 	if (*path == '/' || *path == '\\' ) path++;	/* Strip heading separator */
@@ -1300,24 +1328,29 @@ FRESULT follow_path (	/* FR_OK(0): successful, !=0: error code */
 
 	if ((BYTE)*path < ' ') {			/* Null path means the root directory */
 		res = dir_seek(dj, 0);
-		dj->dir = NULL;
+		dj->dir = 0;
 
 	} else {							/* Follow path */
 		for (;;) {
-			res = dir_seek(dj, 0);			/* Rewind directory object */
-			if (res != FR_OK) break;
 			res = create_name(dj, &path);	/* Get a segment */
 			if (res != FR_OK) break;
 			res = dir_find(dj);				/* Find it */
-			stat = *(dj->fn+11);
-			if (res != FR_OK) {				/* Could not find the object */
-				if (res == FR_NO_FILE && !(stat & 4))
-					res = FR_NO_PATH;
+			ns = *(dj->fn+NS);
+			if (res != FR_OK) {				/* Failed to find the object */
+				if (res != FR_NO_FILE) break;	/* Abort if any hard error occured */
+				/* Object not found */
+				if ( 0 && (ns & NS_DOT)) {	/* If dot entry is not exit */
+					dj->sclust = 0; dj->dir = 0;	/* It is the root dir */
+					res = FR_OK;
+					if (!(ns & NS_LAST)) continue;
+				} else {							/* Could not find the object */
+					if (!(ns & NS_LAST)) res = FR_NO_PATH;
+				}
 				break;
 			}
-			if (stat & 4) break;			/* Last segment match. Function completed. */
-			dir = dj->dir;					/* There is next segment. Follow the sub directory */
-			if (!(dir[DIR_Attr] & AM_DIR)) { /* Cannot follow because it is a file */
+			if (ns & NS_LAST) break;			/* Last segment match. Function completed. */
+			dir = dj->dir;						/* There is next segment. Follow the sub directory */
+			if (!(dir[DIR_Attr] & AM_DIR)) {	/* Cannot follow because it is a file */
 				res = FR_NO_PATH; break;
 			}
 			dj->sclust = ((DWORD)LD_WORD(dir+DIR_FstClusHI) << 16) | LD_WORD(dir+DIR_FstClusLO);
@@ -1570,7 +1603,7 @@ FRESULT f_open (
 	BYTE *dir;
 
 
-	fp->fs = NULL;		/* Clear file object */
+	fp->fs = 0;		/* Clear file object */
 #if !_FS_READONLY
 	mode &= (FA_READ | FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_ALWAYS | FA_CREATE_NEW);
 	res = auto_mount(&path, &dj.fs, (BYTE)(mode & (FA_WRITE | FA_CREATE_ALWAYS | FA_OPEN_ALWAYS | FA_CREATE_NEW)));

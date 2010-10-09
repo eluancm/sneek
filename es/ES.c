@@ -781,12 +781,12 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 
 	DVDLowEnableVideo(0);
 	
-	r = LoadPPC( (u8*)(TMD) + 0x1BA );
-	if( r < 0 )
-	{
-		dbgprintf("ES:ES_DIVerify->LoadPPC:%d\n", r );
-		goto ES_DIVerfiy_end;
-	}
+	//r = LoadPPC( (u8*)(TMD) + 0x1BA );
+	//if( r < 0 )
+	//{
+	//	dbgprintf("ES:ES_DIVerify->LoadPPC:%d\n", r );
+	//	goto ES_DIVerfiy_end;
+	//}
 
 	int i;
 	for( i = 0; i < TMD->ContentCount; ++i )
