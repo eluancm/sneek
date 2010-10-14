@@ -1284,7 +1284,7 @@ int _main( int argc, char *argv[] )
 					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
 						continue;
 				} else {
-					//if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
+					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
 						continue;
 				}
 			}
@@ -1294,11 +1294,11 @@ int _main( int argc, char *argv[] )
 			{
 				SMenuDraw();
 				SMenuReadPad();
-			}/* else if( MenuType == 1 ) {
+			} else if( MenuType == 1 ) {
 
 				SCheatDraw();
 				SCheatReadPad();
-			}*/
+			}
 
 			TimerRestart( Timer, 0, 2500 );
 			continue;

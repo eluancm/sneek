@@ -941,7 +941,8 @@ void SCheatReadPad ( void )
 	int i;
 
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
-	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 )
+
+	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
 	{
 		SLock = 0;
 		return;
@@ -949,13 +950,13 @@ void SCheatReadPad ( void )
 
 	if( SLock == 0 )
 	{
-		if( GCPad.Start )
-		{
-			ShowMenu = !ShowMenu;
-			SLock = 1;
-			PosX  = 0;
-		}
-		if( GCPad.Z )
+		//if( (*WPad&WPAD_BUTTON_B) && (*WPad&WPAD_BUTTON_1) )
+		//{
+		//	ShowMenu = !ShowMenu;
+		//	SLock = 1;
+		//}
+
+		if( (*WPad&WPAD_BUTTON_B) && (*WPad&WPAD_BUTTON_2) )
 		{
 			u8 *buf = (u8*)malloc( FBSize );
 			memcpy( buf, (void*)(FB[0]), FBSize );
@@ -1004,7 +1005,7 @@ void SCheatReadPad ( void )
 			SLock = 1;
 		}
 	
-		if( ShowMenu == 0 )
+		if( !ShowMenu )
 			return;
 
 		switch( ShowMenu )
