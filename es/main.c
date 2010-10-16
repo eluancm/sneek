@@ -1282,10 +1282,16 @@ int _main( int argc, char *argv[] )
 				if( MenuType == 0 )
 				{
 					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
+					{
+						dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
+					}
 				} else {
 					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
+					{
+						dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
+					}
 				}
 			}
 			

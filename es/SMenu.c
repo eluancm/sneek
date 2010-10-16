@@ -46,7 +46,7 @@ char *RegionStr[] = {
 
 unsigned char VISetFB[] =
 {
-    0x7C, 0xE3, 0x3B, 0x78,
+    0x7C, 0xE3, 0x3B, 0x78,		//	mr      %r3, %r7
 	0x38, 0x87, 0x00, 0x34,
 	0x38, 0xA7, 0x00, 0x38,
 	0x38, 0xC7, 0x00, 0x4C, 
@@ -77,9 +77,15 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 			if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
 			{
 				FBEnable = ( *(u32*)(ptr+i+sizeof(VISetFB)) );
-				FBEnable = ((~FBEnable) & 0xFFFF) + 1;
-				FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
 
+				if( FBEnable & 0x8000 )
+				{
+					FBEnable = ((~FBEnable) & 0xFFFF) + 1;
+					FBEnable = (r13 - FBEnable) & 0x7FFFFFF;
+				} else {
+					FBEnable = FBEnable & 0xFFFF;
+					FBEnable = (r13 + FBEnable) & 0x7FFFFFF;
+				}
 				FBOffset = FBEnable + 0x18;
 			}
 
@@ -956,7 +962,7 @@ void SCheatReadPad ( void )
 		//	SLock = 1;
 		//}
 
-		if( (*WPad&WPAD_BUTTON_B) && (*WPad&WPAD_BUTTON_2) )
+		if( (*WPad&WPAD_BUTTON_HOME) && (*WPad&WPAD_BUTTON_2) )
 		{
 			u8 *buf = (u8*)malloc( FBSize );
 			memcpy( buf, (void*)(FB[0]), FBSize );
