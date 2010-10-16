@@ -684,7 +684,7 @@ void SMenuReadPad ( void )
 			SLock	= 1;
 		}
 
-		if( (GCPad.Z || (*WPad&WPAD_BUTTON_DOWN) ) && SLock == 0 )
+		if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 )
 		{
 			MenuType = 3;
 
