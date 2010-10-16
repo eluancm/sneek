@@ -262,6 +262,10 @@ char *DiscName	= (char*)NULL;
 char *DVDTitle	= (char*)NULL;
 char *DVDBuffer	= (char*)NULL;
 
+char *PICBuffer = (char*)NULL;
+u32 PICSize = 0;
+u32 PICNum = 0;
+
 void SMenuDraw( void )
 {
 	u32 i,j;
@@ -283,11 +287,14 @@ void SMenuDraw( void )
 		if( DICfg->Region > ALL )
 			DICfg->Region = ALL;
 
-		if(FSUSB)
+		if( MenuType != 3 )
 		{
-			PrintFormat( FB[i], MENU_POS_X, 20, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
-		} else {
-			PrintFormat( FB[i], MENU_POS_X, 20, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+			if( FSUSB )
+			{
+				PrintFormat( FB[i], MENU_POS_X, 20, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+			} else {
+				PrintFormat( FB[i], MENU_POS_X, 20, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+			}
 		}
 
 		switch( MenuType )
@@ -604,6 +611,10 @@ void SMenuDraw( void )
 				}
 
 			} break;
+			case 3:
+			{
+				memcpy( FB[i], PICBuffer, PICSize );
+			} break;
 			default:
 			{
 				MenuType = 0;
@@ -667,6 +678,28 @@ void SMenuReadPad ( void )
 		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 )
 		{
 			MenuType = 2;
+
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+		}
+
+		if( (GCPad.Z || (*WPad&WPAD_BUTTON_DOWN) ) && SLock == 0 )
+		{
+			MenuType = 3;
+
+			PICBuffer = (char*)0x00800000;
+			PICSize = 0;
+			PICNum = 0;
+
+			s32 fd = IOS_Open("/scrn_00.raw", 1 );
+			if( fd >= 0 )
+			{
+				PICSize = IOS_Seek( fd, 0, SEEK_END );
+				IOS_Seek( fd, 0, 0 );
+				IOS_Read( fd, PICBuffer, PICSize );
+				IOS_Close( fd );
+			}
 
 			PosX	= 0;
 			ScrollX	= 0;
@@ -863,6 +896,43 @@ void SMenuReadPad ( void )
 						DVDStatus = 3;
 					}
 					SLock = 1;
+				}
+			} break;
+			case 3:
+			{
+				u32 Update = false;
+				if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+				{
+					if( PICNum > 0 )
+					{
+						PICNum--;
+						Update = true;
+					}
+					SLock = 1;
+				}
+				if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+				{
+					PICNum++;
+					Update = true;
+					
+					SLock = 1;
+				}
+
+				if( Update )
+				{
+					char *Path = (char*)malloca( 32, 32 );
+					_sprintf( Path, "/scrn_%02X.raw", PICNum );
+
+					s32 fd = IOS_Open( Path, 1 );
+					if( fd >= 0 )
+					{
+						PICSize = IOS_Seek( fd, 0, SEEK_END );
+						IOS_Seek( fd, 0, 0 );
+						IOS_Read( fd, PICBuffer, PICSize );
+						IOS_Close( fd );
+					}
+
+					free(Path);
 				}
 			} break;
 		}
