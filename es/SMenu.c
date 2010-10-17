@@ -140,6 +140,19 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 
 			if( r13 && FBEnable && FBOffset && WPad != NULL )
 			{
+				switch( *(vu32*)(FBEnable+0x20) )
+				{
+					case 0:
+						FBSize = 304*480*4;
+						break;
+					case 5:
+						FBSize = 320*480*4;
+						break;
+					default:
+						dbgprintf("ES:SMenuFindOffsets():Invalid Vide mode:%d\n", *(vu32*)(FBEnable+0x20) );
+						break;
+				}
+
 				return 1;
 			}
 		}
@@ -215,20 +228,6 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 				} break;
 			}
 		} break;
-	}
-
-	switch( DICfg->Region )
-	{
-		case JAP:
-		case USA:
-		case KOR:	// no idea if that is correct
-		case ASN:	// no idea if that is correct
-		case LTN:	// no idea if that is correct
-			FBSize = 304*480*4;
-			break;
-		case EUR:
-			FBSize = 320*480*4;
-			break;
 	}
 }
 void SMenuAddFramebuffer( void )
