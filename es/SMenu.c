@@ -33,6 +33,24 @@ GCPadStatus GCPad;
 
 DIConfig *DICfg;
 
+u32 DVDErrorSkip=0;
+u32 DVDErrorRetry=0;
+u32 DVDTimer = 0;
+u32 DVDTimeStart = 0;
+u32 DVDSectorSize = 0;
+u32 DVDOffset = 0;
+u32 DVDOldOffset = 0;
+u32 DVDSpeed = 0;
+u32 DVDTimeLeft = 0;
+s32 DVDHandle = 0;
+char *DiscName	= (char*)NULL;
+char *DVDTitle	= (char*)NULL;
+char *DVDBuffer	= (char*)NULL;
+
+char *PICBuffer = (char*)NULL;
+u32 PICSize = 0;
+u32 PICNum = 0;
+
 char *RegionStr[] = {
 	"JAP",
 	"USA",
@@ -128,7 +146,7 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 	}
 	return 0;
 }
-s32 SMenuInit( u64 TitleID, u16 TitleVersion )
+void SMenuInit( u64 TitleID, u16 TitleVersion )
 {
 	int i;
 
@@ -145,6 +163,7 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 	DVDStatus = 0;
 	DVDError=0;
 	DICfg	= NULL;
+	PICBuffer = (char*)NULL;
 
 	Offsets		= (u32*)malloca( sizeof(u32) * MAX_HITS, 32 );
 	GameCount	= (u32*)malloca( sizeof(u32), 32 );
@@ -173,9 +192,6 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//BS2Report
 					//*(u32*)0x137AEC4 = 0x481B22BC;
 					
-					FBSize		= 320*480*4;
-
-					return 1;
 				} break;
 				case 514:	// EUR 4.3
 				{
@@ -186,9 +202,6 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					//Disable bannerbomb fix
 					*(u32*)0x01380FC4 = 0x4E800020;
 					
-					FBSize		= 320*480*4;
-
-					return 1;
 				} break;
 				case 481:	// USA 4.2
 				{
@@ -196,25 +209,27 @@ s32 SMenuInit( u64 TitleID, u16 TitleVersion )
 					*(u32*)0x0137DBE8 = 0x4800001C;
 					*(u32*)0x0137E43C = 0x60000000;
 
-					FBSize		= 304*480*4;
-
-					return 1;	
 				} break;
 				case 513:	// USA 4.3
 				{
-					FBSize		= 304*480*4;
-
-					return 1;	
 				} break;
 			}
 		} break;
-		default:
-		{
-			FBSize = 320*480*4;
-			return 1;
-		} break;
 	}
-	return 0;
+
+	switch( DICfg->Region )
+	{
+		case JAP:
+		case USA:
+		case KOR:	// no idea if that is correct
+		case ASN:	// no idea if that is correct
+		case LTN:	// no idea if that is correct
+			FBSize = 304*480*4;
+			break;
+		case EUR:
+			FBSize = 320*480*4;
+			break;
+	}
 }
 void SMenuAddFramebuffer( void )
 {
@@ -247,25 +262,6 @@ void SMenuAddFramebuffer( void )
 		}
 	}
 }
-
-u32 DVDErrorSkip=0;
-u32 DVDErrorRetry=0;
-u32 DVDTimer = 0;
-u32 DVDTimeStart = 0;
-u32 DVDSectorSize = 0;
-u32 DVDOffset = 0;
-u32 DVDOldOffset = 0;
-u32 DVDSpeed = 0;
-u32 DVDTimeLeft = 0;
-s32 DVDHandle = 0;
-char *DiscName	= (char*)NULL;
-char *DVDTitle	= (char*)NULL;
-char *DVDBuffer	= (char*)NULL;
-
-char *PICBuffer = (char*)NULL;
-u32 PICSize = 0;
-u32 PICNum = 0;
-
 void SMenuDraw( void )
 {
 	u32 i,j;
@@ -613,7 +609,7 @@ void SMenuDraw( void )
 			} break;
 			case 3:
 			{
-				memcpy( FB[i], PICBuffer, PICSize );
+				memcpy( FB[i], PICBuffer, FBSize );
 			} break;
 			default:
 			{
@@ -656,6 +652,9 @@ void SMenuReadPad ( void )
 		
 		if( (GCPad.B || (*WPad&WPAD_BUTTON_B) ) && SLock == 0 )
 		{
+			if( MenuType == 3 )
+				free( PICBuffer );
+
 			if( MenuType == 0 )
 				ShowMenu = 0;
 
@@ -688,7 +687,6 @@ void SMenuReadPad ( void )
 		{
 			MenuType = 3;
 
-			PICBuffer = (char*)0x00800000;
 			PICSize = 0;
 			PICNum = 0;
 
@@ -697,7 +695,8 @@ void SMenuReadPad ( void )
 			{
 				PICSize = IOS_Seek( fd, 0, SEEK_END );
 				IOS_Seek( fd, 0, 0 );
-				IOS_Read( fd, PICBuffer, PICSize );
+				PICBuffer = (char*)malloca( FBSize, 32 );
+				IOS_Read( fd, PICBuffer, FBSize );
 				IOS_Close( fd );
 			}
 
