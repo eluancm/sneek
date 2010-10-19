@@ -142,10 +142,10 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 			{
 				switch( *(vu32*)(FBEnable+0x20) )
 				{
-					case 0:
+					case VI_NTSC:
 						FBSize = 304*480*4;
 						break;
-					case 5:
+					case VI_EUR60:
 						FBSize = 320*480*4;
 						break;
 					default:
