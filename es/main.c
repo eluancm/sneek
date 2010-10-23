@@ -1292,6 +1292,8 @@ int _main( int argc, char *argv[] )
 						dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
 					}
+				} else {
+					continue;
 				}
 			}
 			

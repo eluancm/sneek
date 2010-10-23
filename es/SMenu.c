@@ -664,7 +664,7 @@ void SMenuReadPad ( void )
 			SLock	= 1;
 		}
 
-		if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 )
+		if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
 		{
 			MenuType = 1;
 
@@ -673,7 +673,7 @@ void SMenuReadPad ( void )
 			SLock	= 1;
 		}
 
-		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 )
+		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 && MenuType != 2 )
 		{
 			MenuType = 2;
 
@@ -682,7 +682,7 @@ void SMenuReadPad ( void )
 			SLock	= 1;
 		}
 
-		if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 )
+		if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 && MenuType != 3 )
 		{
 			MenuType = 3;
 
@@ -963,8 +963,8 @@ void SCheatDraw( void )
 			{
 				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Cheater!!!", __DATE__ );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Search value..." );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "RAM viewer..." );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "RAM dumper..." );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "RAM viewer...(NYI)" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "RAM dumper...(NYI)" );
 
 				PrintFormat( FB[i], MENU_POS_X+80-6*3, 104+16*PosX, "-->");
 
@@ -972,7 +972,7 @@ void SCheatDraw( void )
 			case 2:
 			{
 				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Search value", __DATE__ );
-				PrintFormat( FB[i], MENU_POS_X, 104+16*-1, "Hits :%08X:%08X", Hits, *(vu32*)WPad );
+				PrintFormat( FB[i], MENU_POS_X, 104+16*-1, "Hits :%08X", Hits );
 				PrintFormat( FB[i], MENU_POS_X+6*6+PosValX*6, 108, "_" );
 				PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Value:%08X(%d:%u)", value, value, value );
 
@@ -1024,11 +1024,11 @@ void SCheatReadPad ( void )
 
 	if( SLock == 0 )
 	{
-		//if( (*WPad&WPAD_BUTTON_B) && (*WPad&WPAD_BUTTON_1) )
-		//{
-		//	ShowMenu = !ShowMenu;
-		//	SLock = 1;
-		//}
+		if( *WPad & ( WPAD_BUTTON_B | WPAD_BUTTON_1 ) )
+		{
+			ShowMenu = !ShowMenu;
+			SLock = 1;
+		}
 
 		if( (*WPad&WPAD_BUTTON_HOME) && (*WPad&WPAD_BUTTON_2) )
 		{
@@ -1086,7 +1086,7 @@ void SCheatReadPad ( void )
 		{
 			case 1:
 			{
-				if( GCPad.A )
+				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
 					ShowMenu= 2;
 					SLock	= 1;
@@ -1095,7 +1095,7 @@ void SCheatReadPad ( void )
 			} break;
 			case 2:
 			{
-				if( GCPad.A )
+				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
 					Hits = 0;
 
@@ -1113,30 +1113,30 @@ void SCheatReadPad ( void )
 
 					SLock	= 1;
 				}
-				if(  GCPad.B )
+				if(  GCPad.B || (*WPad&WPAD_BUTTON_B) )
 				{
 					ShowMenu= 1;
 					SLock	= 1;
 				}
-				if(  GCPad.X )
+				if( GCPad.X || (*WPad&WPAD_BUTTON_PLUS) )
 				{
 					ShowMenu= 3;
 					PosX	= 0;
 					edit	= 0;
 					SLock	= 1;
 				}
-				if(  GCPad.Left )
+				if(  GCPad.Left || (*WPad&WPAD_BUTTON_LEFT))
 				{
 					if( PosValX > 0 )
 						PosValX--;
 					SLock = 1;
-				} else if(  GCPad.Right )
+				} else if(  GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT))
 				{
 					if( PosValX < 7 )
 						PosValX++;
 					SLock = 1;
 				}
-				if( GCPad.Up )
+				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP))
 				{
 					if( ((value>>((7-PosValX)<<2)) & 0xF) == 0xF )
 					{
@@ -1145,7 +1145,7 @@ void SCheatReadPad ( void )
 						value += 0x1 << ((7-PosValX)<<2);
 					}
 					SLock = 1;
-				} else if( GCPad.Down )
+				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN))
 				{
 					if( ((value>>((7-PosValX)<<2)) & 0xF) == 0x0 )
 					{
