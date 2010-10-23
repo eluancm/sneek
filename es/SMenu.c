@@ -1024,13 +1024,13 @@ void SCheatReadPad ( void )
 
 	if( SLock == 0 )
 	{
-		if( *WPad & ( WPAD_BUTTON_B | WPAD_BUTTON_1 ) )
+		if( (*WPad & ( WPAD_BUTTON_B | WPAD_BUTTON_1 )) == ( WPAD_BUTTON_B | WPAD_BUTTON_1 ) )
 		{
 			ShowMenu = !ShowMenu;
 			SLock = 1;
 		}
 
-		if( (*WPad&WPAD_BUTTON_HOME) && (*WPad&WPAD_BUTTON_2) )
+		if( (*WPad & ( WPAD_BUTTON_HOME | WPAD_BUTTON_2 )) == ( WPAD_BUTTON_HOME | WPAD_BUTTON_2 ) )
 		{
 			u8 *buf = (u8*)malloc( FBSize );
 			memcpy( buf, (void*)(FB[0]), FBSize );
