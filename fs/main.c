@@ -127,7 +127,7 @@ int _main( int argc, char *argv[] )
 		}
 
 		//dbgprintf("FFS:Cmd:%d\n", CMessage->command );
-
+		
 		switch( CMessage->command )
 		{
 			case IOS_OPEN:

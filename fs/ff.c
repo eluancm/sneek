@@ -1968,9 +1968,9 @@ FRESULT f_lseek (
 	if (fp->flag & FA__ERROR)			/* Check abort flag */
 		LEAVE_FF(fp->fs, FR_INT_ERR);
 	if (ofs > fp->fsize					/* In read-only mode, clip offset with the file size */
-#if !_FS_READONLY
-		 && !(fp->flag & FA_WRITE)
-#endif
+//#if !_FS_READONLY
+//		 && !(fp->flag & FA_WRITE)
+//#endif
 		) ofs = fp->fsize;
 
 	ifptr = fp->fptr;
@@ -1985,26 +1985,26 @@ FRESULT f_lseek (
 			clst = fp->curr_clust;
 		} else {									/* When seek to back cluster, */
 			clst = fp->org_clust;					/* start from the first cluster */
-#if !_FS_READONLY
-			if (clst == 0) {						/* If no cluster chain, create a new chain */
-				clst = create_chain(fp->fs, 0);
-				if (clst == 1) ABORT(fp->fs, FR_INT_ERR);
-				if (clst == 0xFFFFFFFF) ABORT(fp->fs, FR_DISK_ERR);
-				fp->org_clust = clst;
-			}
-#endif
+//#if !_FS_READONLY
+//			if (clst == 0) {						/* If no cluster chain, create a new chain */
+//				clst = create_chain(fp->fs, 0);
+//				if (clst == 1) ABORT(fp->fs, FR_INT_ERR);
+//				if (clst == 0xFFFFFFFF) ABORT(fp->fs, FR_DISK_ERR);
+//				fp->org_clust = clst;
+//			}
+//#endif
 			fp->curr_clust = clst;
 		}
 		if (clst != 0) {
 			while (ofs > bcs) {						/* Cluster following loop */
-#if !_FS_READONLY
-				if (fp->flag & FA_WRITE) {			/* Check if in write mode or not */
-					clst = create_chain(fp->fs, clst);	/* Force streached if in write mode */
-					if (clst == 0) {				/* When disk gets full, clip file size */
-						ofs = bcs; break;
-					}
-				} else
-#endif
+//#if !_FS_READONLY
+//				if (fp->flag & FA_WRITE) {			/* Check if in write mode or not */
+//					clst = create_chain(fp->fs, clst);	/* Force streached if in write mode */
+//					if (clst == 0) {				/* When disk gets full, clip file size */
+//						ofs = bcs; break;
+//					}
+//				} else
+//#endif
 					clst = get_cluster(fp->fs, clst);	/* Follow cluster chain if not in write mode */
 				if (clst == 0xFFFFFFFF) ABORT(fp->fs, FR_DISK_ERR);
 				if (clst <= 1 || clst >= fp->fs->max_clust) ABORT(fp->fs, FR_INT_ERR);
@@ -2036,12 +2036,12 @@ FRESULT f_lseek (
 #endif
 		fp->dsect = nsect;
 	}
-#if !_FS_READONLY
-	if (fp->fptr > fp->fsize) {			/* Set changed flag if the file size is extended */
-		fp->fsize = fp->fptr;
-		fp->flag |= FA__WRITTEN;
-	}
-#endif
+//#if !_FS_READONLY
+//	if (fp->fptr > fp->fsize) {			/* Set changed flag if the file size is extended */
+//		fp->fsize = fp->fptr;
+//		fp->flag |= FA__WRITTEN;
+//	}
+//#endif
 
 	LEAVE_FF(fp->fs, res);
 }

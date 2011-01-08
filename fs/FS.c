@@ -548,7 +548,7 @@ s32 FS_Open( char *Path, u8 Mode )
 	// Is it a device?
 	if( strncmp( Path, "/dev/", 5 ) == 0 )
 	{
-		if( strncmp( Path+5, "fs", 2) == 0)
+		if( strncmp( Path+5, "fs", 2 ) == 0)
 		{
 			return FS_FD;
 		}/* else if( strncmp(CMessage->open.device+5, "flash", 5) == 0) {
@@ -592,7 +592,7 @@ s32 FS_Write( s32 FileHandle, u8 *Data, u32 Length )
 {
 	if( FS_CheckHandle(FileHandle) == 0)
 		return FS_INVALID;
-
+	
 	u32 wrote = 0;
 	s32 ret = f_write( &fd_stack[FileHandle], Data, Length, &wrote );
 	switch( ret )
@@ -612,7 +612,7 @@ s32 FS_Read( s32 FileHandle, u8 *Data, u32 Length )
 {
 	if( FS_CheckHandle(FileHandle) == 0)
 		return FS_INVALID;
-
+	
 	u32 read = 0;
 	s32 r = f_read( &fd_stack[FileHandle], Data, Length, &read );
 	switch( r )
@@ -641,9 +641,18 @@ s32 FS_Seek( s32 FileHandle, s32 Where, u32 Whence )
 	switch( Whence )
 	{
 		case SEEK_SET:
+		{
+			if( Where > fd_stack[FileHandle].fsize )
+				break;
+
 			if( f_lseek( &fd_stack[FileHandle], Where ) == FR_OK )
-				return Where;
-		break;
+			{
+				if( Where == 0 )
+					return 0;
+
+				return fd_stack[FileHandle].fptr;
+			}
+		} break;
 
 		case SEEK_CUR:
 			if( f_lseek(&fd_stack[FileHandle], Where + fd_stack[FileHandle].fptr) == FR_OK )
