@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 static FIL fd_stack[MAX_FILE] ALIGNED(32);
 
 //#define USEATTR
-//#undef DEBUG
+#undef DEBUG
 #define EDEBUG
 
 typedef struct
@@ -792,9 +792,18 @@ s32 FS_Seek( s32 FileHandle, s32 Where, u32 Whence )
 	switch( Whence )
 	{
 		case SEEK_SET:
+		{
+			if( Where > fd_stack[FileHandle].fsize )
+				break;
+
 			if( f_lseek( &fd_stack[FileHandle], Where ) == FR_OK )
-				return Where;
-		break;
+			{
+				if( Where == 0 )
+					return 0;
+
+				return fd_stack[FileHandle].fptr;
+			}
+		} break;
 
 		case SEEK_CUR:
 			if( f_lseek(&fd_stack[FileHandle], Where + fd_stack[FileHandle].fptr) == FR_OK )
