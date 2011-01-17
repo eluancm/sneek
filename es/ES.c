@@ -170,8 +170,10 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 
 	//SNEEK does not support single module IOSs so we just load IOS35 instead
 	//IOS58 is also not supported
-	if( IOSVersion < 28 || IOSVersion == 58 )
+	if( IOSVersion < 28 )
 		IOSVersion = 35;
+	if( IOSVersion == 58 || IOSVersion == 57 )
+		IOSVersion = 56;
 
 	s32 r = ES_LoadModules( IOSVersion );
 	dbgprintf("ES:ES_LoadModules(%d):%d\n", IOSVersion, r );
@@ -1523,6 +1525,19 @@ s32 ES_LoadModules( u32 KernelVersion )
 		}
 	}
 
+	dbgprintf("ES:Waiting for network module...\n");
+
+	while(1)
+	{
+		int rfs = IOS_Open("/dev/net/ncd/manage", 0 );
+		if( rfs >= 0 )
+		{
+			IOS_Close(rfs);
+			break;
+		}
+		udelay(500);
+	}
+
 	free( size );
 	free( TMD );
 	free( path );
@@ -1534,9 +1549,6 @@ s32 ES_LoadModules( u32 KernelVersion )
 s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 {
 	char *path = (char*)malloca( 0x70, 0x40 );
-
-	//if( *TitleID == 0x0000000100000100LL )
-	//	*TitleID =  0x0000000100000101LL;
 
 	if( *TitleID == 0x0000000100000100LL )
 	{
