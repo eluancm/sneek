@@ -225,6 +225,9 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 				} break;
 				case 513:	// USA 4.3
 				{
+					//region free discs
+					*(u32*)0x0137DD80 = 0x4800001C;
+					*(u32*)0x0137E5D4 = 0x60000000;
 				} break;
 			}
 		} break;
@@ -307,6 +310,7 @@ void SMenuDraw( void )
 					case 'E':
 						gRegion =  USA;
 						break;
+					case 'X':	// hamster heroes uses this for some reason
 					case 'F':	// France
 					case 'I':	// Italy
 					case 'U':	// United Kingdom
@@ -639,8 +643,8 @@ void SMenuReadPad ( void )
 				{
 					DVDGetGameCount( GameCount );
 
-					DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
-					DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
+                    DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
+                    DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
 				}
 			}
 			SLock = 1;
