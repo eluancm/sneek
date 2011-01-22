@@ -34,6 +34,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "WPad.h"
 #include "DI.h"
 #include "font.h"
+#include "image.h"
 #include "bmp.h"
 
 #define MAX_HITS			64

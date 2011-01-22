@@ -102,7 +102,7 @@ typedef struct
 	u32		Region;
 	u32		Gamecount;
 	u32		Config;
-	u8		GameInfo[][0x60];
+	u8		GameInfo[][0x80];
 } DIConfig;
 
 typedef struct

@@ -5,6 +5,9 @@
      struct bmpfile_header
    [this avoids compiler-specific alignment pragmas etc.]
 */
+
+#ifndef __BMP_FILE_H_
+#define __BMP_FILE_H_
  
 typedef struct  {
   unsigned char magic[2];
@@ -30,3 +33,15 @@ typedef struct  {
   unsigned int ncolors;
   unsigned int nimpcolors;
 } bmp_dib_v3_header_t;
+
+
+typedef enum {
+  BI_RGB = 0,
+  BI_RLE8,
+  BI_RLE4,
+  BI_BITFIELDS, //Also Huffman 1D compression for BITMAPCOREHEADER2
+  BI_JPEG,      //Also RLE-24 compression for BITMAPCOREHEADER2
+  BI_PNG,
+} bmp_compression_method_t;
+
+#endif

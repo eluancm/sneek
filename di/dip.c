@@ -61,6 +61,8 @@ s32 DVDUpdateCache( void )
 
 	while( DVDReadDir() == DVD_SUCCESS )
 	{
+		if (strlen(DVDDirGetEntryName()) >= 32)//skip folders that are too big for diconfig.bin
+			continue;
 		sprintf( TempPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
 
 		s32 bi = DVDOpen( TempPath, FA_READ );
@@ -91,7 +93,7 @@ s32 DVDUpdateCache( void )
 	{
 		DVDRead( fd, DICfg, sizeof(u32) * 4 );
 
-		if( DVDGetSize(fd) != GameCount * 0x60 + 0x10 )
+		if( DVDGetSize(fd) != GameCount * 0x80 + 0x10 )
 		{
 			DVDClose( fd );
 			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ );
@@ -136,6 +138,7 @@ s32 DVDUpdateCache( void )
 
 		char *LPath = (char*)malloca( 128, 32 );
 		char *GInfo = (char*)malloca( 0x60, 32 );
+		char *GPath = (char*)malloca(0x20,32);
 		char* GInfoName = &GInfo[32];
 
 		if( DVDOpenDir( "/games" ) == DVD_SUCCESS )
@@ -143,6 +146,8 @@ s32 DVDUpdateCache( void )
 			while( DVDReadDir() == DVD_SUCCESS )
 			{
 				if( DVDDirIsFile() )		// skip files
+					continue;
+				if (strlen(DVDDirGetEntryName()) >= 32) //skip folders that are too big for diconfig.bin
 					continue;
 
 				sprintf( LPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
@@ -178,6 +183,11 @@ s32 DVDUpdateCache( void )
 					}
 
 					DVDWrite( fd, GInfo, 0x60 );
+
+					//add folder name entry
+					strcpy(GPath,DVDDirGetEntryName());
+					DVDWrite(fd,GPath,0x20);
+
 					DVDClose( bi );
 				}
 			}
@@ -187,6 +197,7 @@ s32 DVDUpdateCache( void )
 
 		free( LPath );
 		free( GInfo );
+		free(GPath);
 
 		DICfg->Gamecount = GameCount;
 
@@ -221,7 +232,7 @@ s32 DVDSelectGame( int SlotID )
 	if (SlotID >= 0 && SlotID < DICfg->Gamecount){
 		char *str = (char *)malloca( 128, 32 );
 		//build path
-		sprintf( GamePath, "/games/%s/", &DICfg->GameInfo[SlotID][0] );
+		sprintf( GamePath, "/games/%s/", &DICfg->GameInfo[SlotID][0x60] );
 		dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
 	
 		FSTable = (u8*)NULL;

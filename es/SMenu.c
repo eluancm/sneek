@@ -46,6 +46,7 @@ s32 DVDHandle = 0;
 char *DiscName	= (char*)NULL;
 char *DVDTitle	= (char*)NULL;
 char *DVDBuffer	= (char*)NULL;
+ImageStruct* curDVDCover = NULL;
 
 char *PICBuffer = (char*)NULL;
 u32 PICSize = 0;
@@ -331,7 +332,7 @@ void SMenuDraw( void )
 				
 				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "GameRegion:%s", RegionStr[gRegion] );
 
-				for( j=0; j<20; ++j )
+				for( j=0; j<10; ++j )
 				{
 					if( j+ScrollX >= *GameCount )
 						break;
@@ -347,7 +348,14 @@ void SMenuDraw( void )
 						PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
 				}
 
-				PrintFormat( FB[i], MENU_POS_X+600, MENU_POS_Y+16*21, "%d/%d", ScrollX/20 + 1, *GameCount/20 + 1 );
+				if (curDVDCover){
+					DrawImage(FB[i],MENU_POS_X,MENU_POS_Y+(j+1)*16,curDVDCover);
+					//PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,(char*) curDVDCover);
+				}
+				else
+					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,"no cover image found!");
+
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/10 + 1, *GameCount/10 + 1 );
 
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -622,6 +630,25 @@ void SMenuDraw( void )
 		}
 	}
 }
+
+void LoadDVDCover(){
+	if (curDVDCover != NULL)
+		free(curDVDCover);
+	curDVDCover = NULL;
+	
+	if (DICfg == NULL || PosX + ScrollX >= DICfg->Gamecount)
+		return;
+
+	char* imgPathBuffer = (char*)malloca(160,32);
+	_sprintf( imgPathBuffer, "/sneek/covers/%s.raw", DICfg->GameInfo[PosX+ScrollX]);
+	curDVDCover = LoadImage(imgPathBuffer);
+	if (curDVDCover == NULL){
+		_sprintf( imgPathBuffer, "/sneek/covers/%s.bmp", DICfg->GameInfo[PosX+ScrollX]);
+		curDVDCover = LoadImage(imgPathBuffer);
+	}
+	free(imgPathBuffer);
+}
+
 void SMenuReadPad ( void )
 {
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
@@ -643,8 +670,11 @@ void SMenuReadPad ( void )
 				{
 					DVDGetGameCount( GameCount );
 
-                    DICfg = (DIConfig *)malloca( *GameCount * 0x60 + 0x10, 32 );
-                    DVDReadGameInfo( 0, *GameCount * 0x60 + 0x10, DICfg );
+                    DICfg = (DIConfig *)malloca( *GameCount * 0x80 + 0x10, 32 );
+                    DVDReadGameInfo( 0, *GameCount * 0x80 + 0x10, DICfg );
+				}
+				if (MenuType == 0){
+					LoadDVDCover();
 				}
 			}
 			SLock = 1;
@@ -658,8 +688,12 @@ void SMenuReadPad ( void )
 			if( MenuType == 3 )
 				free( PICBuffer );
 
-			if( MenuType == 0 )
+			if( MenuType == 0 ){
+				if (curDVDCover != NULL)
+					free(curDVDCover);
+				curDVDCover = NULL;
 				ShowMenu = 0;
+			}
 
 			MenuType = 0;
 
@@ -670,6 +704,10 @@ void SMenuReadPad ( void )
 
 		if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
 		{
+			if (curDVDCover != NULL)
+				free(curDVDCover);
+			curDVDCover = NULL;
+
 			MenuType = 1;
 
 			PosX	= 0;
@@ -679,6 +717,10 @@ void SMenuReadPad ( void )
 
 		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 && MenuType != 2 )
 		{
+			if (curDVDCover != NULL)
+				free(curDVDCover);
+			curDVDCover = NULL;
+
 			MenuType = 2;
 
 			PosX	= 0;
@@ -715,38 +757,51 @@ void SMenuReadPad ( void )
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 				{
 					DVDSelectGame( PosX+ScrollX );
+					if (curDVDCover != NULL)
+						free(curDVDCover);
+					curDVDCover = NULL;
 					ShowMenu = 0;
 					SLock = 1;
 				}
 				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
 				{
-					if( PosX )
+					if( PosX ){
 						PosX--;
+						LoadDVDCover();
+					}
 					else if( ScrollX )
 					{
 						ScrollX--;
+						LoadDVDCover();
 					}
 
 					SLock = 1;
 				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 				{
-					if( PosX >= 19 )
+					if( PosX >= 9 )
 					{
 						if( PosX+ScrollX+1 < *GameCount )
 						{
 							ScrollX++;
+							LoadDVDCover();
 						}
-					} else if ( PosX+ScrollX+1 < *GameCount )
+					} else if ( PosX+ScrollX+1 < *GameCount ){
 						PosX++;
+						LoadDVDCover();
+					}
 
 					SLock = 1;
 				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
 				{
-					if( ScrollX/20*20 + 20 < *GameCount )
+					if( ScrollX/10*10 + 10 < *GameCount )
 					{
 						PosX	= 0;
-						ScrollX = ScrollX/20*20 + 20;
+						ScrollX = ScrollX/10*10 + 10;
+						LoadDVDCover();
 					} else {
+						if (PosX || ScrollX){
+							LoadDVDCover();
+						}
 						PosX	= 0;
 						ScrollX	= 0;
 					}
@@ -754,14 +809,15 @@ void SMenuReadPad ( void )
 					SLock = 1; 
 				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
 				{
-					if( ScrollX/20*20 - 20 > 0 )
+					if( ScrollX/10*10 - 10 > 0 )
 					{
 						PosX	= 0;
-						ScrollX-= 20;
+						ScrollX-= 10;
 					} else {
 						PosX	= 0;
 						ScrollX	= 0;
 					}
+					LoadDVDCover();
 
 					SLock = 1; 
 				}
