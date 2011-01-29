@@ -315,7 +315,3 @@ ImageStruct* LoadImage(char* str){
 	}
 	return image;
 }
-
-void freeImage(s32 Image){
-	free((ImageStruct*)Image);
-}

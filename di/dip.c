@@ -121,25 +121,36 @@ s32 DVDUpdateCache( void )
 
 	if( GameCount != DICfg->Gamecount )
 	{
+		dbgprintf("DIP:Updating game info cache...");
+
 		s32 titlesFile = DVDOpen("/games/titles.txt", FA_READ);
 		char* titlesContent = NULL;
 		u32 titlesSize = 0;
+		u8 crChar = '\r';
+		u8 lfChar = '\n';
 		if (titlesFile >= 0){
 			titlesSize = DVDGetSize(titlesFile);
 			titlesContent = (char*) malloc(titlesSize + 1);
 			titlesContent[titlesSize] = 0;
 			DVDRead(titlesFile,titlesContent,titlesSize);
 			DVDClose(titlesFile);
+			if (strchr(titlesContent,crChar) == NULL)
+				crChar = '\n';
+			if (strchr(titlesContent,lfChar) == NULL)
+				lfChar = '\r';
 		}
-		
-		dbgprintf("DIP:Updating game info cache...");
+		else{
+			dbgprintf("DIP:Can't open /games/titles.txt default titles will be used.");
+		}
 
-		DVDSeek( fd, 0, 0x10 );
+		DVDSeek( fd, 0x10, 0);
 
 		char *LPath = (char*)malloca( 128, 32 );
-		char *GInfo = (char*)malloca( 0x60, 32 );
+		char *GInfo = (char*)malloca( 0x80 * GameCount, 32 );
 		char *GPath = (char*)malloca(0x20,32);
-		char* GInfoName = &GInfo[32];
+
+		u32 curGame = 0;
+		u32 realNumGames = 0;
 
 		if( DVDOpenDir( "/games" ) == DVD_SUCCESS )
 		{
@@ -155,8 +166,11 @@ s32 DVDUpdateCache( void )
 				s32 bi = DVDOpen( LPath, FA_READ );
 				if( bi >= 0 )
 				{
-					DVDRead( bi, GInfo, 0x60 );
-					
+					DVDRead( bi, &GInfo[curGame * 0x80], 0x60 );
+					DVDClose( bi );
+					char* GInfoName = &GInfo[curGame * 0x80 + 32];
+					strcpy(&GInfo[curGame * 0x80 + 0x60],DVDDirGetEntryName());
+
 					if (titlesContent != NULL){
 						char* curSearch = titlesContent;
 						u32 found = 0;
@@ -164,7 +178,7 @@ s32 DVDUpdateCache( void )
 							if (strncmp(DVDDirGetEntryName(),curSearch,6) == 0){
 								found = 1;
 								curSearch += 9;
-								char* endLine = strchr(curSearch,'\r');
+								char* endLine = strchr(curSearch,crChar);
 								if (endLine == NULL){
 									endLine = &titlesContent[titlesSize];
 								}
@@ -175,31 +189,66 @@ s32 DVDUpdateCache( void )
 								GInfoName[length] = 0;
 							}
 							else{
-								curSearch = strchr(curSearch,'\n');
+								curSearch = strchr(curSearch,lfChar);
 								if (curSearch != NULL)
 									curSearch += 1;
 							}
 						}
+					
+						curGame++;
+						realNumGames++;
 					}
-
-					DVDWrite( fd, GInfo, 0x60 );
-
-					//add folder name entry
-					strcpy(GPath,DVDDirGetEntryName());
-					DVDWrite(fd,GPath,0x20);
-
-					DVDClose( bi );
 				}
 			}
 		}
 		if (titlesContent != NULL)
 			free(titlesContent);
 
+		u32 i, j;
+		for (i = 0; i < realNumGames; i++){
+			char* gameToInsert = &GInfo[0];
+			for (j = 0; j < realNumGames; j++){
+				char* gameToCompare = &GInfo[j * 0x80];
+				if (gameToInsert == gameToCompare)
+					continue;
+				if (gameToCompare[32] == 0)
+					continue;
+				if (gameToInsert[32] == 0){
+					gameToInsert = gameToCompare;
+					continue;
+				}
+				u8 firstType = 0;
+				if (*((int*) &gameToInsert[0x1C]) == 0xc2339f3d)
+					firstType = 1;
+				else if (*((int*) &gameToInsert[0x18]) == 0x5D1C9EA3)
+					firstType = 2;
+				u8 secondType = 0;
+				if (*((int*) &gameToCompare[0x1C]) == 0xc2339f3d)
+					secondType = 1;
+				else if (*((int*) &gameToCompare[0x18]) == 0x5D1C9EA3)
+					secondType = 2;
+				if (firstType > secondType)
+					continue;
+				if (firstType < secondType){
+					gameToInsert = gameToCompare;
+					continue;
+				}
+				char* firstName = skipPastArticles(&gameToInsert[32]);
+				char* secondName = skipPastArticles(&gameToCompare[32]);
+				if (strcmpi(firstName,secondName) > 0){
+					gameToInsert = gameToCompare;
+					continue;
+				}
+			}
+			DVDWrite(fd,gameToInsert,0x80);
+			gameToInsert[32] = 0;
+		}
+
 		free( LPath );
 		free( GInfo );
 		free(GPath);
 
-		DICfg->Gamecount = GameCount;
+		DICfg->Gamecount = realNumGames;
 
 		if( DICfg->SlotID >= DICfg->Gamecount )
 			DICfg->SlotID = 0;

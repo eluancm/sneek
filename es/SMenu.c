@@ -332,7 +332,7 @@ void SMenuDraw( void )
 				
 				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "GameRegion:%s", RegionStr[gRegion] );
 
-				for( j=0; j<10; ++j )
+				for( j=0; j<8; ++j )
 				{
 					if( j+ScrollX >= *GameCount )
 						break;
@@ -353,9 +353,9 @@ void SMenuDraw( void )
 					//PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,(char*) curDVDCover);
 				}
 				else
-					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,"no cover image found!");
+					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
 
-				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/10 + 1, *GameCount/10 + 1 );
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/8 + 1, *GameCount/8 + (*GameCount % 8 > 0));
 
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -778,7 +778,7 @@ void SMenuReadPad ( void )
 					SLock = 1;
 				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 				{
-					if( PosX >= 9 )
+					if( PosX >= 7 )
 					{
 						if( PosX+ScrollX+1 < *GameCount )
 						{
@@ -793,10 +793,10 @@ void SMenuReadPad ( void )
 					SLock = 1;
 				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
 				{
-					if( ScrollX/10*10 + 10 < *GameCount )
+					if( ScrollX/8*8 + 8 < *GameCount )
 					{
 						PosX	= 0;
-						ScrollX = ScrollX/10*10 + 10;
+						ScrollX = ScrollX/8*8 + 8;
 						LoadDVDCover();
 					} else {
 						if (PosX || ScrollX){
@@ -809,7 +809,7 @@ void SMenuReadPad ( void )
 					SLock = 1; 
 				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
 				{
-					if( ScrollX/10*10 - 10 > 0 )
+					if( ScrollX/8*8 - 8 > 0 )
 					{
 						PosX	= 0;
 						ScrollX-= 10;

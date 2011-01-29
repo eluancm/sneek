@@ -58,12 +58,43 @@ int strcmp(const char *p, const char *q)
 	}
 }
 
+int strcmpi(const char *p, const char *q)
+{
+	for (;;) {
+		unsigned char a, b;
+		a = *p++;
+		b = *q++;
+		if (a >= 'A' && a <= 'Z')
+			a += 32;
+		if (b >= 'A' && b <= 'Z')
+			b += 32;
+		if (a == 0 || a != b)
+			return a - b;
+	}
+}
+
 int strncmp(const char *p, const char *q, size_t n)
 {
 	while (n-- != 0) {
 		unsigned char a, b;
 		a = *p++;
 		b = *q++;
+		if (a == 0 || a != b)
+			return a - b;
+	}
+	return 0;
+}
+
+int strncmpi(const char *p, const char *q, size_t n)
+{
+	while (n-- != 0) {
+		unsigned char a, b;
+		a = *p++;
+		b = *q++;
+		if (a >= 'A' && a <= 'Z')
+			a += 32;
+		if (b >= 'A' && b <= 'Z')
+			b += 32;
 		if (a == 0 || a != b)
 			return a - b;
 	}
@@ -111,4 +142,12 @@ char *strchr(const char *s, int c)
 			return (char *)s;
 	} while(*s++ != 0);
 	return NULL;
+}
+
+char* skipPastArticles(char* s){
+	if (strncmpi(s,"the ",4) == 0)
+		return &s[4];
+	if (strncmpi(s,"a ",4) == 0)
+		return &s[2];
+	return s;
 }
