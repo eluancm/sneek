@@ -36,6 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "font.h"
 #include "image.h"
 #include "bmp.h"
+#include "NAND.h"
+#include "ES.h"
 
 #define MAX_HITS			64
 #define MAX_FB				3
@@ -63,5 +65,16 @@ void SMenuReadPad( void );
 void SCheatDraw( void );
 void SCheatReadPad( void );
 
+void LoadAndRebuildChannelCache();
+
+typedef struct{
+	u64 titleID;
+	u8 name[41];
+} __attribute__((packed)) ChannelInfo;
+
+typedef struct{
+	u32 numChannels;
+	ChannelInfo channels[];
+} __attribute__((packed)) ChannelCache;
 
 #endif

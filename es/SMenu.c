@@ -33,6 +33,8 @@ GCPadStatus GCPad;
 
 DIConfig *DICfg;
 
+ChannelCache* channelCache;
+
 u32 DVDErrorSkip=0;
 u32 DVDErrorRetry=0;
 u32 DVDTimer = 0;
@@ -70,6 +72,98 @@ unsigned char VISetFB[] =
 	0x38, 0xA7, 0x00, 0x38,
 	0x38, 0xC7, 0x00, 0x4C, 
 };
+
+s32 LaunchTitle(u64 TitleID){
+	u32 majorTitleID = (TitleID) >> 32;
+	u32 minorTitleID = (TitleID) & 0xFFFFFFFF;
+
+	char* ticketPath = (char*) malloca(128,32);
+	_sprintf(ticketPath,"/ticket/%08x/%08x.tik",majorTitleID,minorTitleID);
+	s32 fd = IOS_Open(ticketPath,1);
+	free(ticketPath);
+
+	u32 size = IOS_Seek(fd,0,SEEK_END);
+	IOS_Seek(fd,0,SEEK_SET);
+
+	u8* ticketData = (u8*) malloca(size,32);
+	IOS_Read(fd,ticketData,size);
+	IOS_Close(fd);
+
+	u8* ticketView = (u8*) malloca(0xD8,32);
+	iES_GetTicketView(ticketData,ticketView);
+	free(ticketData);
+
+	s32 r = ES_LaunchTitle(&TitleID,ticketView);
+	free(ticketView);
+	return r;
+}
+
+void LoadAndRebuildChannelCache(){
+	channelCache = NULL;
+	u32 size, i;
+	UIDSYS *uid = (UIDSYS *)NANDLoadFile( "/sys/uid.sys", &size );
+	if (uid == NULL)
+		return;
+	u32 numChannels = 0;
+	for (i = 0; i * 12 < size; i++){
+		u32 majorTitleID = uid[i].TitleID >> 32;
+		switch (majorTitleID){
+			case 0x00000001: //IOSes
+			case 0x00010000: //left over disc stuff
+			case 0x00010005: //DLC
+			case 0x00010008: //Hidden
+				break;
+			default:
+			{
+				s32 fd = ES_OpenContent(uid[i].TitleID,0);
+				if (fd >= 0){
+					numChannels++;
+					IOS_Close(fd);
+				}
+			} break;
+		}
+	}
+
+	channelCache = (ChannelCache*)NANDLoadFile("/sneek/channelcache.bin",&i);
+	if (channelCache == NULL){
+		channelCache = (ChannelCache*)malloca(sizeof(ChannelCache),32);
+		channelCache->numChannels = 0;
+	}
+
+	if (numChannels != channelCache->numChannels || i != sizeof(ChannelCache) + sizeof(ChannelInfo) * numChannels){ // rebuild
+		free(channelCache);
+		channelCache = (ChannelCache*)malloca(sizeof(ChannelCache) + sizeof(ChannelInfo) * numChannels,32);
+		channelCache->numChannels = 0;
+		for (i = 0; i * 12 < size; i++){
+			u32 majorTitleID = uid[i].TitleID >> 32;
+			switch (majorTitleID){
+				case 0x00000001: //IOSes
+				case 0x00010000: //left over disc stuff
+				case 0x00010005: //DLC
+				case 0x00010008: //Hidden
+					break;
+				default:
+				{
+					s32 fd = ES_OpenContent(uid[i].TitleID,0);
+					if (fd >= 0){
+						IOS_Seek(fd,0xF0,SEEK_SET);
+						u32 j;
+						for (j = 0; j < 40; j++){
+							IOS_Seek(fd,1,SEEK_CUR);
+							IOS_Read(fd,&channelCache->channels[channelCache->numChannels].name[j],1);
+						}
+						channelCache->channels[channelCache->numChannels].name[40] = 0;
+						channelCache->channels[channelCache->numChannels].titleID = uid[i].TitleID;
+						channelCache->numChannels += 1;
+						IOS_Close(fd);
+					}
+				} break;
+			}
+		}
+		NANDWriteFileSafe("/sneek/channelcache.bin",channelCache,sizeof(ChannelCache) + sizeof(ChannelInfo) * channelCache->numChannels);
+	}
+	free(uid);
+}
 
 u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 {
@@ -332,6 +426,8 @@ void SMenuDraw( void )
 				
 				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "GameRegion:%s", RegionStr[gRegion] );
 
+				PrintFormat( FB[i], MENU_POS_X + 420, MENU_POS_Y,"Press HOME for Channels");
+
 				for( j=0; j<8; ++j )
 				{
 					if( j+ScrollX >= *GameCount )
@@ -356,6 +452,33 @@ void SMenuDraw( void )
 					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
 
 				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/8 + 1, *GameCount/8 + (*GameCount % 8 > 0));
+
+				sync_after_write( (u32*)(FB[i]), FBSize );
+			} break;
+
+			case 4:
+			{
+				PrintFormat( FB[i], MENU_POS_X, 20+16, "Close the HOME menu before launching!!!" );
+				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "Installed Channels:%u", channelCache->numChannels);
+
+				for( j=0; j<8; ++j )
+				{
+					if( j+ScrollX >= channelCache->numChannels )
+						break;
+
+					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s", channelCache->channels[ScrollX+j].name);
+
+					if( j == PosX )
+						PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
+				}
+
+				if (curDVDCover){
+					DrawImage(FB[i],MENU_POS_X,MENU_POS_Y+(j+1)*16,curDVDCover);
+				}
+				else
+					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
+
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/8 + 1, channelCache->numChannels/8 + (channelCache->numChannels % 8 > 0));
 
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -649,6 +772,25 @@ void LoadDVDCover(){
 	free(imgPathBuffer);
 }
 
+void LoadChannelCover(){
+	if (curDVDCover != NULL)
+		free(curDVDCover);
+	curDVDCover = NULL;
+	
+	if (channelCache == NULL || PosX + ScrollX >= channelCache->numChannels)
+		return;
+
+	char* imgPathBuffer = (char*)malloca(160,32);
+	u32 minorTitleID = channelCache->channels[PosX+ScrollX].titleID & 0xFFFFFFFF;
+	_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.raw", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF);
+	curDVDCover = LoadImage(imgPathBuffer);
+	if (curDVDCover == NULL){
+		_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.bmp", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF);
+		curDVDCover = LoadImage(imgPathBuffer);
+	}
+	free(imgPathBuffer);
+}
+
 void SMenuReadPad ( void )
 {
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
@@ -688,10 +830,11 @@ void SMenuReadPad ( void )
 			if( MenuType == 3 )
 				free( PICBuffer );
 
+			if (curDVDCover != NULL)
+				free(curDVDCover);
+			curDVDCover = NULL;
+
 			if( MenuType == 0 ){
-				if (curDVDCover != NULL)
-					free(curDVDCover);
-				curDVDCover = NULL;
 				ShowMenu = 0;
 			}
 
@@ -730,6 +873,10 @@ void SMenuReadPad ( void )
 
 		if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 && MenuType != 3 )
 		{
+			if (curDVDCover != NULL)
+				free(curDVDCover);
+			curDVDCover = NULL;
+
 			MenuType = 3;
 
 			PICSize = 0;
@@ -750,8 +897,88 @@ void SMenuReadPad ( void )
 			SLock	= 1;
 		}
 
+		if (*WPad & WPAD_BUTTON_HOME && MenuType != 4){
+			if (curDVDCover != NULL)
+				free(curDVDCover);
+			curDVDCover = NULL;
+
+			MenuType = 4;
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+		}
+
 		switch( MenuType )
 		{
+			case 4: //channel list
+			{
+				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+				{
+					if (curDVDCover != NULL)
+						free(curDVDCover);
+					curDVDCover = NULL;
+					ShowMenu = 0;
+					LaunchTitle(channelCache->channels[PosX + ScrollX].titleID);
+					SLock = 1;
+					break;
+				}
+				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
+				{
+					if( PosX ){
+						PosX--;
+						LoadChannelCover();
+					}
+					else if( ScrollX )
+					{
+						ScrollX--;
+						LoadChannelCover();
+					}
+
+					SLock = 1;
+				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
+				{
+					if( PosX >= 7 )
+					{
+						if( PosX+ScrollX+1 < channelCache->numChannels )
+						{
+							ScrollX++;
+							LoadChannelCover();
+						}
+					} else if ( PosX+ScrollX+1 < channelCache->numChannels ){
+						PosX++;
+						LoadChannelCover();
+					}
+
+					SLock = 1;
+				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+				{
+					if( ScrollX/8*8 + 8 < channelCache->numChannels )
+					{
+						PosX	= 0;
+						ScrollX = ScrollX/8*8 + 8;
+						LoadChannelCover();
+					} else {
+						PosX	= 0;
+						ScrollX	= 0;
+						LoadChannelCover();
+					}
+
+					SLock = 1; 
+				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+				{
+					if( ScrollX/8*8 - 8 > 0 )
+					{
+						PosX	= 0;
+						ScrollX-= 10;
+					} else {
+						PosX	= 0;
+						ScrollX	= 0;
+					}
+					LoadChannelCover();
+
+					SLock = 1; 
+				}
+			} break;
 			case 0:			// Game list
 			{
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
@@ -799,11 +1026,9 @@ void SMenuReadPad ( void )
 						ScrollX = ScrollX/8*8 + 8;
 						LoadDVDCover();
 					} else {
-						if (PosX || ScrollX){
-							LoadDVDCover();
-						}
 						PosX	= 0;
 						ScrollX	= 0;
+						LoadDVDCover();
 					}
 
 					SLock = 1; 

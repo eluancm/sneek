@@ -1261,6 +1261,8 @@ int _main( int argc, char *argv[] )
 		MenuType = 2;
 	}
 
+	LoadAndRebuildChannelCache();
+
 	dbgprintf("ES:looping!\n");
 	
 	while (1)
