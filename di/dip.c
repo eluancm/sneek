@@ -46,6 +46,7 @@ u32 Partition = 0;
 u32 Motor = 0;
 u32 Disc = 0;
 u64 PartitionOffset=0;
+u32 GameHook=0;
 
 s32 DVDGetGameCount( void )
 {
@@ -328,6 +329,8 @@ s32 DVDUpdateCache( void )
 }
 s32 DVDSelectGame( int SlotID )
 {
+	GameHook=0;
+
 	if( SlotID >= 0 && SlotID < DICfg->Gamecount)
 	{
 		char *str = (char *)malloca( 128, 32 );
@@ -424,8 +427,6 @@ unsigned char patch_iplmovie[] =
 	0x45, 0x55, 0x4C, 0x41,
 	0x00, 
 } ;
-
-u32 GameHook=0;
 
 s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
@@ -635,6 +636,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				}
 
 				*(vu32*)((*(vu32*)0x1808)&0x7FFFFFFF) = !!(DICfg->Config & CONFIG_DEBUG_GAME_WAIT);
+
+				memcpy( (void *)0x1800, (void*)0, 6 );
 				
 				dbgprintf("DIP:Debugger wait:%d\n", *(vu32*)((*(vu32*)0x1808)&0x7FFFFFFF) );
 
