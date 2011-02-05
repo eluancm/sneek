@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -23,12 +23,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "global.h"
 #include "ipc.h"
 #include "common.h"
-#include "ES.h"
 #include "sdhcreg.h"
 #include "sdmmcreg.h"
 #include "alloc.h"
 #include "font.h"
 #include "DI.h"
+#include "ES.h"
 #include "SDI.h"
 #include "SMenu.h"
 
@@ -45,8 +45,9 @@ u32 FSUSB=0;
 static u32 SkipContent ALIGNED(32);
 static u64 TitleID ALIGNED(32);
 static u32 KernelVersion ALIGNED(32);
-static u8 *iTMD=NULL;			//used for information during title import
-static u8 *iTIK=NULL;			//used for information during title import
+
+TitleMetaData *iTMD = (TitleMetaData *)NULL;			//used for information during title import
+static u8 *iTIK=NULL;									//used for information during title import
 
 extern u16 TitleVersion;
 extern u32 *KeyID;
@@ -232,15 +233,16 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_GETTMDCONTENTCNT:
 		{
 			*(u32*)(v[1].data) = 0;
+			TitleMetaData *tTMD = (TitleMetaData*)(v[1].data);
 		
-			for( i=0; i < *(u16*)(v[0].data+0x1DE); ++i )
+			for( i=0; i < tTMD->ContentCount; ++i )
 			{	
-				if( (*(u16*)(v[0].data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
+				if( tTMD->Contents[i].Type & CONTENT_SHARED )
 				{
-					if( ES_CheckSharedContent( (u8*)(v[0].data+0x1F4+i*0x24) ) == 1 )
+					if( ES_CheckSharedContent( tTMD->Contents[i].SHA1 ) == 1 )
 						(*(u32*)(v[1].data))++;
 				} else {
-					_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(v[0].data+0x18C), *(u32*)(v[0].data+0x190), *(u32*)(v[0].data+0x1E4+i*0x24) );
+					_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(v[0].data+0x18C), *(u32*)(v[0].data+0x190), tTMD->Contents[i].ID );
 					s32 fd = IOS_Open( path, 1 );
 					if( fd >= 0 )
 					{
@@ -324,11 +326,11 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			_sprintf( path, "/tmp/title.tmd" );
 			ISFS_Delete( path );
 
-			for( i=0; i < *(u16*)(iTMD+0x1DE); ++i )
+			for( i=0; i < iTMD->ContentCount; ++i )
 			{
-				_sprintf( path, "/tmp/%08x", *(u32*)(iTMD+0x1E4+i*0x24) );
+				_sprintf( path, "/tmp/%08x", iTMD->Contents[i].ID );
 				ISFS_Delete( path );
-				_sprintf( path, "/tmp/%08x.app", *(u32*)(iTMD+0x1E4+i*0x24) );
+				_sprintf( path, "/tmp/%08x.app", iTMD->Contents[i].ID );
 				ISFS_Delete( path );
 			}
 
@@ -351,12 +353,12 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			//Get TMD for the CID names and delete!
 			_sprintf( path, "/tmp/title.tmd" );
 			ISFS_Delete( path );
-
-			for( i=0; i < *(u16*)(iTMD+0x1DE); ++i )
+			
+			for( i=0; i < iTMD->ContentCount; ++i )
 			{
-				_sprintf( path, "/tmp/%08x", *(u32*)(iTMD+0x1E4+i*0x24) );
+				_sprintf( path, "/tmp/%08x", iTMD->Contents[i].ID );
 				ISFS_Delete( path );
-				_sprintf( path, "/tmp/%08x.app", *(u32*)(iTMD+0x1E4+i*0x24) );
+				_sprintf( path, "/tmp/%08x.app", iTMD->Contents[i].ID );
 				ISFS_Delete( path );
 			}
 
@@ -378,7 +380,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				ret = ES_FATAL;
 			else {
 				//load Ticket to forge the decryption key
-				_sprintf( path, "/ticket/%08x/%08x.tik", *(u32*)(iTMD+0x18C), *(u32*)(iTMD+0x190) );
+				_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(iTMD->TitleID>>32), (u32)(iTMD->TitleID) );
 
 				iTIK = NANDLoadFile( path, size );
 				if( iTIK == NULL )
@@ -427,13 +429,13 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				ret = ES_FATAL;
 			else {
 				//check if shared content and if it is already installed so we can skip this one
-				for( i=0; i<*(u16*)(iTMD+0x1DE); ++i )
+				for( i=0; i < iTMD->ContentCount; ++i )
 				{
-					if( *(u32*)(iTMD+0x1E4+i*0x24) == *(u32*)(v[1].data) )
+					if( iTMD->Contents[i].ID == *(u32*)(v[1].data) )
 					{
-						if( (*(u16*)(iTMD+0x1EA+i*0x24) & 0x8000) == 0x8000 )
+						if( iTMD->Contents[i].Type & CONTENT_SHARED )
 						{
-							if( ES_CheckSharedContent( (u8*)(iTMD+0x1F4+i*0x24) ) == 1 )
+							if( ES_CheckSharedContent( iTMD->Contents[i].SHA1 ) == 1 )
 							{
 								SkipContent=1;
 								dbgprintf("ES:Content already installed, using fast install!\n");
@@ -451,10 +453,12 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_ADDTITLESTART:
 		{
 			//Copy TMD to internal buffer for later use
-			iTMD = (u8*)malloca( v[0].len, 32 );
+			iTMD = (TitleMetaData*)malloca( v[0].len, 32 );
 			memcpy( iTMD, (u8*)(v[0].data), v[0].len );
 
 			_sprintf( path, "/tmp/title.tmd" );
+
+			ES_TitleCreatePath( iTMD->TitleID );
 
 			ret = ISFS_CreateFile( path, 0, 3, 3, 3 );
 			if( ret < 0 )
@@ -462,7 +466,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
 			} else {
 
-				s32 fd = IOS_Open( path, 2 );
+				s32 fd = IOS_Open( path, ISFS_OPEN_WRITE );
 				if( fd < 0 )
 				{
 					dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
@@ -477,89 +481,30 @@ void ES_Ioctlv( struct ipcmessage *msg )
 					}
 
 					IOS_Close( fd );
-
-					_sprintf( path, "/title/%08x/%08x/content", *(vu32*)(v[0].data+0x18C), *(vu32*)(v[0].data+0x190) );
-
-					//Check if folder exists
-					switch( ISFS_GetUsage( path, NULL, NULL ) )
-					{
-						case FS_ENOENT2:
-						{
-							//Create folders!
-							_sprintf( path, "/title/%08x", *(vu32*)(v[0].data+0x18C) );
-							if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-							{
-								ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-								if( ret < 0 )
-								{
-									dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-									break;
-								}
-							}
-
-							_sprintf( path, "/title/%08x/%08x", *(vu32*)(v[0].data+0x18C), *(vu32*)(v[0].data+0x190) );
-							if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-							{
-								ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-								if( ret < 0 )
-								{
-									dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-									break;
-								}
-							}
-
-							_sprintf( path, "/title/%08x/%08x/content", *(vu32*)(v[0].data+0x18C), *(vu32*)(v[0].data+0x190) );
-							if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-							{
-								ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-								if( ret < 0 )
-								{
-									dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-									break;
-								}
-							}
-							_sprintf( path, "/title/%08x/%08x/data", *(vu32*)(v[0].data+0x18C), *(vu32*)(v[0].data+0x190) );
-							if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-							{
-								ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-								if( ret < 0 )
-								{
-									dbgprintf("ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-									break;
-								}
-							}
-
-						} break;
-						case FS_SUCCESS:
-							ret = ES_SUCCESS;
-							break;
-						default:
-							ret = ES_FATAL;
-						break;
-					}
 				}
 			}
 
 			if( ret == ES_SUCCESS )
 			{
 				//Add new TitleUID to uid.sys
-				u16 UID=0;
-				ES_GetUID( (u64*)(iTMD+0x18C), &UID );
+				u16 UID = 0;
+				ES_GetUID( &(iTMD->TitleID), &UID );
 			}
 
 			dbgprintf("ES:AddTitleStart():%d\n", ret );
 		} break;
 		case IOCTL_ES_ADDTICKET:
-		{			
-			_sprintf( path, "/tmp/%08x.tik", *(vu32*)(v[0].data+0x01E0) );
-
+		{
 			//Copy ticket to local buffer
-			u8 *ticket = (u8*)malloca( v[0].len, 32 );
+			Ticket *ticket = (Ticket*)malloca( v[0].len, 32 );
 			memcpy( ticket, (u8*)(v[0].data), v[0].len );
+			
+			_sprintf( path, "/tmp/%08x.tik", (u32)(ticket->TitleID) );
 
-//check for console ID
-			if( *(vu32*)(ticket+0x1D8) )
+			if( ticket->ConsoleID )
 				doTicketMagic( ticket );
+
+			ES_TitleCreatePath( ticket->TitleID );
 
 			ret = ISFS_CreateFile( path, 0, 3, 3, 3 );
 			if( ret < 0 )
@@ -567,7 +512,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				dbgprintf("ES:ISFS_CreateFile(\"%s\"):%d\n", path, ret );
 			} else {
 
-				s32 fd = IOS_Open( path, 2 );
+				s32 fd = IOS_Open( path, ISFS_OPEN_WRITE );
 				if( fd < 0 )
 				{
 					dbgprintf("ES:IOS_Open(\"%s\"):%d\n", path, fd );
@@ -578,88 +523,28 @@ void ES_Ioctlv( struct ipcmessage *msg )
 					if( ret < 0 || ret != v[0].len )
 					{
 						dbgprintf("ES:IOS_Write( %d, %p, %d):%d\n", fd, ticket, v[0].len, ret );
+
 					} else {
-						ret = ES_SUCCESS;
-					}
 
-					IOS_Close( fd );
+						IOS_Close( fd );
 
-					_sprintf( path, "/ticket/%08x", *(vu32*)(ticket+0x01dc) );
+						char *dstpath = (char*)malloca( 0x40, 32 );
 
-					//Check if folder exists
-					switch( ISFS_GetUsage( path, NULL, NULL ) )
-					{
-						case FS_ENOENT2:
-						{
-							//Create folder!
-							ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-							if( ret < 0 && ret != FS_EEXIST2 )
-							{
-								dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-								break;
-							}
-						} /* !! fallthrough !! */
-						case FS_SUCCESS:
-						{
-							char *dstpath = (char*)malloca( 0x40, 32 );
+						_sprintf( path, "/tmp/%08x.tik", (u32)(ticket->TitleID) );
+						_sprintf( dstpath, "/ticket/%08x/%08x.tik", (u32)(ticket->TitleID>>32), (u32)(ticket->TitleID) );
 
-							_sprintf( path, "/tmp/%08x.tik", *(vu32*)(ticket+0x01E0) );
-							_sprintf( dstpath, "/ticket/%08x/%08x.tik", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
+						//this function moves the file, overwriting the target
+						ret = ISFS_Rename( path, dstpath );
+						if( ret < 0 )
+							dbgprintf("ES:ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
 
-							//this function moves the file, overwriting the target
-							ret = ISFS_Rename( path, dstpath );
-							if( ret < 0 )
-								dbgprintf("ES:ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
-
-							free( dstpath );
-
-						} break;
-						default:
-							ret = ES_FATAL;
-						break;
+						free( dstpath );
 					}
 				}
 			}
 
-			_sprintf( path, "/title/%08x/%08x/content", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
-
-			//Check if folder exists
-			s32 fres = ISFS_GetUsage( path, NULL, NULL );
-			switch( fres )
-			{
-				case FS_ENOENT2:
-				{
-					//Create folders!
-					_sprintf( path, "/title/%08x", *(vu32*)(ticket+0x01dc) );
-					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-					if( ret < 0 && ret != FS_EEXIST2 )
-					{
-						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-						break;
-					}
-
-					_sprintf( path, "/title/%08x/%08x", *(vu32*)(ticket+0x01dc), *(vu32*)(ticket+0x01E0) );
-					ret = ISFS_CreateDir( path, 0, 3, 3, 3 );
-					if( ret < 0 && ret != FS_EEXIST2 )
-					{
-						dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, ret );
-						break;
-					}
-					
-				} break;
-				case FS_SUCCESS:
-				{
-					ret = ES_SUCCESS;
-				} break;
-				default:
-					dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, fres );
-					ret = ES_FATAL;
-				break;
-			}
-
+			dbgprintf("ES:AddTicket(%08x-%08x):%d\n", (u32)(ticket->TitleID>>32), (u32)(ticket->TitleID), ret );
 			free( ticket );
-			
-			dbgprintf("ES:AddTicket(%08x-%08x):%d\n", *(vu32*)(v[0].data+0x01dc), *(vu32*)(v[0].data+0x01E0), ret );
 		} break;
 		case IOCTL_ES_EXPORTTITLEINIT:
 		{
@@ -707,32 +592,32 @@ void ES_Ioctlv( struct ipcmessage *msg )
 
 			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
-			u8 *data = NANDLoadFile( path, size );
-			if( data != NULL )
+			TitleMetaData *tTMD = (TitleMetaData*)NANDLoadFile( path, size );
+			if( tTMD != NULL )
 			{
 				u32 count=0;
-				for( i=0; i < *(u16*)(data+0x1DE); ++i )
+				for( i=0; i < tTMD->ContentCount; ++i )
 				{	
-					if( (*(u16*)(data+0x1EA+i*0x24) & 0x8000) == 0x8000 )
+					if( tTMD->Contents[i].Type & CONTENT_SHARED )
 					{
-						if( ES_CheckSharedContent( (u8*)(data+0x1F4+i*0x24) ) == 1 )
+						if( ES_CheckSharedContent( tTMD->Contents[i].SHA1 ) == 1 )
 						{
-							*(u32*)(v[2].data+0x4*count) = *(u32*)(data+0x1E4+i*0x24);
+							*(u32*)(v[2].data+0x4*count) = tTMD->Contents[i].ID;
 							count++;
 						}
 					} else {
-						_sprintf( path, "/title/%08x/%08x/content/%08x.app", *(u32*)(data+0x18C), *(u32*)(data+0x190), *(u32*)(data+0x1E4+i*0x24) );
+						_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(tTMD->TitleID>>32), (u32)(tTMD->TitleID), tTMD->Contents[i].ID );
 						s32 fd = IOS_Open( path, 1 );
 						if( fd >= 0 )
 						{
-							*(u32*)(v[2].data+0x4*count) = *(u32*)(data+0x1E4+i*0x24);
+							*(u32*)(v[2].data+0x4*count) = tTMD->Contents[i].ID;
 							count++;
 							IOS_Close( fd );
 						}
 					}
 				}
 
-				free( data );
+				free( tTMD );
 
 				ret = ES_SUCCESS;
 
@@ -1029,7 +914,9 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		} break;
 		case IOCTL_ES_GETSTOREDTMDSIZE:
 		{
-			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)((*(u64*)(v[0].data))>>32), (u32)((*(u64*)(v[0].data))) );
+			memcpy( iTitleID, (u8*)(v[0].data), sizeof(u64) );
+
+			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
 
 			s32 fd = IOS_Open( path, 1 );
 			if( fd < 0 )
@@ -1053,7 +940,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				free( status );
 			}
 
-			dbgprintf("ES:GetStoredTMDSize( %08x-%08x, %d ):%d\n", (u32)((*(u64*)(v[0].data))>>32), (u32)((*(u64*)(v[0].data))), *(u32*)(v[1].data), ret );
+			dbgprintf("ES:GetStoredTMDSize( %08x-%08x, %d ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(v[1].data), ret );
 		} break;
 		case IOCTL_ES_GETSTOREDTMD:
 		{
@@ -1264,7 +1151,7 @@ int _main( int argc, char *argv[] )
 	LoadAndRebuildChannelCache();
 
 	dbgprintf("ES:looping!\n");
-	
+		
 	while (1)
 	{
 		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
@@ -1343,7 +1230,7 @@ int _main( int argc, char *argv[] )
 #endif
 				if( message->fd == ES_FD || message->fd == SD_FD )
 				{
-					mqueue_ack( (void *)message, ES_SUCCESS);
+					mqueue_ack( (void *)message, ES_SUCCESS );
 					break;
 				} else 
 					mqueue_ack( (void *)message, FS_EINVAL );
@@ -1384,3 +1271,4 @@ int _main( int argc, char *argv[] )
 
 	return 0;
 }
+

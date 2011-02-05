@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License

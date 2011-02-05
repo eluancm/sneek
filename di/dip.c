@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -47,8 +47,8 @@ u32 Motor = 0;
 u32 Disc = 0;
 u64 PartitionOffset=0;
 
-s32 DVDUpdateCache( void )
-{		
+s32 DVDGetGameCount( void )
+{
 	//check if new games were installed
 	u32 GameCount=0;
 	if( DVDOpenDir( "/games" ) != DVD_SUCCESS )
@@ -61,18 +61,26 @@ s32 DVDUpdateCache( void )
 
 	while( DVDReadDir() == DVD_SUCCESS )
 	{
-		if (strlen(DVDDirGetEntryName()) >= 32)//skip folders that are too big for diconfig.bin
+		if( strlen(DVDDirGetEntryName()) >= 32)	//skip folders that are too big for diconfig.bin
 			continue;
+
 		sprintf( TempPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
 
 		s32 bi = DVDOpen( TempPath, FA_READ );
-		if( bi >= 0 ){
+		if( bi >= 0 )
+		{
 			GameCount++;
 			DVDClose( bi );
 		}
 	}
 
 	free(TempPath);
+
+	return GameCount;
+}
+s32 DVDUpdateCache( void )
+{
+	u32 GameCount=0;
 
 	s32 fd = DVDOpen( "/sneek/diconfig.bin", FA_WRITE|FA_READ );
 	if( fd < 0 )
@@ -93,6 +101,13 @@ s32 DVDUpdateCache( void )
 	{
 		DVDRead( fd, DICfg, sizeof(u32) * 4 );
 
+		if( DICfg->Config & CONFIG_AUTO_UPDATE_LIST )
+			GameCount = DVDGetGameCount();
+		else {
+			dbgprintf("DIP:Skipping list game update!\n");
+			GameCount = DICfg->Gamecount;
+		}
+
 		if( DVDGetSize(fd) != GameCount * 0x80 + 0x10 )
 		{
 			DVDClose( fd );
@@ -111,10 +126,12 @@ s32 DVDUpdateCache( void )
 
 		DICfg->Region = EUR;
 		DICfg->SlotID = 0;
-		DICfg->Config = CONFIG_PATCH_MPVIDEO;
+		DICfg->Config = CONFIG_PATCH_MPVIDEO | CONFIG_AUTO_UPDATE_LIST;
 		DICfg->Gamecount = 0;
 
 		DVDWrite( fd, DICfg, sizeof(u32) * 4 );
+
+		GameCount = DVDGetGameCount();
 	}
 
 	dbgprintf("DIP:Installed Games:%d\tGames in cache:%d\n", GameCount, DICfg->Gamecount );
@@ -128,26 +145,31 @@ s32 DVDUpdateCache( void )
 		u32 titlesSize = 0;
 		u8 crChar = '\r';
 		u8 lfChar = '\n';
-		if (titlesFile >= 0){
+
+		if( titlesFile >= 0)
+		{
 			titlesSize = DVDGetSize(titlesFile);
 			titlesContent = (char*) malloc(titlesSize + 1);
 			titlesContent[titlesSize] = 0;
+
 			DVDRead(titlesFile,titlesContent,titlesSize);
 			DVDClose(titlesFile);
-			if (strchr(titlesContent,crChar) == NULL)
+
+			if( strchr(titlesContent,crChar) == NULL )
 				crChar = '\n';
-			if (strchr(titlesContent,lfChar) == NULL)
+
+			if( strchr(titlesContent,lfChar) == NULL )
 				lfChar = '\r';
-		}
-		else{
-			dbgprintf("DIP:Can't open /games/titles.txt default titles will be used.");
+
+		} else {
+			dbgprintf("\nDIP:Can't open /games/titles.txt default titles will be used.");
 		}
 
 		DVDSeek( fd, 0x10, 0);
 
 		char *LPath = (char*)malloca( 128, 32 );
 		char *GInfo = (char*)malloca( 0x80 * GameCount, 32 );
-		char *GPath = (char*)malloca(0x20,32);
+		char *GPath = (char*)malloca( 0x20, 32 );
 
 		u32 curGame = 0;
 		u32 realNumGames = 0;
@@ -158,84 +180,111 @@ s32 DVDUpdateCache( void )
 			{
 				if( DVDDirIsFile() )		// skip files
 					continue;
-				if (strlen(DVDDirGetEntryName()) >= 32) //skip folders that are too big for diconfig.bin
+
+				if( strlen(DVDDirGetEntryName()) >= 32) //skip folders that are too big for diconfig.bin
+				{
+					dbgprintf("DIP:\"%s\" is too long!\n", DVDDirGetEntryName() );
 					continue;
+				}
 
 				sprintf( LPath, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
 
 				s32 bi = DVDOpen( LPath, FA_READ );
-				if( bi >= 0 )
+				if( bi < 0 )
 				{
+					dbgprintf("DIP:Could not open:\"%s\"\n", LPath );
+				} else {
 					DVDRead( bi, &GInfo[curGame * 0x80], 0x60 );
 					DVDClose( bi );
 					char* GInfoName = &GInfo[curGame * 0x80 + 32];
-					strcpy(&GInfo[curGame * 0x80 + 0x60],DVDDirGetEntryName());
+					strcpy( &GInfo[curGame * 0x80 + 0x60], DVDDirGetEntryName() );
 
-					if (titlesContent != NULL){
+					if( titlesContent != NULL )
+					{
 						char* curSearch = titlesContent;
 						u32 found = 0;
-						while (curSearch != NULL && found == 0){
-							if (strncmp(DVDDirGetEntryName(),curSearch,6) == 0){
+						while (curSearch != NULL && found == 0)
+						{
+							if( strncmp(DVDDirGetEntryName(),curSearch,6) == 0)
+							{
 								found = 1;
 								curSearch += 9;
 								char* endLine = strchr(curSearch,crChar);
-								if (endLine == NULL){
+								if( endLine == NULL )
+								{
 									endLine = &titlesContent[titlesSize];
 								}
 								u32 length = (u32) (endLine - curSearch);
-								if (length > 64)
+								if( length > 64)
 									length = 64;
 								memcpy(GInfoName,curSearch,length);
 								GInfoName[length] = 0;
-							}
-							else{
+
+							} else {
+
 								curSearch = strchr(curSearch,lfChar);
-								if (curSearch != NULL)
+
+								if( curSearch != NULL )
 									curSearch += 1;
 							}
 						}
-					
-						curGame++;
-						realNumGames++;
 					}
+					
+					curGame++;
+					realNumGames++;
 				}
 			}
 		}
-		if (titlesContent != NULL)
-			free(titlesContent);
 
+		if( titlesContent != NULL )
+			free(titlesContent);
+		
 		u32 i, j;
-		for (i = 0; i < realNumGames; i++){
+		for (i = 0; i < realNumGames; i++)
+		{
 			char* gameToInsert = &GInfo[0];
-			for (j = 0; j < realNumGames; j++){
+			for (j = 0; j < realNumGames; j++)
+			{
 				char* gameToCompare = &GInfo[j * 0x80];
-				if (gameToInsert == gameToCompare)
+
+				if( gameToInsert == gameToCompare)
 					continue;
-				if (gameToCompare[32] == 0)
+
+				if( gameToCompare[32] == 0)
 					continue;
-				if (gameToInsert[32] == 0){
+
+				if( gameToInsert[32] == 0)
+				{
 					gameToInsert = gameToCompare;
 					continue;
 				}
+
 				u8 firstType = 0;
-				if (*((int*) &gameToInsert[0x1C]) == 0xc2339f3d)
+				if( *((int*) &gameToInsert[0x1C]) == 0xc2339f3d)
 					firstType = 1;
-				else if (*((int*) &gameToInsert[0x18]) == 0x5D1C9EA3)
+				else if( *((int*) &gameToInsert[0x18]) == 0x5D1C9EA3)
 					firstType = 2;
+
 				u8 secondType = 0;
-				if (*((int*) &gameToCompare[0x1C]) == 0xc2339f3d)
+				if( *((int*) &gameToCompare[0x1C]) == 0xc2339f3d)
 					secondType = 1;
-				else if (*((int*) &gameToCompare[0x18]) == 0x5D1C9EA3)
+				else if( *((int*) &gameToCompare[0x18]) == 0x5D1C9EA3)
 					secondType = 2;
-				if (firstType > secondType)
+
+				if( firstType > secondType)
 					continue;
-				if (firstType < secondType){
+
+				if( firstType < secondType)
+				{
 					gameToInsert = gameToCompare;
 					continue;
 				}
+
 				char* firstName = skipPastArticles(&gameToInsert[32]);
 				char* secondName = skipPastArticles(&gameToCompare[32]);
-				if (strcmpi(firstName,secondName) > 0){
+
+				if( strcmpi(firstName,secondName) > 0)
+				{
 					gameToInsert = gameToCompare;
 					continue;
 				}
@@ -261,11 +310,12 @@ s32 DVDUpdateCache( void )
 
 		dbgprintf("done\n");
 	}
-
+	
 	DVDClose( fd );
 
 	fd = DVDOpen("/sneek/diconfig.bin", FA_WRITE|FA_READ );
-	if (fd >= 0){
+	if( fd >= 0)
+	{
 		free(DICfg);
 
 		DICfg = malloca(DVDGetSize(fd),32);
@@ -278,7 +328,8 @@ s32 DVDUpdateCache( void )
 }
 s32 DVDSelectGame( int SlotID )
 {
-	if (SlotID >= 0 && SlotID < DICfg->Gamecount){
+	if( SlotID >= 0 && SlotID < DICfg->Gamecount)
+	{
 		char *str = (char *)malloca( 128, 32 );
 		//build path
 		sprintf( GamePath, "/games/%s/", &DICfg->GameInfo[SlotID][0x60] );
@@ -327,7 +378,7 @@ s32 DVDSelectGame( int SlotID )
 		return DI_SUCCESS;
 	}
 
-
+			
 	//SlotID not found, set to NO DISC
 
 	ChangeDisc = 0;
@@ -374,9 +425,12 @@ unsigned char patch_iplmovie[] =
 	0x00, 
 } ;
 
+u32 GameHook=0;
+
 s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
 	s32 fd;
+	u32 DebuggerHook=0;
 	char Path[256];
 
 	//dbgprintf("DIP:Read Offset:0x%08X Size:0x%08X as:%08X\n", Offset<<2, Length, ApploaderSize<<2 );
@@ -390,7 +444,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[boot.bin] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[boot.bin] Offset:%08X Size:%08X\n", Offset, Length );
+			dbgprintf("DIP:[boot.bin] Offset:%08X Size:%08X\n", Offset<<2, Length );
 
 			u32 *rbuf = (u32*)halloca( sizeof(u32), 32 );
 
@@ -444,7 +498,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[bi2.bin] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[bi2.bin] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
+			dbgprintf("DIP:[bi2.bin] Offset:%08X Size:%08X Dst:%p\n", Offset<<2, Length, ptr );
 			DVDSeek( fd, Offset<<2, 0 );
 			DVDRead( fd, ptr, Length );
 			DVDClose( fd );
@@ -470,7 +524,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[apploader.img] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[apploader.img] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
+			dbgprintf("DIP:[apploader.img] Offset:%08X Size:%08X Dst:%p\n", Offset<<2, Length, ptr );
 			DVDSeek( fd, Offset<<2, 0 );
 			DVDRead( fd, ptr, Length );
 			DVDClose( fd );
@@ -487,7 +541,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf("DIP:[main.dol] Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[main.dol] Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
+			dbgprintf("DIP:[main.dol] Offset:%08X Size:%08X Dst:%p\n", Offset<<2, Length, ptr );
 			DVDSeek( fd, Offset<<2, 0 );
 			DVDRead( fd, ptr, Length );
 			DVDClose( fd );
@@ -495,7 +549,39 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			int i;
 			for( i=0; i < Length; i+=4 )
 			{
-				if( DICfg->Config & CONFIG_PATCH_FWRITE )
+				//Remote debugging and USBgecko debug printf doesn't work well at the same time!
+				if( DICfg->Config & CONFIG_DEBUG_GAME )
+				{
+					switch( DICfg->Config&HOOK_TYPE_MASK )
+					{
+						case HOOK_TYPE_VSYNC:	
+						{	
+							//VIWaitForRetrace(Pattern 1)
+							if( *(vu32*)(ptr+i) == 0x4182FFF0 && *(vu32*)(ptr+i+4) == 0x7FE3FB78 )
+							{
+								DebuggerHook = (u32)ptr + i + 8 * sizeof(u32);
+								dbgprintf("DIP:[patcher] Found VIWaitForRetrace pattern:%08X\n",  (u32)(ptr+i) | 0x80000000 );
+							}
+						} break;
+						case HOOK_TYPE_OSLEEP:	
+						{	
+							//OSSleepThread(Pattern 1)
+							if( *(vu32*)(ptr+i+0) == 0x3C808000 &&
+								*(vu32*)(ptr+i+4) == 0x38000004 &&
+								*(vu32*)(ptr+i+8) == 0x808400E4 )
+							{
+								int j = 0;
+
+								while( *(vu32*)(ptr+i+j) != 0x4E800020 )
+									j+=4;
+
+								DebuggerHook = (u32)ptr + i + j;
+								dbgprintf("DIP:[patcher] Found OSSleepThread pattern:%08X\n",  (u32)(ptr+i) | 0x80000000 );
+							}
+						} break;
+					}
+					
+				} else if( (DICfg->Config & CONFIG_PATCH_FWRITE) )
 				{
 					if( memcmp( (void*)(ptr+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
 					{
@@ -524,6 +610,44 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				}
 			}
 
+			if( GameHook != 0xdeadbeef )
+			if( DebuggerHook && (DICfg->Config & CONFIG_DEBUG_GAME) )
+			{
+				GameHook = 0xdeadbeef;
+
+				sprintf( Path, "/sneek/kenobiwii.bin" );
+				s32 fd = IOS_Open( Path, 1 );
+				if( fd < 0 )
+				{
+					dbgprintf("DIP:Could not open:\"%s\", this file is required for debugging!\n", Path );
+					return DI_SUCCESS;
+				}
+
+				u32 Size = IOS_Seek( fd, 0, 2 );
+				IOS_Seek( fd, 0, 0 );
+
+				//Read file to memory
+				s32 ret = IOS_Read( fd, (void*)0x1800, Size );
+				if( ret != Size )
+				{
+					dbgprintf("DIP:Could not read:\"%s\":%d\n", Path, ret );
+					return DI_SUCCESS;
+				}
+
+				*(vu32*)((*(vu32*)0x1808)&0x7FFFFFFF) = !!(DICfg->Config & CONFIG_DEBUG_GAME_WAIT);
+				
+				dbgprintf("DIP:Debugger wait:%d\n", *(vu32*)((*(vu32*)0x1808)&0x7FFFFFFF) );
+
+				u32 newval = 0x00018A8 - DebuggerHook;
+					newval&= 0x03FFFFFC;
+					newval|= 0x48000000;
+
+				*(vu32*)(DebuggerHook) = newval;
+
+				dbgprintf("DIP:Hook@%08X(%08X)\n", DebuggerHook | 0x80000000, *(vu32*)(DebuggerHook) );
+
+			}
+
 			return DI_SUCCESS;
 		}
 	} else if( Offset < FSTableOffset+(FSTableSize>>2) )
@@ -534,10 +658,10 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 		fd = DVDOpen( Path, DREAD );
 		if( fd < 0 )
 		{
-			dbgprintf("DIP:[fst.bin]  Failed to open!\n" );
+			//dbgprintf("DIP:[fst.bin]  Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			dbgprintf("DIP:[fst.bin]  Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
+			//dbgprintf("DIP:[fst.bin]  Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			DVDSeek( fd, (u64)Offset<<2, 0 );
 			DVDRead( fd, ptr, Length );
 			DVDClose( fd );
@@ -545,7 +669,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			if( FSTable == NULL )
 			{
 				FSTable	= (u8*)ptr;
-				dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
+				//dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
 			}
 
 			return DI_SUCCESS;
@@ -556,7 +680,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 		if( FSTable == NULL )
 		{
 			FSTable	= (u8*)((*(vu32*)0x38) & 0x7FFFFFFF);
-			dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
+			//dbgprintf("DIP:FSTOffset:  %08X\n", (u32)FSTable );
 		}
 
 		u32 i,j;
@@ -646,27 +770,44 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 							FC[FCEntry].File = 0xdeadbeef;
 						}
 
-						FC[FCEntry].File = DVDOpen( Path, DREAD );
-						if( FC[FCEntry].File < 0 )
-						{
-							FC[FCEntry].File = 0xdeadbeef;
+						//if( strstr( Path, "fluff_param.txt") != NULL )
+						//{
+						//	dbgprintf("DIP:Fluff[%08X:%05X]\n", (u32)(nOffset), Length );
+						//	sprintf( Path, "/fluff_param.txt" );
+						//	s32 fd = IOS_Open( Path, 1 );
+						//	IOS_Seek( fd, (u32)(nOffset), 0 );
+						//	IOS_Read( fd, ptr, Length );
+						//	IOS_Close( fd );
 
-							dbgprintf("DIP:[%s] Failed to open!\n", Path );
-							error = 0x031100;
-							return DI_FATAL;
-						} else {
+						//	return DI_SUCCESS;
 
-							FC[FCEntry].Size	= fe[i].FileLength;
-							FC[FCEntry].Offset	= fe[i].FileOffset;
+						//} else{
 
-							dbgprintf("DIP:[%s][%08X:%05X]\n", Path, (u32)(nOffset>>2), Length );
-							DVDSeek( FC[FCEntry].File, nOffset, 0 );
-							DVDRead( FC[FCEntry].File, ptr, Length );
+							FC[FCEntry].File = DVDOpen( Path, DREAD );
+							if( FC[FCEntry].File < 0 )
+							{
+								FC[FCEntry].File = 0xdeadbeef;
+
+								dbgprintf("DIP:[%s] Failed to open!\n", Path );
+								error = 0x031100;
+								return DI_FATAL;
+							} else {
+
+								FC[FCEntry].Size	= fe[i].FileLength;
+								FC[FCEntry].Offset	= fe[i].FileOffset;
+
+								//Don't output anything while debugging!
+								if( !(DICfg->Config & CONFIG_DEBUG_GAME) )
+									dbgprintf("DIP:[%s][%08X:%05X]\n", Path, (u32)(nOffset>>2), Length );
+
+								DVDSeek( FC[FCEntry].File, nOffset, 0 );
+								DVDRead( FC[FCEntry].File, ptr, Length );
 							
-							FCEntry++;
+								FCEntry++;
 
-							return DI_SUCCESS;
-						}
+								return DI_SUCCESS;
+							}
+						//}
 					}
 				}
 			}
@@ -725,13 +866,13 @@ s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr )
 			*(u32*)(ptr)		= DICfg->Region;
 			*(u32*)(ptr+0x1FFC)	= 0xC3F81A8E;
 
-			dbgprintf("DIP:Region:%d\n", DICfg->Region );
+			//dbgprintf("DIP:Region:%d\n", DICfg->Region );
 
 			return DI_SUCCESS;
 		} break;
 		default:
-			dbgprintf("DIP:unexpected read offset!\n");
-			dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p )\n", Offset, Length, ptr );
+			//dbgprintf("DIP:unexpected read offset!\n");
+			//dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p )\n", Offset, Length, ptr );
 			while(1);
 		break;
 	}
@@ -819,11 +960,11 @@ int DIP_Ioctl( struct ipcmessage *msg )
 					
 			memcpy( DICfg, (u8*)(vec[0]), 0x10 );
 
-			dbgprintf("DIP:Region:%d SlotID:%d GameCount:%d Config:%04X\n", ((DIConfig*)(vec[0]))->Region, ((DIConfig*)(vec[0]))->SlotID, ((DIConfig*)(vec[0]))->Gamecount, ((DIConfig*)(vec[0]))->Config  );
+			//dbgprintf("DIP:Region:%d SlotID:%d GameCount:%d Config:%04X\n", ((DIConfig*)(vec[0]))->Region, ((DIConfig*)(vec[0]))->SlotID, ((DIConfig*)(vec[0]))->Gamecount, ((DIConfig*)(vec[0]))->Config  );
 
 			ret = DI_SUCCESS;
 
-			dbgprintf("DIP:DVDWriteDIConfig( %p ):%d\n", vec[0], ret );
+			//dbgprintf("DIP:DVDWriteDIConfig( %p ):%d\n", vec[0], ret );
 		} break;
 		case DVD_READ_GAMEINFO:
 		{
@@ -842,57 +983,56 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				ret = DI_SUCCESS;
 			}
 
-			dbgprintf("DIP:DVDReadGameInfo( %08X, %08X, %p ):%d\n", vec[0], vec[1], vec[2], ret );
+			//dbgprintf("DIP:DVDReadGameInfo( %08X, %08X, %p ):%d\n", vec[0], vec[1], vec[2], ret );
 		} break;
 		case DVD_INSERT_DISC:
 		{
 			DICover &= ~1;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:InsertDisc(%d):%d\n", ret );
+			//dbgprintf("DIP:InsertDisc(%d):%d\n", ret );
 		} break;
 		case DVD_EJECT_DISC:
 		{
 			DICover |= 1;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:EjectDisc(%d):%d\n", ret );
+			//dbgprintf("DIP:EjectDisc(%d):%d\n", ret );
 		} break;
 		case DVD_GET_GAMECOUNT:	//Get Game count
 		{
 			*(u32*)bufout = DICfg->Gamecount;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:GetGameCount(%d):%d\n", DICfg->Gamecount, ret );
+			//dbgprintf("DIP:GetGameCount(%d):%d\n", DICfg->Gamecount, ret );
 		} break;
 		case DVD_SELECT_GAME:
 		{
 			ret = DVDSelectGame( *(u32*)(bufin) );
 
-			dbgprintf("DIP:DVDSelectGame(%d):%d\n", *(u32*)(bufin), ret );
+			//dbgprintf("DIP:DVDSelectGame(%d):%d\n", *(u32*)(bufin), ret );
 		} break;
 		case DVD_SET_AUDIO_BUFFER:
 		{
 			memset32( bufout, 0, lenout );
-			hexdump( bufin, lenin );
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
+			//dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
 		} break;
 		case 0x96:
 		case DVD_REPORTKEY:
 		{
 			ret = DI_ERROR;
 			error = 0x00052000;
-			dbgprintf("DIP:DVDLowReportKey():%d\n", ret );
+			//dbgprintf("DIP:DVDLowReportKey():%d\n", ret );
 		} break;
 		case 0xDD:			// 0 out
 		{
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowSetMaximumRotation():%d\n", ret);
+			//dbgprintf("DIP:DVDLowSetMaximumRotation():%d\n", ret);
 		} break;
 		case 0x95:			// 0x20 out
 		{
 			*(u32*)bufout = DIStatus;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", *(u32*)bufout, ret );
+			//dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", *(u32*)bufout, ret );
 		} break;
 		case 0x7A:			// 0x20 out
 		{
@@ -916,7 +1056,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		{
 			*(u32*)bufout = DICover;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowGetCoverStatus( %08X ):%d\n", *(u32*)bufout, ret );
+			//dbgprintf("DIP:DVDLowGetCoverStatus( %08X ):%d\n", *(u32*)bufout, ret );
 		} break;
 		case 0x89:
 		{
@@ -924,7 +1064,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			DICover |= 2;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowUnknownRegister():%d\n", ret );
+			//dbgprintf("DIP:DVDLowUnknownRegister():%d\n", ret );
 		} break;
 		case DVD_IDENTIFY:
 		{
@@ -935,13 +1075,13 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			*(u32*)(bufout+8)	= 0x41000000;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowIdentify():%d\n", ret);
+			//dbgprintf("DIP:DVDLowIdentify():%d\n", ret);
 		} break;
 		case DVD_GET_ERROR:	// 0xE0
 		{
 			*(u32*)bufout = error; 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowGetError( %08X ):%d\n", error, ret );
+			//dbgprintf("DIP:DVDLowGetError( %08X ):%d\n", error, ret );
 		} break;
 		case 0x8E:
 		{
@@ -951,7 +1091,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				EnableVideo( 0 );
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(u32*)(bufin+4), ret);
+			//dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_LOW_READ:	// 0x71, GC never calls this
 		{
@@ -976,7 +1116,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			{
 				ret = DVDLowRead( *(u32*)(bufin+8), *(u32*)(bufin+4), bufout );
 
-			} else if ( DiscType == DISC_REV )
+			} else if(  DiscType == DISC_REV )
 			{
 				if( *(u32*)(bufin+8) > 0x46090000 )
 				{
@@ -991,13 +1131,13 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				ret = DI_FATAL;
 			}
 
-			dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
+			//dbgprintf("DIP:DVDLowUnencryptedRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_DISCID:
 		{
 			ret = DVDLowReadDiscID( 0, lenout, bufout );
 
-			dbgprintf("DIP:DVDLowReadDiscID(%p):%d\n", bufout, ret );
+			//dbgprintf("DIP:DVDLowReadDiscID(%p):%d\n", bufout, ret );
 		} break;
 		case DVD_RESET:
 		{
@@ -1006,19 +1146,19 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			Partition = 0;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowReset( %d ):%d\n", *(u32*)(bufin+4), ret);
+			//dbgprintf("DIP:DVDLowReset( %d ):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_SET_MOTOR:
 		{
 			Motor = 0;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(u32*)(bufin+4), *(u32*)(bufin+8), ret);
+			//dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(u32*)(bufin+4), *(u32*)(bufin+8), ret);
 		} break;
 		case DVD_CLOSE_PARTITION:
 		{
 			Partition=0;
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowClosePartition():%d\n", ret );
+			//dbgprintf("DIP:DVDLowClosePartition():%d\n", ret );
 		} break;
 		case DVD_READ_BCA:
 		{
@@ -1026,16 +1166,16 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			*(u32*)(bufout+0x30) = 0x00000001;
 
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowReadBCA():%d\n", ret );
+			//dbgprintf("DIP:DVDLowReadBCA():%d\n", ret );
 		} break;
 		case DVD_LOW_SEEK:
 		{
 			ret = DI_SUCCESS;
-			dbgprintf("DIP:DVDLowSeek():%d\n", ret );
+			//dbgprintf("DIP:DVDLowSeek():%d\n", ret );
 		} break;
 		default:
 			hexdump( bufin, lenin );
-			dbgprintf("DIP:Unknown IOS_Ioctl( %d 0x%x 0x%p 0x%x 0x%p 0x%x )\n", msg->fd, msg->ioctl.command, bufin, lenin, bufout, lenout);
+			//dbgprintf("DIP:Unknown IOS_Ioctl( %d 0x%x 0x%p 0x%x 0x%p 0x%x )\n", msg->fd, msg->ioctl.command, bufin, lenin, bufout, lenout);
 			MessageQueueAck( (void *)msg, DI_FATAL);
 			while(1);
 		break;
@@ -1049,10 +1189,8 @@ int DIP_Ioctl( struct ipcmessage *msg )
 }
 int DIP_Ioctlv(struct ipcmessage *msg)
 {
-	u32 InCount		= msg->ioctlv.argc_in;
-	u32 OutCount	= msg->ioctlv.argc_io;
-	vector *v		= (vector*)(msg->ioctlv.argv);
-	s32 ret			= DI_FATAL;
+	vector *v	= (vector*)(msg->ioctlv.argv);
+	s32 ret		= DI_FATAL;
 
 	switch(msg->ioctl.command)
 	{
@@ -1104,7 +1242,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 			s32 fd = DVDOpen( str, FA_READ );
 			if( fd < 0 )
 			{
-				dbgprintf("DIP:Could not open:\"%s\"\n", str );
+				//dbgprintf("DIP:Could not open:\"%s\"\n", str );
 				ret = DI_FATAL;
 				break;
 			} else {
@@ -1116,7 +1254,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					DVDClose( fd );
-					dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
+					//dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
 					break;
 				}
 
@@ -1132,7 +1270,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 			fd = DVDOpen( str, FA_READ );
 			if( fd < 0 )
 			{
-				dbgprintf("DIP:Could not open:\"%s\"\n", str );
+				//dbgprintf("DIP:Could not open:\"%s\"\n", str );
 				ret = DI_FATAL;
 				break;
 			} else {
@@ -1144,7 +1282,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					DVDClose( fd );
-					dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
+					//dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
 					break;
 				} 
 
@@ -1153,7 +1291,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				sync_before_read(TMD, asize);
 
 				PartitionSize = (u32)((*(u64*)(TMD+0x1EC)) >> 2 );
-				dbgprintf("DIP:Set partition size to:%02X%08X\n", (u32)((((u64)PartitionSize)<<2)>>32), (PartitionSize<<2) );
+				//dbgprintf("DIP:Set partition size to:%02X%08X\n", (u32)((((u64)PartitionSize)<<2)>>32), (PartitionSize<<2) );
 
 				if( v[3].data != NULL )
 				{
@@ -1168,7 +1306,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 			fd = DVDOpen( str, FA_READ );
 			if( fd < 0 )
 			{
-				dbgprintf("DIP:Could not open:\"%s\"\n", str );
+				//dbgprintf("DIP:Could not open:\"%s\"\n", str );
 				ret = DI_FATAL;
 				break;
 			} else {
@@ -1178,7 +1316,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 				{
 					ret = DI_FATAL;
 					DVDClose( fd );
-					dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
+					//dbgprintf("DIP:Failed to read:\"%s\":%d\n", str, ret );
 					break;
 				}
 
@@ -1231,11 +1369,11 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 
 			Partition=1;
 
-			dbgprintf("DIP:DVDOpenPartition(0x%08X):%d\n", *(u32*)(v[0].data+4), ret );
+			//dbgprintf("DIP:DVDOpenPartition(0x%08X):%d\n", *(u32*)(v[0].data+4), ret );
 
 		} break;
 		default:
-			dbgprintf("DIP:IOS_Ioctlv( %d, 0x%x 0x%x 0x%x 0x%p )\n", msg->fd, msg->ioctl.command, InCount, OutCount, msg->ioctlv.argv );
+			//dbgprintf("DIP:IOS_Ioctlv( %d, 0x%x 0x%x 0x%x 0x%p )\n", msg->fd, msg->ioctl.command, InCount, OutCount, msg->ioctlv.argv );
 			MessageQueueAck( (struct ipcmessage *)msg, DI_FATAL);
 			while(1);
 		break;

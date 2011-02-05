@@ -21,8 +21,8 @@ typedef struct
 
 			bool Up					:1;
 			bool Down				:1;
-			bool Left				:1;
 			bool Right				:1;
+			bool Left				:1;
 
 			s16  StickX				:8;
 			s16  StickY				:8;

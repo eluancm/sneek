@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -91,9 +91,27 @@ enum GameRegion
 
 enum SNEEKConfig
 {
-	CONFIG_PATCH_FWRITE	= (1<<0),
-	CONFIG_PATCH_MPVIDEO= (1<<1),
-	CONFIG_PATCH_VIDEO	= (1<<2),
+	CONFIG_PATCH_FWRITE		= (1<<0),
+	CONFIG_PATCH_MPVIDEO	= (1<<1),
+	CONFIG_PATCH_VIDEO		= (1<<2),
+
+	CONFIG_DUMP_ERROR_SKIP	= (1<<3),
+
+	CONFIG_DEBUG_GAME		= (1<<4),
+	CONFIG_DEBUG_GAME_WAIT	= (1<<5),
+	
+	CONFIG_SHOW_COVERS		= (1<<6),
+	CONFIG_AUTO_UPDATE_LIST	= (1<<7),
+};
+
+enum HookTypes
+{
+	HOOK_TYPE_MASK		= (0xF<<28),
+	
+	HOOK_TYPE_VSYNC		= (1<<28),
+	HOOK_TYPE_OSLEEP	= (2<<28),
+	//HOOK_TYPE_AXNEXT	= (3<<28),
+
 };
 
 typedef struct

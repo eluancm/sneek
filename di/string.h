@@ -13,7 +13,7 @@ size_t strlen(const char *);
 size_t strnlen(const char *, size_t);
 char *strchr(const char *s, int c);
 void *memset(void *, int, size_t);
-
+char * strstr ( const char *str1, const char *str2);
 char* skipPastArticles(char* s);
 
 extern void memcpy(void *dst, const void *src, u32 size);

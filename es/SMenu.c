@@ -45,6 +45,7 @@ u32 DVDOldOffset = 0;
 u32 DVDSpeed = 0;
 u32 DVDTimeLeft = 0;
 s32 DVDHandle = 0;
+u32 DVDReinsertDisc=false;
 char *DiscName	= (char*)NULL;
 char *DVDTitle	= (char*)NULL;
 char *DVDBuffer	= (char*)NULL;
@@ -73,7 +74,8 @@ unsigned char VISetFB[] =
 	0x38, 0xC7, 0x00, 0x4C, 
 };
 
-s32 LaunchTitle(u64 TitleID){
+s32 LaunchTitle(u64 TitleID)
+{
 	u32 majorTitleID = (TitleID) >> 32;
 	u32 minorTitleID = (TitleID) & 0xFFFFFFFF;
 
@@ -98,7 +100,8 @@ s32 LaunchTitle(u64 TitleID){
 	return r;
 }
 
-void LoadAndRebuildChannelCache(){
+void LoadAndRebuildChannelCache()
+{
 	channelCache = NULL;
 	u32 size, i;
 	UIDSYS *uid = (UIDSYS *)NANDLoadFile( "/sys/uid.sys", &size );
@@ -232,7 +235,7 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 				else
 					WPad = (u32*)( ((((*(u32*)(ptr+i+0x00)) & 0xFFFF) << 16) + ((*(u32*)(ptr+i+0x08)) & 0xFFFF)) & 0x7FFFFFF );
 			}
-
+			
 			if( r13 && FBEnable && FBOffset && WPad != NULL )
 			{
 				switch( *(vu32*)(FBEnable+0x20) )
@@ -244,7 +247,7 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 						FBSize = 320*480*4;
 						break;
 					default:
-						dbgprintf("ES:SMenuFindOffsets():Invalid Vide mode:%d\n", *(vu32*)(FBEnable+0x20) );
+						dbgprintf("ES:SMenuFindOffsets():Invalid Video mode:%d\n", *(vu32*)(FBEnable+0x20) );
 						break;
 				}
 
@@ -270,6 +273,7 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 	edit	= 0;
 	DVDStatus = 0;
 	DVDError=0;
+	DVDReinsertDisc=false;
 	DICfg	= NULL;
 	PICBuffer = (char*)NULL;
 
@@ -307,8 +311,12 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 					*(u32*)0x0137DE28 = 0x4800001C;
 					*(u32*)0x0137E7A4 = 0x38000001;
 
-					//Disable bannerbomb fix
+					//Disable bannerbomb fix (useless)
 					*(u32*)0x01380FC4 = 0x4E800020;
+
+					//Autoboot disc
+					//*(u32*)0x0137AEF4 = 0x48000020;
+					//*(u32*)0x01379B40 = 0x60000000;
 					
 				} break;
 				case 481:	// USA 4.2
@@ -362,6 +370,7 @@ void SMenuAddFramebuffer( void )
 void SMenuDraw( void )
 {
 	u32 i,j;
+	s32 EntryCount=0;
 
 	if( *(vu32*)FBEnable != 1 )
 		return;
@@ -371,6 +380,11 @@ void SMenuDraw( void )
 
 	if( DICfg == NULL )
 		return;
+
+	if( DICfg->Config & CONFIG_SHOW_COVERS )
+		EntryCount = 8;
+	else
+		EntryCount = 20;
 
 	for( i=0; i < MAX_FB; i++)
 	{
@@ -398,6 +412,7 @@ void SMenuDraw( void )
 
 				switch( *(u8*)(DICfg->GameInfo[PosX+ScrollX] + 3) )
 				{
+					case 'X':	// hamster heroes uses this for some reason
 					case 'A':
 					case 'Z':
 						gRegion =  ALL;
@@ -405,7 +420,6 @@ void SMenuDraw( void )
 					case 'E':
 						gRegion =  USA;
 						break;
-					case 'X':	// hamster heroes uses this for some reason
 					case 'F':	// France
 					case 'I':	// Italy
 					case 'U':	// United Kingdom
@@ -428,30 +442,33 @@ void SMenuDraw( void )
 
 				PrintFormat( FB[i], MENU_POS_X + 420, MENU_POS_Y,"Press HOME for Channels");
 
-				for( j=0; j<8; ++j )
+				for( j=0; j<EntryCount; ++j )
 				{
 					if( j+ScrollX >= *GameCount )
 						break;
 
 					if( *(vu32*)(DICfg->GameInfo[ScrollX+j]+0x1C) == 0xc2339f3d )
-						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s (GC)", DICfg->GameInfo[ScrollX+j] + 0x20 );
+						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+32+16*j, "%.40s (GC)", DICfg->GameInfo[ScrollX+j] + 0x20 );
 					else if( *(vu32*)(DICfg->GameInfo[ScrollX+j]+0x18) == 0x5D1C9EA3 )
-						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s (Wii)", DICfg->GameInfo[ScrollX+j] + 0x20 );
+						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+32+16*j, "%.40s (Wii)", DICfg->GameInfo[ScrollX+j] + 0x20 );
 					else
-						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s (Invalid)", DICfg->GameInfo[ScrollX+j] + 0x20 );
+						PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+32+16*j, "%.40s (Invalid)", DICfg->GameInfo[ScrollX+j] + 0x20 );
 
 					if( j == PosX )
-						PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
+						PrintFormat( FB[i], 0, MENU_POS_Y+32+16*j, "-->");
 				}
 
-				if (curDVDCover){
-					DrawImage(FB[i],MENU_POS_X,MENU_POS_Y+(j+1)*16,curDVDCover);
-					//PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,(char*) curDVDCover);
+				if( DICfg->Config & CONFIG_SHOW_COVERS )
+				{
+					if (curDVDCover)
+					{
+						DrawImage( FB[i], MENU_POS_X, MENU_POS_Y+(j+1)*16, curDVDCover );
+						//PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,(char*) curDVDCover);
+					} else
+						PrintFormat( FB[i], MENU_POS_X+6*12, MENU_POS_Y+(j+6)*16, "no cover image found!" );
 				}
-				else
-					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
 
-				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/8 + 1, *GameCount/8 + (*GameCount % 8 > 0));
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*22, "%d/%d", ScrollX/EntryCount + 1, *GameCount/EntryCount + (*GameCount % EntryCount > 0));
 
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -490,9 +507,29 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "MotionPlus video:%s", (DICfg->Config&CONFIG_PATCH_MPVIDEO) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*3, "Video mode patch:%s", (DICfg->Config&CONFIG_PATCH_VIDEO) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*4, "Error skipping  :%s", (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*5, "Display Covers  :%s", (DICfg->Config&CONFIG_SHOW_COVERS) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*6, "AutoUpdate Games:%s", (DICfg->Config&CONFIG_AUTO_UPDATE_LIST) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*7, "Game debugging  :%s", (DICfg->Config&CONFIG_DEBUG_GAME) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*8, "Debugger wait   :%s", (DICfg->Config&CONFIG_DEBUG_GAME_WAIT) ? "On" : "Off" );
+				
+				switch( (DICfg->Config&HOOK_TYPE_MASK) )
+				{
+					case HOOK_TYPE_VSYNC:
+						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "VIWaitForRetrace" );
+					break;
+					case HOOK_TYPE_OSLEEP:
+						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "OSSleepThread" );
+					break;
+					//case HOOK_TYPE_AXNEXT:
+					//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "__AXNextFrame" );
+					//break;
+					default:
+						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :Invalid Type:%d", (DICfg->Config&HOOK_TYPE_MASK)>>28 );
+					break;
+				}
 
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*6, "save config" );
-			//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*7, "recreate game info cache" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*11, "save config" );
+				PrintFormat( FB[i], MENU_POS_X+80, 104+16*12, "recreate game cache(restarts!!)" );
 
 				PrintFormat( FB[i], MENU_POS_X+60, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -753,10 +790,11 @@ void SMenuDraw( void )
 		}
 	}
 }
-
-void LoadDVDCover(){
+void LoadDVDCover()
+{
 	if (curDVDCover != NULL)
 		free(curDVDCover);
+
 	curDVDCover = NULL;
 	
 	if (DICfg == NULL || PosX + ScrollX >= DICfg->Gamecount)
@@ -764,35 +802,45 @@ void LoadDVDCover(){
 
 	char* imgPathBuffer = (char*)malloca(160,32);
 	_sprintf( imgPathBuffer, "/sneek/covers/%s.raw", DICfg->GameInfo[PosX+ScrollX]);
+
 	curDVDCover = LoadImage(imgPathBuffer);
-	if (curDVDCover == NULL){
+
+	if (curDVDCover == NULL)
+	{
 		_sprintf( imgPathBuffer, "/sneek/covers/%s.bmp", DICfg->GameInfo[PosX+ScrollX]);
 		curDVDCover = LoadImage(imgPathBuffer);
 	}
+
 	free(imgPathBuffer);
 }
-
-void LoadChannelCover(){
+void LoadChannelCover()
+{
 	if (curDVDCover != NULL)
 		free(curDVDCover);
+
 	curDVDCover = NULL;
 	
-	if (channelCache == NULL || PosX + ScrollX >= channelCache->numChannels)
+	if (channelCache == NULL || PosX + ScrollX >= channelCache->numChannels )
 		return;
 
 	char* imgPathBuffer = (char*)malloca(160,32);
 	u32 minorTitleID = channelCache->channels[PosX+ScrollX].titleID & 0xFFFFFFFF;
-	_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.raw", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF);
+
+	_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.raw", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF );
 	curDVDCover = LoadImage(imgPathBuffer);
-	if (curDVDCover == NULL){
-		_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.bmp", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF);
+
+	if (curDVDCover == NULL)
+	{
+		_sprintf( imgPathBuffer, "/sneek/covers/%c%c%c%c.bmp", minorTitleID >> 24 & 0xFF, minorTitleID >> 16 & 0xFF, minorTitleID >> 8  & 0xFF, minorTitleID & 0xFF );
 		curDVDCover = LoadImage(imgPathBuffer);
 	}
+
 	free(imgPathBuffer);
 }
-
 void SMenuReadPad ( void )
 {
+	s32 EntryCount=0;
+
 	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
 
 	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
@@ -801,431 +849,569 @@ void SMenuReadPad ( void )
 		return;
 	}
 
-	if( SLock == 0 )
+	if( SLock != 0 )
+		return;
+
+	if( GCPad.Start || (*WPad&WPAD_BUTTON_1) )
 	{
-		if( GCPad.Start || (*WPad&WPAD_BUTTON_1) )
+		ShowMenu = !ShowMenu;
+		if(ShowMenu)
 		{
-			ShowMenu = !ShowMenu;
-			if(ShowMenu)
+			if( DICfg == NULL )
 			{
-				if( DICfg == NULL )
-				{
-					DVDGetGameCount( GameCount );
+				DVDGetGameCount( GameCount );
 
-                    DICfg = (DIConfig *)malloca( *GameCount * 0x80 + 0x10, 32 );
-                    DVDReadGameInfo( 0, *GameCount * 0x80 + 0x10, DICfg );
-				}
-				if (MenuType == 0){
-					LoadDVDCover();
-				}
+                DICfg = (DIConfig *)malloca( *GameCount * 0x80 + 0x10, 32 );
+                DVDReadGameInfo( 0, *GameCount * 0x80 + 0x10, DICfg );
 			}
-			SLock = 1;
-		}
 
-		if( !ShowMenu )
-			return;
+			if( MenuType == 0 && (DICfg->Config & CONFIG_SHOW_COVERS) )
+				LoadDVDCover();
+		}
+		SLock = 1;
+	}
+
+	if( !ShowMenu )
+		return;
 		
-		if( (GCPad.B || (*WPad&WPAD_BUTTON_B) ) && SLock == 0 )
+	if( DICfg->Config & CONFIG_SHOW_COVERS )
+		EntryCount = 8;
+	else
+		EntryCount = 20;
+
+	if( (GCPad.B || (*WPad&WPAD_BUTTON_B) ) && SLock == 0 )
+	{
+		if( MenuType == 3 )
+			free( PICBuffer );
+		
+		if( curDVDCover != NULL )
+			free(curDVDCover);
+
+		curDVDCover = NULL;
+
+		if( MenuType == 0 )
 		{
-			if( MenuType == 3 )
-				free( PICBuffer );
+			ShowMenu = 0;
+		}
 
-			if (curDVDCover != NULL)
-				free(curDVDCover);
-			curDVDCover = NULL;
+		MenuType = 0;
 
-			if( MenuType == 0 ){
+		PosX	= 0;
+		ScrollX	= 0;
+		SLock	= 1;
+	}
+
+	if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
+	{
+		if( curDVDCover != NULL )
+			free(curDVDCover);
+
+		curDVDCover = NULL;
+
+		MenuType = 1;
+
+		PosX	= 0;
+		ScrollX	= 0;
+		SLock	= 1;
+	}
+
+	if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 && MenuType != 2 )
+	{
+		if( curDVDCover != NULL )
+			free(curDVDCover);
+
+		curDVDCover = NULL;
+
+		MenuType = 2;
+
+		PosX	= 0;
+		ScrollX	= 0;
+		SLock	= 1;
+	}
+
+	if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 && MenuType != 3 )
+	{
+		if( curDVDCover != NULL )
+			free(curDVDCover);
+
+		curDVDCover = NULL;
+
+		MenuType= 3;
+		PICSize	= 0;
+		PICNum	= 0;
+
+		s32 fd = IOS_Open("/scrn_00.raw", 1 );
+		if( fd >= 0 )
+		{
+			PICSize = IOS_Seek( fd, 0, SEEK_END );
+			IOS_Seek( fd, 0, 0 );
+			PICBuffer = (char*)malloca( FBSize, 32 );
+			IOS_Read( fd, PICBuffer, FBSize );
+			IOS_Close( fd );
+		}
+
+		PosX	= 0;
+		ScrollX	= 0;
+		SLock	= 1;
+	}
+
+	if( *WPad & WPAD_BUTTON_HOME && MenuType != 4 )
+	{
+		if( curDVDCover != NULL )
+			free(curDVDCover);
+
+		curDVDCover = NULL;
+
+		MenuType= 4;
+		PosX	= 0;
+		ScrollX	= 0;
+		SLock	= 1;
+	}
+
+	switch( MenuType )
+	{
+		case 4: //channel list
+		{
+			if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+			{
+				if (curDVDCover != NULL)
+					free(curDVDCover);
+				curDVDCover = NULL;
 				ShowMenu = 0;
+				LaunchTitle(channelCache->channels[PosX + ScrollX].titleID);
+				SLock = 1;
+				break;
 			}
-
-			MenuType = 0;
-
-			PosX	= 0;
-			ScrollX	= 0;
-			SLock	= 1;
-		}
-
-		if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
-		{
-			if (curDVDCover != NULL)
-				free(curDVDCover);
-			curDVDCover = NULL;
-
-			MenuType = 1;
-
-			PosX	= 0;
-			ScrollX	= 0;
-			SLock	= 1;
-		}
-
-		if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 && MenuType != 2 )
-		{
-			if (curDVDCover != NULL)
-				free(curDVDCover);
-			curDVDCover = NULL;
-
-			MenuType = 2;
-
-			PosX	= 0;
-			ScrollX	= 0;
-			SLock	= 1;
-		}
-
-		if( (GCPad.Z || (*WPad&WPAD_BUTTON_2) ) && SLock == 0 && MenuType != 3 )
-		{
-			if (curDVDCover != NULL)
-				free(curDVDCover);
-			curDVDCover = NULL;
-
-			MenuType = 3;
-
-			PICSize = 0;
-			PICNum = 0;
-
-			s32 fd = IOS_Open("/scrn_00.raw", 1 );
-			if( fd >= 0 )
+			if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
 			{
-				PICSize = IOS_Seek( fd, 0, SEEK_END );
-				IOS_Seek( fd, 0, 0 );
-				PICBuffer = (char*)malloca( FBSize, 32 );
-				IOS_Read( fd, PICBuffer, FBSize );
-				IOS_Close( fd );
-			}
-
-			PosX	= 0;
-			ScrollX	= 0;
-			SLock	= 1;
-		}
-
-		if (*WPad & WPAD_BUTTON_HOME && MenuType != 4){
-			if (curDVDCover != NULL)
-				free(curDVDCover);
-			curDVDCover = NULL;
-
-			MenuType = 4;
-			PosX	= 0;
-			ScrollX	= 0;
-			SLock	= 1;
-		}
-
-		switch( MenuType )
-		{
-			case 4: //channel list
-			{
-				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
-				{
-					if (curDVDCover != NULL)
-						free(curDVDCover);
-					curDVDCover = NULL;
-					ShowMenu = 0;
-					LaunchTitle(channelCache->channels[PosX + ScrollX].titleID);
-					SLock = 1;
-					break;
-				}
-				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
-				{
-					if( PosX ){
-						PosX--;
-						LoadChannelCover();
-					}
-					else if( ScrollX )
-					{
-						ScrollX--;
-						LoadChannelCover();
-					}
-
-					SLock = 1;
-				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
-				{
-					if( PosX >= 7 )
-					{
-						if( PosX+ScrollX+1 < channelCache->numChannels )
-						{
-							ScrollX++;
-							LoadChannelCover();
-						}
-					} else if ( PosX+ScrollX+1 < channelCache->numChannels ){
-						PosX++;
-						LoadChannelCover();
-					}
-
-					SLock = 1;
-				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
-				{
-					if( ScrollX/8*8 + 8 < channelCache->numChannels )
-					{
-						PosX	= 0;
-						ScrollX = ScrollX/8*8 + 8;
-						LoadChannelCover();
-					} else {
-						PosX	= 0;
-						ScrollX	= 0;
-						LoadChannelCover();
-					}
-
-					SLock = 1; 
-				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
-				{
-					if( ScrollX/8*8 - 8 > 0 )
-					{
-						PosX	= 0;
-						ScrollX-= 10;
-					} else {
-						PosX	= 0;
-						ScrollX	= 0;
-					}
+				if( PosX ){
+					PosX--;
 					LoadChannelCover();
-
-					SLock = 1; 
 				}
-			} break;
-			case 0:			// Game list
+				else if( ScrollX )
+				{
+					ScrollX--;
+					LoadChannelCover();
+				}
+
+				SLock = 1;
+			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
-				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+				if( PosX >= EntryCount-1 )
 				{
-					DVDSelectGame( PosX+ScrollX );
-					if (curDVDCover != NULL)
-						free(curDVDCover);
-					curDVDCover = NULL;
-					ShowMenu = 0;
-					SLock = 1;
+					if( PosX+ScrollX+1 < channelCache->numChannels )
+					{
+						ScrollX++;
+						LoadChannelCover();
+					}
+				} else if ( PosX+ScrollX+1 < channelCache->numChannels ){
+					PosX++;
+					LoadChannelCover();
 				}
-				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
-				{
-					if( PosX ){
-						PosX--;
-						LoadDVDCover();
-					}
-					else if( ScrollX )
-					{
-						ScrollX--;
-						LoadDVDCover();
-					}
 
-					SLock = 1;
-				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
+				SLock = 1;
+			} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+			{
+				if( ScrollX/EntryCount*EntryCount + EntryCount < channelCache->numChannels )
 				{
-					if( PosX >= 7 )
+					PosX	= 0;
+					ScrollX = ScrollX/EntryCount*EntryCount + EntryCount;
+					LoadChannelCover();
+				} else {
+					PosX	= 0;
+					ScrollX	= 0;
+					LoadChannelCover();
+				}
+
+				SLock = 1; 
+			} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+			{
+				if( ScrollX/EntryCount*EntryCount - EntryCount > 0 )
+				{
+					PosX	= 0;
+					ScrollX-= EntryCount;
+				} else {
+					PosX	= 0;
+					ScrollX	= 0;
+				}
+				LoadChannelCover();
+
+				SLock = 1; 
+			}
+		} break;
+		case 0:			// Game list
+		{
+			if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+			{
+				DVDSelectGame( PosX+ScrollX );
+				if (curDVDCover != NULL)
+					free(curDVDCover);
+				curDVDCover = NULL;
+				ShowMenu = 0;
+				SLock = 1;
+			}
+			if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
+			{
+				if( PosX )
+				{
+					PosX--;
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadDVDCover();
+				}
+				else if( ScrollX )
+				{
+					ScrollX--;
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadDVDCover();
+				}
+
+				SLock = 1;
+			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
+			{
+				if( PosX >= EntryCount-1 )
+				{
+					if( PosX+ScrollX+1 < *GameCount )
 					{
-						if( PosX+ScrollX+1 < *GameCount )
-						{
-							ScrollX++;
+						ScrollX++;
+						if( DICfg->Config & CONFIG_SHOW_COVERS )
 							LoadDVDCover();
-						}
-					} else if ( PosX+ScrollX+1 < *GameCount ){
-						PosX++;
-						LoadDVDCover();
 					}
-
-					SLock = 1;
-				} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+				} else if ( PosX+ScrollX+1 < *GameCount )
 				{
-					if( ScrollX/8*8 + 8 < *GameCount )
-					{
-						PosX	= 0;
-						ScrollX = ScrollX/8*8 + 8;
+					PosX++;
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
 						LoadDVDCover();
-					} else {
-						PosX	= 0;
-						ScrollX	= 0;
-						LoadDVDCover();
-					}
+				}
 
-					SLock = 1; 
-				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+				SLock = 1;
+			} else if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+			{
+				if( ScrollX/EntryCount*EntryCount + EntryCount < DICfg->Gamecount )
 				{
-					if( ScrollX/8*8 - 8 > 0 )
-					{
-						PosX	= 0;
-						ScrollX-= 10;
-					} else {
-						PosX	= 0;
-						ScrollX	= 0;
-					}
+					PosX	= 0;
+					ScrollX = ScrollX/EntryCount*EntryCount + EntryCount;
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadDVDCover();
+				} else {
+					PosX	= 0;
+					ScrollX	= 0;
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadDVDCover();
+				}
+
+				SLock = 1; 
+			} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+			{
+				if( ScrollX/EntryCount*EntryCount - EntryCount > 0 )
+				{
+					PosX	= 0;
+					ScrollX-= EntryCount;
+				} else {
+					PosX	= 0;
+					ScrollX	= 0;
+				}
+
+				if( DICfg->Config & CONFIG_SHOW_COVERS )
 					LoadDVDCover();
 
-					SLock = 1; 
-				}
-			} break;
-			case 1:		//SNEEK Settings
+				SLock = 1; 
+			}
+		} break;
+		case 1:		//SNEEK Settings
+		{
+			if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 			{
-				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+				switch(PosX)
 				{
-					switch(PosX)
+					case 0:
 					{
-						case 0:
+						if( DICfg->Region == LTN )
+							DICfg->Region = JAP;
+						else
+							DICfg->Region++;
+						SLock = 1;
+						DVDReinsertDisc=true;
+					} break;
+					case 1:
+					{
+						DICfg->Config ^= CONFIG_PATCH_FWRITE;
+						DVDReinsertDisc=true;
+					} break;
+					case 2:
+					{
+						DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 3:
+					{
+						DICfg->Config ^= CONFIG_PATCH_VIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 4:
+					{
+						DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
+					} break;
+					case 5:
+					{
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
+					} break;
+					case 6:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 7:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME;
+						DVDReinsertDisc=true;
+					} break;
+					case 8:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
+						DVDReinsertDisc=true;
+					} break;
+					case 9:
+					{
+						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
 						{
-							if( DICfg->Region == LTN )
-								DICfg->Region = JAP;
-							else
-								DICfg->Region++;
-							SLock = 1;
-						} break;
-						case 1:
-						{
-							DICfg->Config ^= CONFIG_PATCH_FWRITE;
-						} break;
-						case 2:
-						{
-							DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
-						} break;
-						case 3:
-						{
-							DICfg->Config ^= CONFIG_PATCH_VIDEO;
-						} break;
-						case 5:
-						{
-							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
-						} break;
-						case 6:
-						{
-							DVDWriteDIConfig( DICfg );
-						} break;
-					}
-					SLock = 1;
+							DICfg->Config &= ~HOOK_TYPE_MASK;
+							DICfg->Config |= HOOK_TYPE_VSYNC;
+						} else {
+							DICfg->Config += HOOK_TYPE_VSYNC;								
+						}
+
+						DVDReinsertDisc=true;
+					} break;
+					case 11:
+					{
+						if( DVDReinsertDisc )
+							DVDSelectGame( DICfg->SlotID );
+
+						DVDWriteDIConfig( DICfg );
+
+						DVDReinsertDisc=false;
+					} break;
+					case 12:
+					{
+						//HACK:there is no way to directly delete the file, so we use this workaround which also causes a recreation of the file
+						DICfg->Gamecount = 0;
+						DICfg->Config	|= CONFIG_AUTO_UPDATE_LIST;
+
+						DVDWriteDIConfig( DICfg );
+						IOSBoot( "/sneek/kernel.bin", 1, GetKernelVersion() );
+
+					} break;
 				}
-				if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
-				{
-					if( PosX )
-						PosX--;
-					else
-						PosX = 6;
-
-					if( PosX == 5 )
-						PosX  = 4;
-
-					SLock = 1;
-				} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
-				{
-					if( PosX >= 6 )
-					{
-						PosX=0;
-					} else 
-						PosX++;
-
-					if( PosX == 5 )
-						PosX  = 6;
-
-					SLock = 1;
-				}
-
-				if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
-				{
-					switch( PosX )
-					{
-						case 0:
-						{
-							if( DICfg->Region == LTN )
-								DICfg->Region = JAP;
-							else
-								DICfg->Region++;
-						} break;
-						case 1:
-						{
-							DICfg->Config ^= CONFIG_PATCH_FWRITE;
-						} break;
-						case 2:
-						{
-							DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
-						} break;
-						case 3:
-						{
-							DICfg->Config ^= CONFIG_PATCH_VIDEO;
-						} break;
-						case 4:
-						{
-							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
-						} break;
-					}
-					SLock = 1;
-				} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
-				{
-					switch( PosX )
-					{
-						case 0:
-						{
-							if( DICfg->Region == JAP )
-								DICfg->Region = LTN;
-							else
-								DICfg->Region--;
-						} break;
-						case 1:
-						{
-							DICfg->Config ^= CONFIG_PATCH_FWRITE;
-						} break;
-						case 2:
-						{
-							DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
-						} break;
-						case 3:
-						{
-							DICfg->Config ^= CONFIG_PATCH_VIDEO;
-						} break;
-						case 4:
-						{
-							DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
-						} break;
-					}
-					SLock = 1;
-				} 
-
-			} break;
-			case 2:
+				SLock = 1;
+			}
+			if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
 			{
-				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
-				{
-					if( DVDStatus == 2 && DVDType > 0 )
-					{
-						DVDStatus = 3;
-					}
-					SLock = 1;
-				}
-			} break;
-			case 3:
+				if( PosX )
+					PosX--;
+				else
+					PosX = 12;
+
+				if( PosX == 10 )
+					PosX  = 9;
+
+				SLock = 1;
+			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
-				u32 Update = false;
-				if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+				if( PosX >= 12 )
 				{
-					if( PICNum > 0 )
+					PosX=0;
+				} else 
+					PosX++;
+
+				if( PosX == 10 )
+					PosX  = 11;
+
+				SLock = 1;
+			}
+
+			if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+			{
+				switch( PosX )
+				{
+					case 0:
 					{
-						PICNum--;
-						Update = true;
-					}
-					SLock = 1;
+						if( DICfg->Region == LTN )
+							DICfg->Region = JAP;
+						else
+							DICfg->Region++;
+						DVDReinsertDisc=true;
+					} break;
+					case 1:
+					{
+						DICfg->Config ^= CONFIG_PATCH_FWRITE;
+						DVDReinsertDisc=true;
+					} break;
+					case 2:
+					{
+						DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 3:
+					{
+						DICfg->Config ^= CONFIG_PATCH_VIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 4:
+					{
+						DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
+					} break;
+					case 5:
+					{
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
+					} break;
+					case 6:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 7:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME;
+						DVDReinsertDisc=true;
+					} break;
+					case 8:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
+						DVDReinsertDisc=true;
+					} break;
+					case 9:
+					{
+						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
+						{
+							DICfg->Config &= ~HOOK_TYPE_MASK;
+							DICfg->Config |= HOOK_TYPE_VSYNC;
+						} else {
+							DICfg->Config += HOOK_TYPE_VSYNC;								
+						}
+						
+						DVDReinsertDisc=true;
+					} break;
 				}
-				if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+				SLock = 1;
+			} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+			{
+				switch( PosX )
 				{
-					PICNum++;
+					case 0:
+					{
+						if( DICfg->Region == JAP )
+							DICfg->Region = LTN;
+						else
+							DICfg->Region--;
+						DVDReinsertDisc=true;
+					} break;
+					case 1:
+					{
+						DICfg->Config ^= CONFIG_PATCH_FWRITE;
+						DVDReinsertDisc=true;
+					} break;
+					case 2:
+					{
+						DICfg->Config ^= CONFIG_PATCH_MPVIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 3:
+					{
+						DICfg->Config ^= CONFIG_PATCH_VIDEO;
+						DVDReinsertDisc=true;
+					} break;
+					case 4:
+					{
+						DICfg->Config ^= CONFIG_DUMP_ERROR_SKIP;
+					} break;
+					case 5:
+					{
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
+					} break;
+					case 6:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 7:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME;
+						DVDReinsertDisc=true;
+					} break;
+					case 8:
+					{
+						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
+						DVDReinsertDisc=true;
+					} break;
+					case 9:
+					{
+						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
+						{
+							DICfg->Config &= ~HOOK_TYPE_MASK;
+							DICfg->Config |= HOOK_TYPE_VSYNC;
+						} else {
+							DICfg->Config += HOOK_TYPE_VSYNC;								
+						}
+						
+						DVDReinsertDisc=true;
+					} break;
+				}
+				SLock = 1;
+			} 
+
+		} break;
+		case 2:
+		{
+			if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
+			{
+				if( DVDStatus == 2 && DVDType > 0 )
+				{
+					DVDStatus = 3;
+				}
+				SLock = 1;
+			}
+		} break;
+		case 3:
+		{
+			u32 Update = false;
+			if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+			{
+				if( PICNum > 0 )
+				{
+					PICNum--;
 					Update = true;
+				}
+				SLock = 1;
+			}
+			if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+			{
+				PICNum++;
+				Update = true;
 					
-					SLock = 1;
-				}
+				SLock = 1;
+			}
 
-				if( Update )
+			if( Update )
+			{
+				char *Path = (char*)malloca( 32, 32 );
+				_sprintf( Path, "/scrn_%02X.raw", PICNum );
+
+				s32 fd = IOS_Open( Path, 1 );
+				if( fd >= 0 )
 				{
-					char *Path = (char*)malloca( 32, 32 );
-					_sprintf( Path, "/scrn_%02X.raw", PICNum );
-
-					s32 fd = IOS_Open( Path, 1 );
-					if( fd >= 0 )
-					{
-						PICSize = IOS_Seek( fd, 0, SEEK_END );
-						IOS_Seek( fd, 0, 0 );
-						IOS_Read( fd, PICBuffer, PICSize );
-						IOS_Close( fd );
-					}
-
-					free(Path);
+					PICSize = IOS_Seek( fd, 0, SEEK_END );
+					IOS_Seek( fd, 0, 0 );
+					IOS_Read( fd, PICBuffer, PICSize );
+					IOS_Close( fd );
 				}
-			} break;
-		}
+
+				free(Path);
+			}
+		} break;
 	}
 }
 void SCheatDraw( void )
 {
 	u32 i,j;
 	offset = (u32*)0x007D0500;
-
+	
 	if( Freeze == 0xdeadbeef )
 	{
 		*offset = value;
@@ -1244,12 +1430,11 @@ void SCheatDraw( void )
 		
 		switch( ShowMenu )
 		{
-			case 1:
+			case 0:
 			{
-				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI %s  Cheater!!!", __DATE__ );
+				PrintFormat( FB[i], MENU_POS_X, 40, "SNEEK+DI " __DATE__ "  Cheater!!!");
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Search value..." );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "RAM viewer...(NYI)" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "RAM dumper...(NYI)" );
 
 				PrintFormat( FB[i], MENU_POS_X+80-6*3, 104+16*PosX, "-->");
 
@@ -1309,18 +1494,20 @@ void SCheatReadPad ( void )
 
 	if( SLock == 0 )
 	{
-		if( (*WPad & ( WPAD_BUTTON_B | WPAD_BUTTON_1 )) == ( WPAD_BUTTON_B | WPAD_BUTTON_1 ) )
+		if( (*WPad & ( WPAD_BUTTON_B | WPAD_BUTTON_1 )) == ( WPAD_BUTTON_B | WPAD_BUTTON_1 ) ||
+			GCPad.Start )
 		{
 			ShowMenu = !ShowMenu;
 			SLock = 1;
 		}
 
-		if( (*WPad & ( WPAD_BUTTON_HOME | WPAD_BUTTON_2 )) == ( WPAD_BUTTON_HOME | WPAD_BUTTON_2 ) )
+		if( (*WPad & ( WPAD_BUTTON_1 | WPAD_BUTTON_2 )) == ( WPAD_BUTTON_1 | WPAD_BUTTON_2 ) ||
+			GCPad.X	)
 		{
-			u8 *buf = (u8*)malloc( FBSize );
-			memcpy( buf, (void*)(FB[0]), FBSize );
+			u8 *buf = (u8*)malloc( 40 );
+			//memcpy( buf, (void*)(FB[0]), FBSize );
 
-			dbgprintf("ES:Taking screenshot...");
+			dbgprintf("ES:Taking RamDump...");
 
 			char *str = (char*)malloc( 32 );
 
@@ -1353,7 +1540,7 @@ void SCheatReadPad ( void )
 				return;
 			}
 
-			IOS_Write( fd, buf, FBSize );
+			IOS_Write( fd, (void*)0, 24*1024*1024 );
 
 			IOS_Close( fd );
 
@@ -1364,11 +1551,19 @@ void SCheatReadPad ( void )
 			SLock = 1;
 		}
 	
-		if( !ShowMenu )
-			return;
+		//if( !ShowMenu )
+		//	return;
 
 		switch( ShowMenu )
 		{
+			case 0:
+			{
+				if( (*WPad&WPAD_BUTTON_1) && SLock == 0 )
+				{
+					hexdump( (void*)0x5CBE60, 0x10 );
+					SLock = 1;
+				}
+			} break;
 			case 1:
 			{
 				if( GCPad.A || (*WPad&WPAD_BUTTON_A) )

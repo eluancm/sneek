@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 extern u8  *CNTMap;
 
-u8 *NANDLoadFile( char * path, u32 *Size )
+u8 *NANDLoadFile( char *path, u32 *Size )
 {
 	s32 fd = IOS_Open( path, 1 );
 	if( fd < 0 )
@@ -52,7 +52,7 @@ u8 *NANDLoadFile( char * path, u32 *Size )
 	u8 *data = (u8*)heap_alloc_aligned( 0, status->Size, 0x40 );
 	if( data == NULL )
 	{
-		dbgprintf("ES:NANDLoadFile->Failed to alloc %d bytes!\n", status->Size );
+		dbgprintf("ES:NANDLoadFile(\"%s\")->Failed to alloc %d bytes!\n", path, status->Size );
 		heap_free( 0, status );
 		return NULL;
 	}

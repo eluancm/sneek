@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -204,7 +204,7 @@ typedef struct
 
 } __attribute__((packed)) UIDSYS;
 
-
+s32 ES_TitleCreatePath( u64 TitleID );
 void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 s32 ES_LoadModules( u32 KernelVersion );
 s32 ES_LaunchSYS( u64 *TitleID );
@@ -212,7 +212,7 @@ s32 ES_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD );
 s32 ES_AddContentData(s32 cfd, void *data, u32 data_size);
 s32 ES_AddTitleFinish( TitleMetaData *TMD );
 u8 *NANDLoadFile( char * path, u32 *Size );
-s32 doTicketMagic( u8 *iTIK );
+s32 doTicketMagic( Ticket *iTIK );
 s32 ES_CreateKey( u8 *Ticket );
 s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char *tik, char *Hashes );
 s32 ES_CheckBootOption( char *Path, u64 *TitleID );

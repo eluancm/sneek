@@ -628,6 +628,7 @@ s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpD
 	return ret;
 }
 
+u32 UsedPort;
 
 int ehci_reset_port(int port)
 {
@@ -678,6 +679,8 @@ int ehci_reset_port(int port)
         return retval;
     }
     dev->toggles = 0;
+	
+	UsedPort = port;
 
     dev->id = port+1;
     ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
@@ -716,8 +719,11 @@ int ehci_release_ports(void)
         for(i = 0;i<ehci->num_port; i++){
           status_reg = &ehci->regs->port_status[i];
           u32 status = ehci_readl(status_reg);
-          if (i==2 || !(PORT_CONNECT&status) || PORT_USB11(status))
+          if (i==1 || i==2 || !(PORT_CONNECT&status) || PORT_USB11(status))
+		  {
             ehci_writel( PORT_OWNER,status_reg); // release port.
+			dbgprintf("DI:Releasing port:%d\n", i );
+		  }
         }
         return 0;
 }

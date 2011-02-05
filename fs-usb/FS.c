@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -24,7 +24,7 @@ static FIL fd_stack[MAX_FILE] ALIGNED(32);
 
 //#define USEATTR
 #undef DEBUG
-#define EDEBUG
+//#define EDEBUG
 
 typedef struct
 {

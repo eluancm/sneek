@@ -2,7 +2,7 @@
 
 SNEEK - SD-NAND/ES + DI emulation kit for Nintendo Wii
 
-Copyright (C) 2009-2010  crediar
+Copyright (C) 2009-2011  crediar
 
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
@@ -103,7 +103,7 @@ void _main(void)
 
 	s32 fres = DVDSelectGame( DICfg->SlotID );
 
-	dbgprintf("DIP:DVDSelectGame(%d):%d\n", DICfg->SlotID, fres );
+	//dbgprintf("DIP:DVDSelectGame(%d):%d\n", DICfg->SlotID, fres );
 
 	while (1)
 	{
