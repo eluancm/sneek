@@ -462,7 +462,7 @@ void SMenuDraw( void )
 				{
 					if (curDVDCover)
 					{
-						DrawImage( FB[i], MENU_POS_X, MENU_POS_Y+(j+1)*16, curDVDCover );
+						DrawImage( FB[i], MENU_POS_X, MENU_POS_Y+(j+2)*16, curDVDCover );
 						//PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+12*16,(char*) curDVDCover);
 					} else
 						PrintFormat( FB[i], MENU_POS_X+6*12, MENU_POS_Y+(j+6)*16, "no cover image found!" );
@@ -478,24 +478,27 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X, 20+16, "Close the HOME menu before launching!!!" );
 				PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y, "Installed Channels:%u", channelCache->numChannels);
 
-				for( j=0; j<8; ++j )
+				for( j=0; j<EntryCount; ++j )
 				{
 					if( j+ScrollX >= channelCache->numChannels )
 						break;
 
-					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+16+16*j, "%.40s", channelCache->channels[ScrollX+j].name);
+					PrintFormat( FB[i], MENU_POS_X, MENU_POS_Y+32+16*j, "%.40s", channelCache->channels[ScrollX+j].name);
 
 					if( j == PosX )
-						PrintFormat( FB[i], 0, MENU_POS_Y+16+16*j, "-->");
+						PrintFormat( FB[i], 0, MENU_POS_Y+32+16*j, "-->");
 				}
 
-				if (curDVDCover){
-					DrawImage(FB[i],MENU_POS_X,MENU_POS_Y+(j+1)*16,curDVDCover);
+				if( DICfg->Config & CONFIG_SHOW_COVERS )
+				{
+					if (curDVDCover){
+						DrawImage(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,curDVDCover);
+					}
+					else
+						PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
 				}
-				else
-					PrintFormat(FB[i],MENU_POS_X,MENU_POS_Y+(j+2)*16,"no cover image found!");
 
-				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/8 + 1, channelCache->numChannels/8 + (channelCache->numChannels % 8 > 0));
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*21, "%d/%d", ScrollX/EntryCount + 1, channelCache->numChannels/EntryCount + (channelCache->numChannels % EntryCount > 0));
 
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -899,6 +902,9 @@ void SMenuReadPad ( void )
 		PosX	= 0;
 		ScrollX	= 0;
 		SLock	= 1;
+
+		if( ShowMenu != 0 && DICfg->Config & CONFIG_SHOW_COVERS )
+			LoadDVDCover();
 	}
 
 	if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
@@ -966,6 +972,9 @@ void SMenuReadPad ( void )
 		PosX	= 0;
 		ScrollX	= 0;
 		SLock	= 1;
+
+		if( DICfg->Config & CONFIG_SHOW_COVERS )
+			LoadChannelCover();
 	}
 
 	switch( MenuType )
@@ -986,12 +995,14 @@ void SMenuReadPad ( void )
 			{
 				if( PosX ){
 					PosX--;
-					LoadChannelCover();
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadChannelCover();
 				}
 				else if( ScrollX )
 				{
 					ScrollX--;
-					LoadChannelCover();
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadChannelCover();
 				}
 
 				SLock = 1;
@@ -1002,11 +1013,13 @@ void SMenuReadPad ( void )
 					if( PosX+ScrollX+1 < channelCache->numChannels )
 					{
 						ScrollX++;
-						LoadChannelCover();
+						if( DICfg->Config & CONFIG_SHOW_COVERS )
+							LoadChannelCover();
 					}
 				} else if ( PosX+ScrollX+1 < channelCache->numChannels ){
 					PosX++;
-					LoadChannelCover();
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadChannelCover();
 				}
 
 				SLock = 1;
@@ -1016,11 +1029,13 @@ void SMenuReadPad ( void )
 				{
 					PosX	= 0;
 					ScrollX = ScrollX/EntryCount*EntryCount + EntryCount;
-					LoadChannelCover();
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadChannelCover();
 				} else {
 					PosX	= 0;
 					ScrollX	= 0;
-					LoadChannelCover();
+					if( DICfg->Config & CONFIG_SHOW_COVERS )
+						LoadChannelCover();
 				}
 
 				SLock = 1; 
@@ -1034,7 +1049,8 @@ void SMenuReadPad ( void )
 					PosX	= 0;
 					ScrollX	= 0;
 				}
-				LoadChannelCover();
+				if( DICfg->Config & CONFIG_SHOW_COVERS )
+					LoadChannelCover();
 
 				SLock = 1; 
 			}
