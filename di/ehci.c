@@ -722,7 +722,7 @@ int ehci_release_ports(void)
           if (i==1 || i==2 || !(PORT_CONNECT&status) || PORT_USB11(status))
 		  {
             ehci_writel( PORT_OWNER,status_reg); // release port.
-			dbgprintf("DI:Releasing port:%d\n", i );
+			//dbgprintf("DI:Releasing port:%d\n", i );
 		  }
         }
         return 0;
