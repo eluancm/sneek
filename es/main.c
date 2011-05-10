@@ -1144,9 +1144,9 @@ int _main( int argc, char *argv[] )
 
 		MenuType = 1;
 		
-	} else if ( (TitleID >> 32) ==  0x00010000LL ) {
+	}/* else if ( (TitleID >> 32) ==  0x00010000LL ) {
 		MenuType = 2;
-	}
+	}*/
 
 	LoadAndRebuildChannelCache();
 

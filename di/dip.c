@@ -47,7 +47,13 @@ u32 Motor = 0;
 u32 Disc = 0;
 u64 PartitionOffset=0;
 u32 GameHook=0;
-
+void Asciify( char *str )
+{
+	int i=0;
+	for( i=0; i < strlen(str); i++ )
+		if( str[i] < 0x20 || str[i] > 0x7F )
+			str[i] = '_';
+}
 s32 DVDGetGameCount( void )
 {
 	//check if new games were installed
@@ -772,6 +778,8 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 							DVDClose( FC[FCEntry].File );
 							FC[FCEntry].File = 0xdeadbeef;
 						}
+
+						Asciify( Path );
 
 						//if( strstr( Path, "fluff_param.txt") != NULL )
 						//{
