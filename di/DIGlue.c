@@ -175,12 +175,12 @@ s32 DVDOpen( char *Filename, u32 Mode )
 		}
 				
 		vector *vec = (vector*)halloca( sizeof(vector) * 2, 32 );
-		char *name = (char*)halloca( 0x80, 32 );
+		char *name = (char*)halloca( 256, 32 );
 
 		memcpy( name, Filename, strlen(Filename) + 1 );
 		
 		vec[0].data = name;
-		vec[0].len = 0x80;
+		vec[0].len = 256;
 		vec[1].data = Mode;
 		vec[1].len = sizeof(u32);
 
@@ -215,7 +215,7 @@ s32 DVDOpenDir( char *Path )
 		return f_opendir( &d, Path );
 	} else {
 				
-		char *name = (char*)halloca( 0x80, 32 );
+		char *name = (char*)halloca( 256, 32 );
 
 		memcpy( name, Path, strlen(Path) + 1 );
 
