@@ -133,7 +133,6 @@ int _main( int argc, char *argv[] )
 			case IOS_OPEN:
 			{
 				ret = FS_Open( CMessage->open.device, CMessage->open.mode );
-				
 #ifdef DEBUG
 				if( ret != FS_NO_DEVICE )
 					dbgprintf("FFS:IOS_Open(\"%s\", %d):%d\n", CMessage->open.device, CMessage->open.mode, ret );

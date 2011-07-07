@@ -1643,7 +1643,9 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	dbgprintf("ES:Waiting for network module...\n");
 
-	while(1)
+	u32 counter = 0;
+
+	while( counter < 10 )
 	{
 		int rfs = IOS_Open("/dev/net/ncd/manage", 0 );
 		if( rfs >= 0 )
@@ -1652,6 +1654,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 			break;
 		}
 		udelay(500);
+		counter++;
 	}
 
 	free( size );

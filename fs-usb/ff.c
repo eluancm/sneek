@@ -643,6 +643,7 @@ unsigned short ff_wtoupper(unsigned short a)
 }
 
 
+
 static
 BOOL test_lfn (			/* TRUE:Matched, FALSE:Not matched */
 	WCHAR *lfnbuf,		/* Pointer to the LFN to be compared */

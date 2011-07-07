@@ -64,7 +64,7 @@ s32 DVDGetGameCount( void )
 		return DI_FATAL;
 	}
 
-	char *TempPath = (char*)malloca(128, 32);
+	char *TempPath = (char*)malloca( 256, 32);
 
 	while( DVDReadDir() == DVD_SUCCESS )
 	{
@@ -174,7 +174,7 @@ s32 DVDUpdateCache( void )
 
 		DVDSeek( fd, 0x10, 0);
 
-		char *LPath = (char*)malloca( 128, 32 );
+		char *LPath = (char*)malloca( 256, 32 );
 		char *GInfo = (char*)malloca( 0x80 * GameCount, 32 );
 		char *GPath = (char*)malloca( 0x20, 32 );
 
@@ -339,7 +339,7 @@ s32 DVDSelectGame( int SlotID )
 
 	if( SlotID >= 0 && SlotID < DICfg->Gamecount)
 	{
-		char *str = (char *)malloca( 128, 32 );
+		char *str = (char *)malloca( 256, 32 );
 		//build path
 		sprintf( GamePath, "/games/%s/", &DICfg->GameInfo[SlotID][0x60] );
 		dbgprintf("DIP:Set game path to:\"%s\"\n", GamePath );
@@ -1022,28 +1022,29 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		} break;
 		case DVD_SET_AUDIO_BUFFER:
 		{
+			hexdump( bufin, lenin );
 			memset32( bufout, 0, lenout );
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
+			dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
 		} break;
 		case 0x96:
 		case DVD_REPORTKEY:
 		{
 			ret = DI_ERROR;
 			error = 0x00052000;
-			//dbgprintf("DIP:DVDLowReportKey():%d\n", ret );
+			dbgprintf("DIP:DVDLowReportKey():%d\n", ret );
 		} break;
 		case 0xDD:			// 0 out
 		{
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowSetMaximumRotation():%d\n", ret);
+			dbgprintf("DIP:DVDLowSetMaximumRotation():%d\n", ret);
 		} break;
 		case 0x95:			// 0x20 out
 		{
 			*(u32*)bufout = DIStatus;
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", *(u32*)bufout, ret );
+			dbgprintf("DIP:DVDLowPrepareStatusRegister( %08X ):%d\n", *(u32*)bufout, ret );
 		} break;
 		case 0x7A:			// 0x20 out
 		{
@@ -1075,7 +1076,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			DICover |= 2;
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowUnknownRegister():%d\n", ret );
+			dbgprintf("DIP:DVDLowUnknownRegister():%d\n", ret );
 		} break;
 		case DVD_IDENTIFY:
 		{
@@ -1086,13 +1087,13 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			*(u32*)(bufout+8)	= 0x41000000;
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowIdentify():%d\n", ret);
+			dbgprintf("DIP:DVDLowIdentify():%d\n", ret);
 		} break;
 		case DVD_GET_ERROR:	// 0xE0
 		{
 			*(u32*)bufout = error; 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowGetError( %08X ):%d\n", error, ret );
+			dbgprintf("DIP:DVDLowGetError( %08X ):%d\n", error, ret );
 		} break;
 		case 0x8E:
 		{
@@ -1102,7 +1103,7 @@ int DIP_Ioctl( struct ipcmessage *msg )
 				EnableVideo( 0 );
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(u32*)(bufin+4), ret);
+			dbgprintf("DIP:DVDLowEnableVideo(%d):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_LOW_READ:	// 0x71, GC never calls this
 		{
@@ -1157,19 +1158,19 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			Partition = 0;
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowReset( %d ):%d\n", *(u32*)(bufin+4), ret);
+			dbgprintf("DIP:DVDLowReset( %d ):%d\n", *(u32*)(bufin+4), ret);
 		} break;
 		case DVD_SET_MOTOR:
 		{
 			Motor = 0;
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(u32*)(bufin+4), *(u32*)(bufin+8), ret);
+			dbgprintf("DIP:DVDStopMotor(%d,%d):%d\n", *(u32*)(bufin+4), *(u32*)(bufin+8), ret);
 		} break;
 		case DVD_CLOSE_PARTITION:
 		{
 			Partition=0;
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowClosePartition():%d\n", ret );
+			dbgprintf("DIP:DVDLowClosePartition():%d\n", ret );
 		} break;
 		case DVD_READ_BCA:
 		{
@@ -1177,12 +1178,12 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			*(u32*)(bufout+0x30) = 0x00000001;
 
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowReadBCA():%d\n", ret );
+			dbgprintf("DIP:DVDLowReadBCA():%d\n", ret );
 		} break;
 		case DVD_LOW_SEEK:
 		{
 			ret = DI_SUCCESS;
-			//dbgprintf("DIP:DVDLowSeek():%d\n", ret );
+			dbgprintf("DIP:DVDLowSeek():%d\n", ret );
 		} break;
 		default:
 			hexdump( bufin, lenin );
@@ -1203,6 +1204,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 	vector *v	= (vector*)(msg->ioctlv.argv);
 	s32 ret		= DI_FATAL;
 
+	//dbgprintf("DIP:IOS_Ioctlv( %d, 0x%x 0x%x 0x%x 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv );
 	switch(msg->ioctl.command)
 	{
 		case DVD_CLOSE:

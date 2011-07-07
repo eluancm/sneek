@@ -293,7 +293,7 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 			{
 				case 482:	// EUR 4.2
 				{
-					//Disc Region free hack
+					//Wii-Disc Region free hack
 					*(u32*)0x0137DC90 = 0x4800001C;
 					*(u32*)0x0137E4E4 = 0x60000000;
 
@@ -307,13 +307,13 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 				} break;
 				case 514:	// EUR 4.3
 				{
-					//Disc Region free hack
+					//Wii-Disc Region free hack
 					*(u32*)0x0137DE28 = 0x4800001C;
 					*(u32*)0x0137E7A4 = 0x38000001;
 
-					//Disable bannerbomb fix (useless)
-					*(u32*)0x01380FC4 = 0x4E800020;
-
+					//GC-Disc Region free hack
+					*(u32*)0x137DAEC = 0x7F60DB78;
+					
 					//Autoboot disc
 					//*(u32*)0x0137AEF4 = 0x48000020;
 					//*(u32*)0x01379B40 = 0x60000000;
@@ -321,16 +321,19 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 				} break;
 				case 481:	// USA 4.2
 				{
-					//Disc Region free hack
+					//Wii-Disc Region free hack
 					*(u32*)0x0137DBE8 = 0x4800001C;
 					*(u32*)0x0137E43C = 0x60000000;
 
 				} break;
 				case 513:	// USA 4.3
 				{
-					//region free discs
+					//Wii-Disc Region free hack
 					*(u32*)0x0137DD80 = 0x4800001C;
 					*(u32*)0x0137E5D4 = 0x60000000;
+
+					//GC-Disc Region free hack
+					*(u32*)0x137DA44 = 0x7F60DB78;
 				} break;
 			}
 		} break;
@@ -543,8 +546,6 @@ void SMenuDraw( void )
 				if( DVDStatus == 0 )
 				{
 					DVDEjectDisc();
-
-					DVDInit();
 					DVDStatus = 1;					
 				}
 

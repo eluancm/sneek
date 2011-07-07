@@ -551,8 +551,8 @@ s32 FS_Open( char *Path, u8 Mode )
 		if( strncmp( Path+5, "fs", 2 ) == 0)
 		{
 			return FS_FD;
-		}/* else if( strncmp(CMessage->open.device+5, "flash", 5) == 0) {
-			return FL_FD;			
+		}/* else if( strncmp( Path+5, "flash", 5) == 0) {
+			return FL_FD;
 		} else if( strncmp(CMessage->open.device+5, "boot2", 5) == 0) {
 			return B2_FD;
 		}*/ else {

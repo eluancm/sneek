@@ -34,17 +34,19 @@ DSTATUS disk_status( BYTE drv )
 
 DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 {
-	u8 *buffer = (u8*)heap_alloc_aligned( 0, count*512, 0x40 );
-
-	if( sdmmc_read( sector, count, buffer ) < 0 )
+	if( (u32)buff & 0xF0000000 )
 	{
-		;//FS_Fatal( "disk_read()", __LINE__, __FILE__, sector, "Failed to read disc\n" );
+		u8 *buffer = (u8*)heap_alloc_aligned( 0, count*512, 0x40 );
+
+		sdmmc_read( sector, count, buffer ) ;
+
+		_ahbMemFlush( 9 );
+		memcpy( buff, buffer, count*512 );
+
+		heap_free( 0, buffer );
+	} else {
+		sdmmc_read( sector, count, buff ) ;
 	}
-
-	_ahbMemFlush( 9 );
-	memcpy( buff, buffer, count*512 );
-
-	heap_free( 0, buffer );
 
 	return RES_OK;
 }
