@@ -536,6 +536,8 @@ void SMenuDraw( void )
 
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*11, "save config" );
 				PrintFormat( FB[i], MENU_POS_X+80, 104+16*12, "recreate game cache(restarts!!)" );
+				if( FSUSB )
+					PrintFormat( FB[i], MENU_POS_X+80, 104+16*13, "Boot NMM" );				
 
 				PrintFormat( FB[i], MENU_POS_X+60, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -1217,6 +1219,10 @@ void SMenuReadPad ( void )
 						IOSBoot( "/sneek/kernel.bin", 1, GetKernelVersion() );
 
 					} break;
+					case 13:
+					{
+						LaunchTitle( 0x0000000100000100LL );						
+					} break;
 				}
 				SLock = 1;
 			}
@@ -1224,8 +1230,12 @@ void SMenuReadPad ( void )
 			{
 				if( PosX )
 					PosX--;
-				else
-					PosX = 12;
+				else {
+					if( FSUSB )
+						PosX  = 13;
+					else
+						PosX = 12;
+				}
 
 				if( PosX == 10 )
 					PosX  = 9;
@@ -1233,11 +1243,20 @@ void SMenuReadPad ( void )
 				SLock = 1;
 			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
-				if( PosX >= 12 )
+				if( FSUSB )
 				{
-					PosX=0;
-				} else 
-					PosX++;
+					if( PosX >= 13 )
+					{
+						PosX=0;
+					} else 
+						PosX++;
+				} else {
+					if( PosX >= 12 )
+					{
+						PosX=0;
+					} else 
+						PosX++;
+				}
 
 				if( PosX == 10 )
 					PosX  = 11;

@@ -25,6 +25,8 @@ static FIL fd_stack[MAX_FILE] ALIGNED(32);
 #undef DEBUG
 //#define EDEBUG
 
+u32 HAXHandle;
+
 void FFS_Ioctlv(struct IPCMessage *msg)
 {
 	u32 InCount		= msg->ioctlv.argc_in;
@@ -44,6 +46,14 @@ void FFS_Ioctlv(struct IPCMessage *msg)
 
 	switch(msg->ioctl.command)
 	{
+		case 0x60:
+		{
+			HAXHandle = FS_Open( (char*)(v[0].data), (u32)(v[1].data) );
+#ifdef DEBUG
+			dbgprintf("FS_Open(%s, %02X):%d\n", (char*)(v[0].data), (u32)(v[1].data), HAXHandle );
+#endif
+			ret = HAXHandle;
+		} break;
 		case IOCTL_READDIR:
 		{
 			if( InCount == 1 && OutCount == 1 )
@@ -545,6 +555,9 @@ s32 FS_Close( s32 FileHandle )
 }
 s32 FS_Open( char *Path, u8 Mode )
 {
+	if( strncmp( Path, "/AX", 3 ) == 0 )
+		return HAXHandle;
+
 	// Is it a device?
 	if( strncmp( Path, "/dev/", 5 ) == 0 )
 	{

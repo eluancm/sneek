@@ -1109,8 +1109,6 @@ int _main( int argc, char *argv[] )
 		FSUSB = 1;
 	}
 
-	ES_BootSystem( &TitleID, &KernelVersion );
-
 //SD Card 
 	SDStatus = (u32*)malloca( sizeof(u32), 0x40 );
 	*SDStatus = 0x00000002;
@@ -1123,6 +1121,8 @@ int _main( int argc, char *argv[] )
 	size		= (u32*) malloca( sizeof(u32), 32 );
 	iTitleID	= (u64*) malloca( sizeof(u64), 32 );
 	
+	ES_BootSystem( &TitleID, &KernelVersion );
+
 	dbgprintf("ES:TitleID:%08x-%08x version:%d\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
 
 	ret = 0;
