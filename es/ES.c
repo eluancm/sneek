@@ -1758,8 +1758,8 @@ s32 ES_CheckBootOption( char *Path, u64 *TitleID )
 }
 s32 ES_LaunchSYS( u64 *TitleID )
 {
-	char *path	= malloca( 0x70, 0x40);
-	u32 *size	= (u32*)malloca( sizeof(u32), 0x40 );
+	char *path	= (char *)malloca( 0x70, 32 );
+	u32 *size	= (u32*)malloca( sizeof(u32), 32 );
 
 //Load TMD
 	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(*TitleID>>32), (u32)(*TitleID) );
@@ -1772,15 +1772,16 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	}
 
 //Load PPC
-	s32 r = LoadPPC( (u8*)TMD+0x1BA );
-	dbgprintf("ES:ES_LaunchSYS->LoadPPC:%d\n", r );
-	if( r < 0 )
-	{
-		free( size );
-		free( path );
-		free( TMD );
-		return r;
-	}
+	//s32 r = LoadPPC( TMD + 0x1BA );
+	//if( r < 0 )
+	//{
+	//	dbgprintf("ES:ES_LaunchSYS->LoadPPC:%d\n", r );
+
+	//	free( size );
+	//	free( path );
+	//	free( TMD );
+	//	return r;
+	//}
 
 //Load Ticket
 	_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(*TitleID>>32), (u32)(*TitleID) );
@@ -1796,7 +1797,7 @@ s32 ES_LaunchSYS( u64 *TitleID )
 	u16 UID = 0;
 	dbgprintf("ES:NANDLoadFile:%p size:%d\n", TIK_Data, *size );
 
-	r = ES_GetUID( TitleID, &UID );
+	s32 r = ES_GetUID( TitleID, &UID );
 	if( r < 0 )
 	{
 		dbgprintf("ES:ES_GetUID:%d\n", r );
