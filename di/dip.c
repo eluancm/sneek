@@ -126,7 +126,7 @@ s32 DVDUpdateCache( void )
 			GameCount = DICfg->Gamecount;
 		}
 
-		if( DVDGetSize(fd) != GameCount * 0x80 + 0x10 )
+		if( DVDGetSize(fd) != GameCount * 0x80 + 0x10 || GameCount == 0 )
 		{
 			DVDClose( fd );
 			fd = DVDOpen( "/sneek/diconfig.bin", FA_CREATE_ALWAYS|FA_WRITE|FA_READ );
