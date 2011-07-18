@@ -233,7 +233,13 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 	s32 r = ES_LoadModules( IOSVersion );
 	dbgprintf("ES:ES_LoadModules(%d):%d\n", IOSVersion, r );
 	if( r < 0 )
+	{
+		//Network module took too long
+		if( r == ES_FATAL )
+			LaunchTitle( *TitleID );
+
 		PanicBlink( 0, 1,1,1,1,-1 );
+	}
 
 	_sprintf( path, "/sys/disc.sys" );
 	
@@ -1539,6 +1545,7 @@ s32 ES_AddContentData(s32 cfd, void *data, u32 data_size )
 
 	return ES_SUCCESS;
 }
+
 s32 ES_LoadModules( u32 KernelVersion )
 {
 	//used later for decrypted
@@ -1644,6 +1651,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 	dbgprintf("ES:Waiting for network module...");
 
 	u32 counter = 0;
+	r = ES_SUCCESS;
 
 	while( 1 )
 	{
@@ -1660,8 +1668,8 @@ s32 ES_LoadModules( u32 KernelVersion )
 		if( counter == 10000 )
 		{
 			dbgprintf("\nES:Network module taking too long, restarting!\n");
-			LaunchTitle( 0x0000000100000002LL );
-			while(1);
+			r = ES_FATAL;
+			break;
 		}
 	}
 
@@ -1673,7 +1681,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	thread_set_priority( 0, 0x50 );
 
-	return 0;
+	return r;
 }
 s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 {

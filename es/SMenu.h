@@ -67,6 +67,8 @@ void SCheatReadPad( void );
 
 void LoadAndRebuildChannelCache();
 
+s32 LaunchTitle(u64 TitleID);
+
 typedef struct{
 	u64 titleID;
 	u8 name[41];
