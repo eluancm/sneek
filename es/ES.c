@@ -1641,11 +1641,11 @@ s32 ES_LoadModules( u32 KernelVersion )
 		}
 	}
 
-	dbgprintf("ES:Waiting for network module...\n");
+	dbgprintf("ES:Waiting for network module...");
 
 	u32 counter = 0;
 
-	while( counter < 10 )
+	while( 1 )
 	{
 		int rfs = IOS_Open("/dev/net/ncd/manage", 0 );
 		if( rfs >= 0 )
@@ -1653,9 +1653,19 @@ s32 ES_LoadModules( u32 KernelVersion )
 			IOS_Close(rfs);
 			break;
 		}
+
 		udelay(500);
 		counter++;
+
+		if( counter == 10000 )
+		{
+			dbgprintf("\nES:Network module taking too long, restarting!\n");
+			LaunchTitle( 0x0000000100000002LL );
+			while(1);
+		}
 	}
+
+	dbgprintf("done!\n");
 
 	free( size );
 	free( TMD );

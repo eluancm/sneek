@@ -63,11 +63,12 @@ enum opcodes
 	DVD_GET_ERROR			= 0xE0,
 	DVD_SET_MOTOR			= 0xE3,
 	DVD_SET_AUDIO_BUFFER	= 0xE4,
-
+	
 	DVD_SELECT_GAME			= 0x23,
 	DVD_GET_GAMECOUNT		= 0x24,
 	DVD_EJECT_DISC			= 0x27,
 	DVD_INSERT_DISC			= 0x28,
+	DVD_UPDATE_GAME_CACHE	= 0x2F,
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
 	DVD_CONNECTED			= 0x32, //Check if the harddrive is connected yet

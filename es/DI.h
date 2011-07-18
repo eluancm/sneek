@@ -102,6 +102,7 @@ enum DIOpcodes
 	DVD_GET_GAMECOUNT		= 0x24,
 	DVD_EJECT_DISC			= 0x27,
 	DVD_INSERT_DISC			= 0x28,
+	DVD_UPDATE_GAME_CACHE	= 0x2F,
 	DVD_READ_GAMEINFO		= 0x30,
 	DVD_WRITE_CONFIG		= 0x31,
 	DVD_CONNECTED			= 0x32,
@@ -155,6 +156,7 @@ s32 DVDSetRegion( u32 *Region );
 s32 DVDGetRegion( u32 *Region );
 s32 DVDEjectDisc( void );
 s32 DVDInsertDisc( void );
+s32 DVDUpdateGameCache( void );
 s32 DVDReadGameInfo( u32 Offset, u32 Length, void *Data );
 s32 DVDWriteDIConfig( void *DIConfig );
 s32 DVDSelectGame( u32 SlotID );

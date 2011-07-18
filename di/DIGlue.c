@@ -114,7 +114,6 @@ void DVDInit( void )
 s32 DVDOpen( char *Filename, u32 Mode )
 {
 	int i,ret;
-
 	if( FSMode == SNEEK )
 	{
 		u32 handle = 0xdeadbeef;
@@ -131,10 +130,10 @@ s32 DVDOpen( char *Filename, u32 Mode )
 
 		if( handle == 0xdeadbeef )
 		{
-			dbgprintf("DIP:Couldn't find a free handle!\n");
+			dbgprintf("DIP:Couldn't find a free handle!\n");			
 			return FR_DISK_ERR;
 		}
-
+		
 		ret = f_open( &(FHandle[handle]), Filename, Mode );
 		if( ret != FR_OK )
 		{
@@ -151,7 +150,7 @@ s32 DVDOpen( char *Filename, u32 Mode )
 					break;
 			}
 		}
-
+		
 		return handle;
 
 	} else {
@@ -174,14 +173,13 @@ s32 DVDOpen( char *Filename, u32 Mode )
 			return DVD_FATAL;
 		}
 				
-		vector *vec = (vector*)halloca( sizeof(vector) * 2, 32 );
 		char *name = (char*)halloca( 256, 32 );
-
 		memcpy( name, Filename, strlen(Filename) + 1 );
+		vector *vec = (vector*)halloca( sizeof(vector) * 2, 32 );
 		
-		vec[0].data = name;
+		vec[0].data = (u8*)name;
 		vec[0].len = 256;
-		vec[1].data = Mode;
+		vec[1].data = (u8*)Mode;
 		vec[1].len = sizeof(u32);
 
 		Nhandle[handle] = IOS_Ioctlv( FSHandle, 0x60, 2, 0, vec );
@@ -193,17 +191,18 @@ s32 DVDOpen( char *Filename, u32 Mode )
 
 		Nhandle[handle] = IOS_Open( name, Mode & ( FA_READ | FA_WRITE ) );
 
-		hfree( vec );
 		hfree( name );
+		hfree( vec );
 
 		if( Nhandle[handle] < 0 )
 		{
 			handle = Nhandle[handle];
 			Nhandle[handle]  =0xdeadbeef;
 		}
-
+		
 		return handle;
 	}
+	
 
 	return DVD_FATAL;
 }

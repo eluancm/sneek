@@ -1211,13 +1211,10 @@ void SMenuReadPad ( void )
 					} break;
 					case 12:
 					{
-						//HACK:there is no way to directly delete the file, so we use this workaround which also causes a recreation of the file
 						DICfg->Gamecount = 0;
 						DICfg->Config	|= CONFIG_AUTO_UPDATE_LIST;
-
 						DVDWriteDIConfig( DICfg );
-						IOSBoot( "/sneek/kernel.bin", 1, GetKernelVersion() );
-
+						LaunchTitle( 0x0000000100000002LL );	
 					} break;
 					case 13:
 					{
