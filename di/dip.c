@@ -105,6 +105,39 @@ s32 DVDGetGameCount( void )
 
 	return GameCount;
 }
+s32 DVDVerifyGames( void )
+{
+	u32 i;
+
+	if( FSMode == SNEEK )
+	{
+		FSMode = UNEEK;
+		if( !DVDVerifyGames )
+		{
+			FSMode = SNEEK;
+			return 0;
+		}
+		FSMode = SNEEK;
+	}
+
+	char *Path = (char*)malloca( 256, 32);
+
+	for( i=0; i < DICfg->Gamecount; i++ )
+	{
+		sprintf( Path, "/games/%s/sys/boot.bin", DICfg->GameInfo[i][0x60] );
+		s32 fd = DVDOpen( Path, FA_READ );
+		if( fd < 0 )
+		{
+			dbgprintf("DIP:Failed to open %s!\n", Path );
+			dbgprintf("DIP:Creating new diconfig.bin!\n");
+			free( Path );
+			return 0;
+		}
+	}
+
+	free( Path );
+	return 1;
+}
 s32 DVDUpdateCache( void )
 {
 	u32 GameCount=0;
@@ -130,29 +163,75 @@ s32 DVDUpdateCache( void )
 	
 	if( DVDGetSize(fd) >= 0x10 )
 	{
-		DVDRead( fd, DICfg, sizeof(u32) * 4 );
+		DVDRead( fd, DICfg, DVD_CONFIG_SIZE );
+
+		//Corruption check
+		if( DICfg->Gamecount > 9000 || DICfg->SlotID > 9000 || DICfg->Region > LTN )
+		{
+			memset( DICfg, 0, DVD_CONFIG_SIZE );
+
+			DICfg->Region = EUR;
+			DICfg->SlotID = 0;
+			DICfg->Config = CONFIG_PATCH_MPVIDEO | CONFIG_AUTO_UPDATE_LIST;
+			DICfg->Gamecount = 0;
+
+			DVDSeek( fd, 0, 0 );
+			DVDWrite( fd, DICfg, DVD_CONFIG_SIZE );
+		}
 
 		dbgprintf("DIP:Region:%d SlotID:%d GameCount:%d Config:%08X\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount, DICfg->Config  );
 		
 		if( DICfg->Config & CONFIG_AUTO_UPDATE_LIST )
+		{
+			dbgprintf("DIP:Updating game list.\n");
 			GameCount = DVDGetGameCount();
-		else {
-			dbgprintf("DIP:Skipping list game update!\n");
+		} else {
+			dbgprintf("DIP:Skipping list game update.\n");
 			GameCount = DICfg->Gamecount;
 		}
 
-		if( DVDGetSize(fd) != GameCount * 0x80 + 0x10 || DICfg->Gamecount == 0 )
+		free( DICfg );
+
+		//Read whole cfg
+		DICfg = (DIConfig*)malloca( DVD_CONFIG_SIZE + GameCount * 0x80, 32 );
+		DVDSeek( fd, 0, 0 );
+		DVDRead( fd, DICfg, DVDGetSize(fd) );
+
+		//The order of these tests is important
+		u32 fail = 0;
+
+		if( DICfg->Gamecount == 0 )
+			fail = 1;
+		else if ( DVDGetSize(fd) != GameCount * 0x80 + 0x10 )
+			fail = 1;
+		else if( !DVDVerifyGames() )
+			fail = 1;
+
+		if( fail )
 		{
+			dbgprintf("DIP:Creating new cache file.\n");
+
 			DVDClose( fd );
 			sprintf( TempPath, "/sneek/diconfig.bin" );
-			DVDDelete( TempPath );
+			dbgprintf("Delete:%d\n", DVDDelete( TempPath ) );
 			fd = DVDOpen( TempPath, FA_CREATE_ALWAYS|FA_WRITE|FA_READ );
 			if( fd < 0 )
 			{
 				dbgprintf("DIP:Failed to create sneek folder/diconfig.bin file!\n");
 				return DI_FATAL;
 			}
-			DVDWrite( fd, DICfg, sizeof(u32) * 4 );
+
+			//Reuse current info, but sanity check the values
+			if( DICfg->Region > LTN )
+				DICfg->Region = EUR;
+
+			if( DICfg->Config & (~(HOOK_TYPE_VSYNC|HOOK_TYPE_OSLEEP)) )
+				DICfg->Config &= ~HOOK_TYPE_MASK;
+
+			DICfg->Gamecount = 0;
+
+			DVDWrite( fd, DICfg, DVD_CONFIG_SIZE );
+
 		}
 
 	} else {
@@ -164,10 +243,13 @@ s32 DVDUpdateCache( void )
 		DICfg->Config = CONFIG_PATCH_MPVIDEO | CONFIG_AUTO_UPDATE_LIST;
 		DICfg->Gamecount = 0;
 
-		DVDWrite( fd, DICfg, sizeof(u32) * 4 );
+		DVDSeek( fd, 0, 0 );
+		DVDWrite( fd, DICfg, DVD_CONFIG_SIZE );
 
 		GameCount = DVDGetGameCount();
 	}
+
+	//hexdump( DICfg, DICfg->Gamecount * 0x80 + DVD_CONFIG_SIZE );
 
 	dbgprintf("DIP:Installed Games:%d\tGames in cache:%d\n", GameCount, DICfg->Gamecount );
 
@@ -369,7 +451,7 @@ s32 DVDUpdateCache( void )
 	
 	sprintf( TempPath, "/sneek/diconfig.bin" );
 	fd = DVDOpen( TempPath, FA_WRITE|FA_READ );
-	if( fd >= 0)
+	if( fd >= 0 )
 	{
 		free(DICfg);
 
@@ -451,7 +533,7 @@ s32 DVDSelectGame( int SlotID )
 	if( fd >= 0 )
 	{
 		DICfg->SlotID = SlotID;
-		DVDWrite( fd, DICfg, 0x10 );
+		DVDWrite( fd, DICfg, DVD_CONFIG_SIZE );
 		DVDClose( fd );
 	}
 

@@ -115,6 +115,8 @@ enum HookTypes
 
 };
 
+#define DVD_CONFIG_SIZE 0x10
+
 typedef struct
 {
 	u32		SlotID;

@@ -95,7 +95,7 @@ void _main(void)
 	
 	DVDInit();
 
-	DICfg = (DIConfig*)malloca( sizeof(u32) * 4, 32 );
+	DICfg = (DIConfig*)malloca( DVD_CONFIG_SIZE, 32 );
 
 	DVDUpdateCache();
 
