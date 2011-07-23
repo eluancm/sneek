@@ -1650,8 +1650,6 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	dbgprintf("ES:Waiting for network module...");
 
-	u32 counter = 0;
-	r = ES_SUCCESS;
 
 	while( 1 )
 	{
@@ -1663,14 +1661,6 @@ s32 ES_LoadModules( u32 KernelVersion )
 		}
 
 		udelay(500);
-		counter++;
-
-		if( counter == 10000 )
-		{
-			dbgprintf("\nES:Network module taking too long, restarting!\n");
-			r = ES_FATAL;
-			break;
-		}
 	}
 
 	dbgprintf("done!\n");
@@ -1681,7 +1671,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 
 	thread_set_priority( 0, 0x50 );
 
-	return r;
+	return ES_SUCCESS;
 }
 s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView )
 {

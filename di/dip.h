@@ -185,7 +185,7 @@ u8 HardDriveConnected;//holds status of USB harddrive
 
 int DIP_Ioctl( struct ipcmessage * );
 int DIP_Ioctlv( struct ipcmessage * );
-s32 DVDUpdateCache( void );
+s32 DVDUpdateCache( u32 ForceUpdate );
 s32 DVDSelectGame( int SlotID );
 s32 DVDLowReadFiles( u32 Offset, u32 Length, void *ptr );
 s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr );

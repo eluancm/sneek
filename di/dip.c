@@ -66,6 +66,7 @@ u32 GetSystemMenuRegion( void )
 	s32 fd = IOS_Open( Path, DREAD );
 	if( fd < 0 )
 	{
+		free( Path );
 		return Region;
 	} else {
 		u32 size = IOS_Seek( fd, 0, 2 );
@@ -124,6 +125,7 @@ u32 DVDGetInstalledGamesCount( void )
 
 	return GameCount;	
 }
+
 u32 DVDVerifyGames( void )
 {
 	u32 UpdateGameCache = 0;
@@ -173,9 +175,9 @@ u32 DVDVerifyGames( void )
 
 	return UpdateGameCache;		
 }
-s32 DVDUpdateCache( void )
+s32 DVDUpdateCache( u32 ForceUpdate )
 {
-	u32 UpdateCache = 0;
+	u32 UpdateCache = ForceUpdate;
 	u32 GameCount	= 0;
 	u32 CurrentGame = 0;
 	u32 i;
@@ -316,7 +318,7 @@ s32 DVDUpdateCache( void )
 					if( DVDDirIsFile() )
 						continue;
 					
-					dbgprintf("DIP:Adding game[%d]:\"%s\"...\n", CurrentGame, DVDDirGetEntryName()  );
+					dbgprintf("DIP:Adding game[%d]%s:\"%s\"...\n", CurrentGame, DMLite?"(SD)":"", DVDDirGetEntryName()  );
 					
 					sprintf( Path, "/games/%s/sys/boot.bin", DVDDirGetEntryName() );
 					s32 gi = DVDOpen( Path, FA_READ );
@@ -423,12 +425,14 @@ s32 DVDSelectGame( int SlotID )
 		if( fd < 0 )
 		{
 			dbgprintf("DIP:Could not open \"%s\"\n", str );
+			
+			if( DMLite )
+				FSMode = SNEEK;
 
-			ChangeDisc		 = 0;
-			DICover			|= 1;
+			DVDUpdateCache(1);
 
 			free( str );
-			return DI_FATAL;
+			return DVDSelectGame(0);
 		}
 	} else {
 		DMLite = 0;

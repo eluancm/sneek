@@ -26,9 +26,6 @@
 */
 
 /* magic numbers that can affect system performance */
-
-#undef DEBUG
-
 #define	EHCI_TUNE_CERR		3	/* 0-3 qtd retries; 0 == don't stop */
 #define	EHCI_TUNE_RL_HS		4	/* nak throttle; see 4.9 */
 #define	EHCI_TUNE_RL_TT		0
@@ -168,7 +165,7 @@ static int handshake (void __iomem *ptr,
 {
 	u32	result;
 	do {
-		result = ehci_readl(ptr);
+		result = ehci_readl( ptr);
 		if (result == ~(u32)0)		/* card removed */
 			return -ENODEV;
 		result &= mask;
@@ -517,7 +514,7 @@ int ehci_do_urb ( struct ehci_device *dev, struct ehci_urb	*urb)
     ehci->async->hw_next = QH_NEXT(qh->qh_dma);
     ehci_dma_map_bidir(ehci->async,sizeof(struct ehci_qh));
 
-    retval = handshake(&ehci->regs->status,STS_INT,STS_INT,1000*1000);
+    retval = handshake(&ehci->regs->status,STS_INT,STS_INT,300000);
 
     //print_hex_dump_bytes ("qh mem",0,(void*)qh,17*4);
     //retval = poll_transfer_end(1000*1000);
@@ -617,18 +614,17 @@ s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpD
 	urb.transfer_buffer_length = wLength;
 	urb.transfer_buffer = rpData;
 
-	//if (verbose)
-	//	ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
+	if (verbose)
+		ehci_dbg ( "bulk msg: ep:%02X size:%02X addr:%04X", bEndpoint, wLength, rpData);
 
 	ret = ehci_do_urb(dev,&urb);
 
-	//if (verbose)
-	//	ehci_dbg ( "==>%d\n", ret);
+	if (verbose)
+		ehci_dbg ( "==>%d\n", ret);
 
 	return ret;
 }
 
-u32 UsedPort;
 
 int ehci_reset_port(int port)
 {
@@ -644,12 +640,11 @@ int ehci_reset_port(int port)
 		return -ENODEV;// no USB2 device connected
     }
     ehci_dbg ( "port %d has usb2 device connected! reset it...\n", port);
- //   ehci_writel( 0x1803,status_reg);
-    while ((ehci_readl(status_reg) & 0x1801) != 0x1801)
-	{
-		ehci_dbg ( "Waiting for port %d to settle...(%04x)\n", port, ehci_readl(status_reg));
-		ehci_writel( 0x1803,status_reg);
-		msleep(500);
+    ehci_writel( 0x1803,status_reg);
+    while ((ehci_readl(status_reg) & 0x1801) != 0x1801){
+      ehci_dbg ( "Waiting for port %d to settle...(%04x)\n", port, ehci_readl(status_reg));
+      ehci_writel( 0x1803,status_reg);
+      msleep(500);
     }
     ehci_writel( 0x1903,status_reg);
     //ehci_writel( PORT_OWNER|PORT_POWER|PORT_RESET,status_reg);
@@ -657,20 +652,19 @@ int ehci_reset_port(int port)
     ehci_writel( 0x1001,status_reg);
     retval = handshake( status_reg, PORT_RESET, 0, 2000);
 
- //   if (retval != 0)
-	//{
- //       ehci_dbg ( "port %d reset error %d\n", port, retval);
- //       return retval;
- //   }
- //   ehci_dbg ( "port %d reseted status:%04x...\n", port,ehci_readl(status_reg));
- //   msleep(50);
+    if (retval != 0)
+    {
+        ehci_dbg ( "port %d reset error %d\n", port, retval);
+        return retval;
+    }
+    ehci_dbg ( "port %d reseted status:%04x...\n", port,ehci_readl(status_reg));
+    msleep(50);
     // now the device has the default device id
     retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_DEVICE2HOST, USB_REQ_GETDESCRIPTOR, USB_DT_DEVICE<<8, 0, sizeof(dev->desc), &dev->desc );
     
-    if (retval < 0)
-	{
+    while (retval < 0){
         ehci_dbg("unable to get device desc...\n");
-        return retval;
+        retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_DEVICE2HOST, USB_REQ_GETDESCRIPTOR, USB_DT_DEVICE<<8, 0, sizeof(dev->desc), &dev->desc );
     }
 
     retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_HOST2DEVICE, USB_REQ_SETADDRESS,port+1,0,0,0);
@@ -680,8 +674,6 @@ int ehci_reset_port(int port)
         return retval;
     }
     dev->toggles = 0;
-	
-	UsedPort = port;
 
     dev->id = port+1;
     ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
@@ -721,10 +713,7 @@ int ehci_release_ports(void)
           status_reg = &ehci->regs->port_status[i];
           u32 status = ehci_readl(status_reg);
           if (i==2 || !(PORT_CONNECT&status) || PORT_USB11(status))
-		  {
             ehci_writel( PORT_OWNER,status_reg); // release port.
-			//dbgprintf("DI:Releasing port:%d\n", i );
-		  }
         }
         return 0;
 }

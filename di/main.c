@@ -97,7 +97,7 @@ void _main(void)
 
 	DICfg = (DIConfig*)malloca( DVD_CONFIG_SIZE, 32 );
 
-	DVDUpdateCache();
+	DVDUpdateCache(0);
 
 	dbgprintf("DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
 

@@ -71,7 +71,16 @@ int tiny_ehci_init(void)
 	ehci->caps = (void*)0x0D040000;
 	ehci->regs = (void*)(0x0D040000 + HC_LENGTH(ehci_readl(&ehci->caps->hc_capbase)));
 
+	// stops EHCI
+	ehci_writel( 0x00010020 , &ehci->regs->command);
+	do
+	{
+		if(!(ehci_readl( &ehci->regs->command) & 1))
+			break;
+	} while(1);
+	
 	ehci->num_port = 4;
+
 	/* cache this readonly data; minimize chip reads */
 	ehci->hcs_params = ehci_readl( &ehci->caps->hcs_params );
 
