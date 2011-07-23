@@ -37,7 +37,7 @@ ChannelCache* channelCache;
 
 u32 DVDErrorSkip=0;
 u32 DVDErrorRetry=0;
-u32 DVDTimer = 0;
+double DVDTimer = 0;
 u32 DVDTimeStart = 0;
 u32 DVDSectorSize = 0;
 u32 DVDOffset = 0;
@@ -619,13 +619,13 @@ void SMenuDraw( void )
 								switch(DVDType)
 								{
 									case 1:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(GC)", DVDTitle );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.24s(GC)", DVDTitle );
 									break;
 									case 2:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(WII-SL)", DVDTitle );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.20s(WII-SL)", DVDTitle );
 									break;
 									case 3:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.25s(WII-DL)", DVDTitle );
+										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.20s(WII-DL)", DVDTitle );
 									break;
 									default:
 										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "UNKNOWN disc type!");
@@ -682,7 +682,7 @@ void SMenuDraw( void )
 							} break;
 							case 4:
 							{
-								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumping:  %.25s", DVDTitle );
+								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumping:  %.24s", DVDTitle );
 								if( DVDSpeed / 1024 / 1024 )
 									PrintFormat( FB[i], MENU_POS_X, 104+16*2, "Speed:    %u.%uMB/s ", DVDSpeed / 1024 / 1024, (DVDSpeed / 1024) % 1024 );
 								else
@@ -695,7 +695,8 @@ void SMenuDraw( void )
 
 								if( i == 0 )
 								{
-									if( (*(vu32*)0x0d800010 - DVDTimer) / 1897704 > 0 )
+									double Now = *(vu32*)0x0d800010;
+									if( (u32)((Now-DVDTimer) * 128.0f / 243000000.0f) )	//Update values once per second
 									{	
 										DVDSpeed	= ( DVDOffset - DVDOldOffset ) * READSIZE;
 										DVDTimeLeft = ( DVDSectorSize - DVDOffset ) / ( DVDSpeed / READSIZE );

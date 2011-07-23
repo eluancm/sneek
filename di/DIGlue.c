@@ -333,7 +333,6 @@ u32 DVDRead( s32 handle, void *ptr, u32 len )
 u32 DVDWrite( s32 handle, void *ptr, u32 len )
 {
 	u32 wrote;
-
 	if( FSMode == SNEEK )
 	{
 		if( handle >= MAX_HANDLES )
