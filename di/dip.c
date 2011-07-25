@@ -117,6 +117,7 @@ u32 DVDGetInstalledGamesCount( void )
 				dbgprintf("DIP:Failed to open:\"%s\":%d\n", Path, fd );
 			} else {
 				GameCount++;
+				DVDClose(fd);
 			}
 		}
 	}
