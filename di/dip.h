@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "alloc.h"
 #include "vsprintf.h"
 #include "DIGlue.h"
+#include "utils.h"
 
 #define DI_SUCCESS	1
 #define DI_ERROR	2

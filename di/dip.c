@@ -1121,7 +1121,38 @@ int DIP_Ioctl( struct ipcmessage *msg )
 		{
 			//hexdump( bufin, lenin );
 			memset32( bufout, 0, lenout );
+
+			static u32 isASEnabled = 0;
 			
+			if( isASEnabled == 0 )
+			{
+				write32( 0x0D806008, 0xA8000040 );
+				write32( 0x0D80600C, 0 );
+				write32( 0x0D806010, 0x20 );
+				write32( 0x0D806018, 0x20 );
+	
+				write32( 0x0D806014, (u32)0 );
+
+				write32( 0x0D806000, 0x3A );
+	
+				write32( 0x0D80601C, 3 );		// send cmd
+				while( (read32( 0x0D806000 ) & 0x14) == 0 );
+
+				dbgprintf("DIP:RealLowReadDiscID(%02X)\n", read32( 0x0D806000 ) & 0x54 );
+
+				write32( 0x0D806004, read32( 0x0D806004 ) );
+
+				write32( 0x0D806008, 0xE4000000 | 0x10000 | 0x0A );
+	
+				write32( 0x0D80601C, 1 );
+
+				while( read32(0x0D80601C) & 1 );
+			
+				dbgprintf("DIP:RealEnableAudioStreaming(%02X)\n", read32( 0x0D806000 ) & 0x54 );
+
+				isASEnabled = 1;
+			}
+
 			ret = DI_SUCCESS;
 			//dbgprintf("DIP:DVDLowConfigAudioBuffer():%d\n", ret );
 		} break;
