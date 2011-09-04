@@ -729,8 +729,10 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				if( ret != Size )
 				{
 					dbgprintf("DIP:Could not read:\"%s\":%d\n", Path, ret );
+					IOS_Close( fd );
 					return DI_SUCCESS;
 				}
+				IOS_Close( fd );
 
 				*(vu32*)((*(vu32*)0x1808)&0x7FFFFFFF) = !!(DICfg->Config & CONFIG_DEBUG_GAME_WAIT);
 
@@ -745,6 +747,19 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 				*(vu32*)(DebuggerHook) = newval;
 
 				dbgprintf("DIP:Hook@%08X(%08X)\n", DebuggerHook | 0x80000000, *(vu32*)(DebuggerHook) );
+
+				//Begin section to add codes file
+				sprintf( Path, "%scodes.gct", GamePath );
+				s32 fc = DVDOpen( Path, DREAD );
+				if ( fc < 0)
+				{
+					return DI_SUCCESS;
+				}
+
+				DVDRead( fc, (void*)0x27D0, DVDGetSize( fc ) );
+				DVDClose( fc );
+				*(vu8*)0x1807 = 0x01;
+				//End section to add codes file
 
 			}
 
