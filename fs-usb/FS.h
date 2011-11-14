@@ -36,6 +36,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define FL_FD			0x97		// 151
 #define SD_FD			0x96		// 153
 
+enum FSError
+{
+        FS_SUCCESS              =       0,
+        FS_INVALID              =       -4,
+        FS_NO_DEVICE    =       -6,
+        FS_FATAL                =       -101,
+        FS_NO_ACCESS    =       -102,
+        FS_FILE_EXIST   =       -105,
+        FS_NO_ENTRY             =       -106,
+        FS_NO_HANDLE    =       -109,
+};
+
 // error codes
 #define FS_SUCCESS		0			// Success
 #define FS_EACCES		-1			// Permission denied 
