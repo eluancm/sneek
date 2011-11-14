@@ -75,7 +75,7 @@ int _main( int argc, char *argv[] )
 	s32 ret=0;
 	struct IPCMessage *CMessage=NULL;
 
-	thread_set_priority( 0, 0x58 );
+	thread_set_priority( 0, 0x0B );
 
 #ifdef DEBUG
 	dbgprintf("$IOSVersion: FFS-SD: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );

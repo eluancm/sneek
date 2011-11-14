@@ -590,10 +590,31 @@ s32 FS_Open( char *Path, u8 Mode )
 		if( i == MAX_FILE )
 			return FS_NO_HANDLE;
 
-		if( f_open( &fd_stack[i], Path, Mode ) != FR_OK )
+		switch( f_open( &fd_stack[i], Path, Mode ) )
 		{
-			memset32( &fd_stack[i], 0, sizeof(FIL) );
-			return FS_NO_ENTRY;
+			case FR_OK:
+			{
+				;
+			} break;
+			case FR_NO_FILE:
+			{
+				if( Mode & FA_WRITE )
+				{
+					if( f_open( &fd_stack[i], Path, Mode | FA_CREATE_ALWAYS ) != FR_OK )
+					{
+						memset32( &fd_stack[i], 0, sizeof(FIL) );
+						return FS_NO_ENTRY;						
+					}
+				} else {
+					memset32( &fd_stack[i], 0, sizeof(FIL) );
+					return FS_NO_ENTRY;
+				}
+			} break;
+			default:
+			{
+				memset32( &fd_stack[i], 0, sizeof(FIL) );
+				return FS_NO_ENTRY;
+			} break;
 		}
 
 		return i;

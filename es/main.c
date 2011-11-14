@@ -1056,7 +1056,7 @@ int _main( int argc, char *argv[] )
 
 	thread_set_priority( 0, 0x79 );
 	thread_set_priority( 0, 0x50 );
-	thread_set_priority( 0, 0x79 );
+	thread_set_priority( 0, 0x0A );
 
 #ifdef DEBUG
 	dbgprintf("$IOSVersion: ES: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );

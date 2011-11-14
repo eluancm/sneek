@@ -699,22 +699,22 @@ s32 FS_Open( char *Path, u8 Mode )
 	// Is it a device?
 	if( strncmp( Path, "/dev/", 5 ) == 0 )
 	{
-		if( strncmp( Path+5, "fs", 2) == 0)
+		if( strncmp( Path+5, "fs", 2 ) == 0)
 		{
 			return FS_FD;
-		}/* else if( strncmp( Path+5, "flash", 5 ) == 0 ) {
-			return FS_ENOENT;		
-		} else if( strncmp( Path+5, "boot2", 5 ) == 0) {
+		}/* else if( strncmp( Path+5, "flash", 5) == 0) {
+			return FL_FD;
+		} else if( strncmp(CMessage->open.device+5, "boot2", 5) == 0) {
 			return B2_FD;
 		}*/ else {
 			// Not a devicepath of ours, dispatch it to the syscall again..
-			return FS_ENOENT;
+			return FS_NO_DEVICE;
 		}
 	} else { // Or is it a filepath ?
 
 		//if( (strstr( Path, "data/setting.txt") != NULL) && (Mode&2) )
 		//{
-		//	return FS_EACCESS;
+		//	return FS_NO_ACCESS;
 		//}
 
 		u32  i = 0;
@@ -726,18 +726,39 @@ s32 FS_Open( char *Path, u8 Mode )
 		}
 
 		if( i == MAX_FILE )
-			return FS_ENFILE;
+			return FS_NO_HANDLE;
 
-		if( f_open( &fd_stack[i], Path, Mode ) != FR_OK )
+		switch( f_open( &fd_stack[i], Path, Mode ) )
 		{
-			memset32( &fd_stack[i], 0, sizeof(FIL) );
-			return FS_ENOENT2;
+			case FR_OK:
+			{
+				;
+			} break;
+			case FR_NO_FILE:
+			{
+				if( Mode & FA_WRITE )
+				{
+					if( f_open( &fd_stack[i], Path, Mode | FA_CREATE_ALWAYS ) != FR_OK )
+					{
+						memset32( &fd_stack[i], 0, sizeof(FIL) );
+						return FS_NO_ENTRY;						
+					}
+				} else {
+					memset32( &fd_stack[i], 0, sizeof(FIL) );
+					return FS_NO_ENTRY;
+				}
+			} break;
+			default:
+			{
+				memset32( &fd_stack[i], 0, sizeof(FIL) );
+				return FS_NO_ENTRY;
+			} break;
 		}
 
 		return i;
 	}
 
-	return FS_EFATAL;
+	return FS_FATAL;
 }
 s32 FS_Write( s32 FileHandle, u8 *Data, u32 Length )
 {
