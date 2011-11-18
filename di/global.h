@@ -1,22 +1,23 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+enum Debuglevel
+{
+	DEBUG_NONE = 0,
+	DEBUG_NOTICE,
+	DEBUG_ERROR,
+	DEBUG_WARNING,
+	DEBUG_INFO,
+	DEBUG_DEBUG,
+	DEBUG_ALL,
+};
+
 #define DEBUG
 #define FILEMODE
 
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)
 
-#ifdef DEBUG
-int dbgprintf( const char *fmt, ...);
-#else
-#define dbgprintf(...) do{ } while(0);
-#endif
-#define debug_printf dbgprintf
-
-void fatal(const char *format, ...);
-
-void udelay(int us);
 
 typedef unsigned char u8;
 typedef unsigned short u16;
@@ -52,5 +53,16 @@ typedef u32 u_int32_t;
 	((sizeof(type)*(cnt))%(alignment))) : 0))]; \
 	type *name = (type*)(((u32)(_al__##name)) + ((alignment) - (( \
 	(u32)(_al__##name))&((alignment)-1))))
+
+
+int dbgprintf( u32 dbglevel, const char *fmt, ...);
+
+#define debug_printf dbgprintf
+
+void fatal(const char *format, ...);
+
+void udelay(int us);
+void *memset32( void *dst, int x, size_t len );
+
 
 #endif

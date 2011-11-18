@@ -8,29 +8,19 @@ __stack_size = 0x8000;
 MEMORY {
 
 	code		: ORIGIN = 0x20200000,	LENGTH = 0x7F00
-	ram			: ORIGIN = 0x20209000,	LENGTH = 0x2BDC4
-	stk			: ORIGIN = 0x2022CDC4,	LENGTH = 0x8000
-	table		: ORIGIN = 0x100,		LENGTH = 16K
+	ram			: ORIGIN = 0x20208000,	LENGTH = 0x140
+	stk			: ORIGIN = 0x20209000,	LENGTH = 0x2BDC4
 }
 
 PHDRS
 {
-	phdrs PT_PHDR PHDRS AT ( 0x0 ) FLAGS ( 0 );
-
-	table PT_NOTE FLAGS ( 0 );
-	table PT_LOAD PHDRS AT ( 0x0 ) FLAGS ( 0 );
-
 	code PT_LOAD AT ( 0x139B0000 ) ;
-	ram PT_LOAD AT ( 0x139B9000 ) ;
-	stk PT_LOAD AT ( 0x139DCDC4 ) ;
+	ram  PT_LOAD AT ( 0x139B8000 ) ;
+	stk  PT_LOAD AT ( 0x139B9000 ) ;
 }
 
 SECTIONS
 {
-	.ios_info_table :
-	{
-		KEEP(*(.ios_info_table))
-	} > table :table
 
 	.init :
 	{
@@ -57,7 +47,7 @@ SECTIONS
 		*(.rodata.*)
 		*(.gnu.linkonce.r*)
 		. = ALIGN(4);
-	} >code :code
+	} >stk :stk
 
 	.data :
 	{
@@ -65,7 +55,7 @@ SECTIONS
 		*(.data.*)
 		*(.gnu.linkonce.d*)
 		. = ALIGN(4);
-	} >code :code
+	} >stk :stk
 
 	.bss :
 	{
@@ -76,7 +66,7 @@ SECTIONS
 		*(COMMON)
 		. = ALIGN(4);
 		__bss_end = . ;
-	} >ram :ram
+	} >stk :stk
 
 	.stack :
 	{

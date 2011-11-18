@@ -29,78 +29,7 @@ void DVDInit( void )
 	int i=0;
 	s32 fres = FR_DISK_ERR;
 	int MountFail=0;
-
-	// Probe for UNEEK
-	if( ISFS_IsUSB() == FS_ENOENT2 )
-	{
-		dbgprintf("DIP:Found FS-SD\n");
-		FSMode = SNEEK;
-		
-		HardDriveConnected = 0;
-
-		while(!HardDriveConnected)
-		{
-			while(1)
-			{
-				fres = f_mount(0, &fatfs );
-				dbgprintf("DIP:f_mount():%d\n", fres );
-				if( fres == FR_OK )
-					break;
-				else
-					MountFail++;
-
-				if( MountFail == 10 )
-				{
-					dbgprintf("DIP:too much fail! looping now!\n");
-					while(1);
-				}
-
-				udelay(500000);
-			}
-
-			//try to open a file, it doesn't have to exist, just testing if FS works
-			FIL f;
-			fres = f_open( &f, "/randmb.in", FA_READ|FA_OPEN_EXISTING );
-			switch(fres)
-			{
-				case FR_OK:
-					f_close( &f );
-				case FR_NO_PATH:
-				case FR_NO_FILE:
-				{
-					HardDriveConnected = 1;
-					fres = FR_OK;
-				} break;
-				default:
-				case FR_DISK_ERR:
-				{
-					dbgprintf("DIP: Disk error\n", fres );
-					f_mount(0,0);
-					udelay(500000);
-				} break;
-			}
-		}
-
-		if( fres != FR_OK )
-		{
-			DIP_Fatal("main()", __LINE__, __FILE__, 0, "Could not find any USB device!");
-			ThreadCancel( 0, 0x77 );
-		}
-
-		FHandle = (FIL*)malloc( sizeof(FIL) * MAX_HANDLES );
-		
-		for( i=0; i < MAX_HANDLES; i++ )
-			FHandle[i].fs = (FATFS*)NULL;
-
-	} else {
-		dbgprintf("DIP:Found FS-USB\n");
-		FSMode = UNEEK;
-	}
-
-	FSHandle = IOS_Open("/dev/fs", 0 );
-	if( FSHandle < 0 )
-		dbgprintf("DIP:Error could not open /dev/fs! ret:%d\n", FSHandle );
-
+	
 	Nhandle = (s32*)malloc( sizeof(s32) * MAX_HANDLES );
 	EntryCount = (u32*)malloc( sizeof(s32) );
 		
@@ -108,6 +37,81 @@ void DVDInit( void )
 		Nhandle[i] = 0xdeadbeef;
 
 	Entries = (char*)NULL;
+
+
+	// Probe for UNEEK
+	switch( ISFS_IsUSB() )
+	{
+		default:
+		case FS_ENOENT2:
+		{
+			dbgprintf( DEBUG_INFO, "DIP:Found FS-SD\n");
+			FSMode = SNEEK;
+
+			while(!HardDriveConnected)
+			{
+				while(1)
+				{
+					fres = f_mount(0, &fatfs );
+					dbgprintf( DEBUG_DEBUG, "DIP:f_mount():%d\n", fres );
+					if( fres == FR_OK )
+						break;
+					else
+						MountFail++;
+
+					if( MountFail == 10 )
+					{
+						dbgprintf( DEBUG_ERROR, "DIP:too much fail! looping now!\n");
+						while(1);
+					}
+
+					udelay(500000);
+				}
+
+				//try to open a file, it doesn't have to exist, just testing if FS works
+				FIL f;
+				fres = f_open( &f, "/randmb.in", FA_READ|FA_OPEN_EXISTING );
+				switch(fres)
+				{
+					case FR_OK:
+						f_close( &f );
+					case FR_NO_PATH:
+					case FR_NO_FILE:
+					{
+						HardDriveConnected = 1;
+						fres = FR_OK;
+					} break;
+					default:
+					case FR_DISK_ERR:
+					{
+						dbgprintf( DEBUG_ERROR, "DIP: Disk error\n", fres );
+						f_mount(0,0);
+						udelay(500000);
+					} break;
+				}
+			}
+
+			if( fres != FR_OK )
+			{
+				DIP_Fatal("main()", __LINE__, __FILE__, 0, "Could not find any USB device!");
+				ThreadCancel( 0, 0x77 );
+			}
+
+			FHandle = (FIL*)malloc( sizeof(FIL) * MAX_HANDLES );
+		
+			for( i=0; i < MAX_HANDLES; i++ )
+				FHandle[i].fs = (FATFS*)NULL;
+		} break;
+		case -1017:
+		{
+			dbgprintf( DEBUG_INFO, "DIP:Found FS-USB\n");
+			FSMode = UNEEK;
+		} break;
+	}
+
+	FSHandle = IOS_Open("/dev/fs", 0 );
+	if( FSHandle < 0 )
+		dbgprintf( DEBUG_ERROR, "DIP:Error could not open /dev/fs! ret:%d\n", FSHandle );
 
 	return;
 }
@@ -130,7 +134,7 @@ s32 DVDOpen( char *Filename, u32 Mode )
 
 		if( handle == 0xdeadbeef )
 		{
-			dbgprintf("DIP:Couldn't find a free handle!\n");			
+			dbgprintf( DEBUG_ERROR, "DIP:Couldn't find a free handle!\n");			
 			return FR_DISK_ERR;
 		}
 		
@@ -169,7 +173,7 @@ s32 DVDOpen( char *Filename, u32 Mode )
 
 		if( handle == 0xdeadbeef )
 		{
-			dbgprintf("DIP:Couldn't find a free handle!\n");
+			dbgprintf( DEBUG_ERROR, "DIP:Couldn't find a free handle!\n");
 			return DVD_FATAL;
 		}
 				
@@ -221,7 +225,7 @@ s32 DVDOpenDir( char *Path )
 		s32 ret = ISFS_ReadDir( name, (char*)NULL, EntryCount );
 		if( ret < 0 )
 		{
-			dbgprintf("DIP:ISFS_ReadDir(\"%s\"):%d\n", name, ret );
+			dbgprintf( DEBUG_ERROR, "DIP:ISFS_ReadDir(\"%s\"):%d\n", name, ret );
 			hfree(name);
 			return ret;
 		}
@@ -234,7 +238,7 @@ s32 DVDOpenDir( char *Path )
 		ret = ISFS_ReadDir( name, Entries, EntryCount );
 		if( ret < 0 )
 		{
-			dbgprintf("DIP:ISFS_ReadDir(\"%s\"):%d\n", name, ret );
+			dbgprintf( DEBUG_ERROR, "DIP:ISFS_ReadDir(\"%s\"):%d\n", name, ret );
 		}
 
 		CEntry = Entries;

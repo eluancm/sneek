@@ -316,23 +316,29 @@ void hexdump(void *d, int len)
   int i, off;
   data = (u8*)d;
   for (off=0; off<len; off += 16) {
-    dbgprintf("%08x  ",off);
+    dbgprintf( DEBUG_ALL, "%08x  ",off);
     for(i=0; i<16; i++)
-      if((i+off)>=len) dbgprintf("   ");
-      else dbgprintf("%02x ",data[off+i]);
+      if((i+off)>=len) dbgprintf( DEBUG_ALL, "   ");
+      else dbgprintf( DEBUG_ALL, "%02x ",data[off+i]);
 
-    dbgprintf(" ");
+    dbgprintf( DEBUG_ALL, " ");
     for(i=0; i<16; i++)
-      if((i+off)>=len) dbgprintf(" ");
-      else dbgprintf("%c",ascii(data[off+i]));
-    dbgprintf("\n");
+      if((i+off)>=len) dbgprintf( DEBUG_ALL, " ");
+      else dbgprintf( DEBUG_ALL, "%c",ascii(data[off+i]));
+    dbgprintf( DEBUG_ALL, "\n");
   }
 }
 
-
+extern u32 DebugLevel;
 static char buffer[1024] ALIGNED(32);
-int dbgprintf( const char *fmt, ...)
+int dbgprintf( u32 dbglevel, const char *fmt, ...)
 {
+	if( DebugLevel != DEBUG_ALL )
+	{
+		if( DebugLevel < dbglevel )
+			return 0;
+	}
+
 	if ( (*(vu32*)(HW_EXICTRL) & 1) == 0)
 		return 0;
 

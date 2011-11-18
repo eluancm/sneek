@@ -11,7 +11,7 @@ int tiny_ehci_init(void);
 
 #define readl(a) (*((volatile u32*)(a)))
 #define writel(v,a) do{*((volatile u32*)(a))=(v);}while(0)
-#define ehci_dbg(a...) debug_printf(a)
+#define ehci_dbg(a...) debug_printf( DEBUG_DEBUG, a)
 #define printk(a...) debug_printf(a)
 #define get_timer()  (*(((volatile u32*)0x0D800010)))
 

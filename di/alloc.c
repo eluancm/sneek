@@ -32,7 +32,7 @@ void *halloc( u32 size )
 	void *ptr = HeapAlloc( HeapID, size );
 	if( ptr == NULL )
 	{
-		dbgprintf("Halloc: Size:%08X FAILED\n", size );
+		//dbgprintf( DEBUG_ERROR, "Halloc: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;
@@ -42,7 +42,7 @@ void *halloca( u32 size, u32 align )
 	void *ptr = HeapAllocAligned( HeapID, size, align );
 	if( ptr == NULL )
 	{
-		dbgprintf("Halloca: Size:%08X FAILED\n", size );
+		//dbgprintf( DEBUG_ERROR, "Halloca: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;
@@ -63,7 +63,7 @@ void *malloc( u32 size )
 	void *ptr = HeapAlloc( 0, size );
 	if( ptr == NULL )
 	{
-		dbgprintf("Malloc: Size:%08X FAILED\n", size );
+		//dbgprintf( DEBUG_ERROR, "Malloc: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;
@@ -73,7 +73,7 @@ void *malloca( u32 size, u32 align )
 	void *ptr = HeapAllocAligned( 0, size, align );
 	if( ptr == NULL )
 	{
-		dbgprintf("Malloca: Size:%08X FAILED\n", size );
+		//dbgprintf( DEBUG_ERROR, "Malloca: Size:%08X FAILED\n", size );
 		while(1);
 	}
 	return ptr;

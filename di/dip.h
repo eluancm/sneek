@@ -78,6 +78,7 @@ enum opcodes
 	DVD_READ				= 0x41,
 	DVD_WRITE				= 0x42,
 	DVD_CLOSE				= 0x43,
+	DVD_CREATEDIR			= 0x44,
 
 };
 
@@ -162,6 +163,18 @@ typedef struct
 	u32 Size;
 	s32 File;
 } FileCache;
+
+
+typedef struct
+{
+	u32 Length;
+	u32 Loads;
+	u32 Stores;
+	u32 FCalls;
+	u32 Branch;
+	u32 Moves;
+	char *Name;
+} FuncPattern;
 
 #define FILECACHE_MAX	5
 

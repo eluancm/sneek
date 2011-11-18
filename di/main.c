@@ -32,6 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 extern DIConfig *DICfg;;
 extern char *RegionStr;
+u32 DebugLevel =  DEBUG_DEBUG;
 
 void udelay(int us)
 {
@@ -61,7 +62,7 @@ s32 RegisterDevices( void *QueueSpace )
 
 	s32 ret = IOS_Register("/dev/di", QueueID );
 #ifdef DEBUG
-	dbgprintf("DIP:DeviceRegister(\"/dev/di\"):%d\n", ret );
+	dbgprintf( DEBUG_INFO, "DIP:DeviceRegister(\"/dev/di\"):%d\n", ret );
 #endif
 	if( ret < 0 )
 		return ret;
@@ -77,12 +78,14 @@ void _main(void)
 	ThreadSetPriority( 0, 0xF4 );
 
 #ifdef DEBUG
-	dbgprintf("$IOSVersion: DIP: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
+	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
 #else
-	dbgprintf("$IOSVersion: DIP: %s %s 64M Release$\n", __DATE__, __TIME__ );
+	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP: %s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
 	
 	HeapInit();
+	
+	HardDriveConnected = 0;
 
 	void *QueueSpace = halloc( 0x20 );
 	int QueueID = RegisterDevices( QueueSpace );
@@ -99,9 +102,9 @@ void _main(void)
 
 	DVDUpdateCache(0);
 
-	dbgprintf("DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
+	dbgprintf( DEBUG_INFO, "DIP:DI-Config: Region:%d Slot:%02d Games:%02d\n", DICfg->Region, DICfg->SlotID, DICfg->Gamecount );
 
-	s32 fres = DVDSelectGame( DICfg->SlotID );
+	/*s32 fres =*/ DVDSelectGame( DICfg->SlotID );
 
 	//dbgprintf("DIP:DVDSelectGame(%d):%d\n", DICfg->SlotID, fres );
 
