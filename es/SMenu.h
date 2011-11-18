@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "bmp.h"
 #include "NAND.h"
 #include "ES.h"
+#include "Dump.h"
 
 #define MAX_HITS			64
 #define MAX_FB				3
@@ -68,6 +69,8 @@ void SCheatReadPad( void );
 void LoadAndRebuildChannelCache();
 
 s32 LaunchTitle(u64 TitleID);
+
+extern u32 DVDType, DVDStatus;
 
 typedef struct{
 	u64 titleID;

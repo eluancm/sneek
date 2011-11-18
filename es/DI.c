@@ -160,17 +160,65 @@ s32 DVDOpen( char *FileName )
 	s32 fd = IOS_Open("/dev/di", 0 );
 	if( fd < 0 )
 		return fd;
-
+		
 	vector *v = (vector*)malloca( sizeof(vector), 32 );
+	char *lFileName = (char*)malloca( strlen(FileName), 32 );
 
-	v[0].data = (u32)FileName;
-	v[0].len = strlen(FileName);
+	strcpy( lFileName, FileName );
+
+	v[0].data = (u32)lFileName;
+	v[0].len = strlen(lFileName);
 
 	s32 r = IOS_Ioctlv( fd, DVD_OPEN, 1, 0, v );
-
+	
+	free( lFileName );
 	free( v );
 
 	IOS_Close( fd );
+
+	return r;
+}
+s32 DVDCreateDir( char *FileName )
+{
+	s32 fd = IOS_Open("/dev/di", 0 );
+	if( fd < 0 )
+		return fd;
+		
+	vector *v = (vector*)malloca( sizeof(vector), 32 );
+	char *lFileName = (char*)malloca( strlen(FileName), 32 );
+
+	strcpy( lFileName, FileName );
+
+	v[0].data = (u32)lFileName;
+	v[0].len = strlen(lFileName);
+
+	s32 r = IOS_Ioctlv( fd, DVD_CREATEDIR, 1, 0, v );
+	
+	free( lFileName );
+	free( v );
+
+	IOS_Close( fd );
+
+	return r;
+}
+s32 DVDRead( s32 fd, void *ptr, u32 len )
+{
+	s32 DVDHandle = IOS_Open("/dev/di", 0 );
+	if( DVDHandle < 0 )
+		return DVDHandle;
+
+	vector *v = (vector*)malloca( sizeof(vector)*2, 32 );
+	
+	v[0].data = fd;
+	v[0].len = sizeof(u32);
+	v[1].data = (u32)ptr;
+	v[1].len = len;
+
+	s32 r = IOS_Ioctlv( DVDHandle, DVD_READ, 2, 0, v );
+
+	free( v );
+
+	IOS_Close( DVDHandle );
 
 	return r;
 }

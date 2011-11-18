@@ -31,6 +31,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ES.h"
 
 u8 *NANDLoadFile( char * path, u32 *Size );
-s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size );
+s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size );
 
 #endif

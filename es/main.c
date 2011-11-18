@@ -133,23 +133,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_SIGN:
 		{
 			ret = ES_Sign( &TitleID, (u8*)(v[0].data), v[0].len, (u8*)(v[1].data), (u8*)(v[2].data) );
-			dbgprintf("ES:Sign():%d\n", ret );		
-		} break;
-		case IOCTL_ES_GETDEVICECERT:
-		{
-			_sprintf( path, "/sys/device.cert" );
-
-			u8 *data = NANDLoadFile( path, size );
-			if( data == NULL )
-			{
-				GetDeviceCert( (void*)(v[0].data) );
-			} else {
-				memcpy( (u8*)(v[0].data), data, 0x180 );
-				free( data );
-			}
-
-			ret = ES_SUCCESS;
-			dbgprintf("ES:GetDeviceCert():%d\n", ret );			
+			dbgprintf("ES:Sign():%d\n", ret );
 		} break;
 		case IOCTL_ES_DIGETSTOREDTMD:
 		{
@@ -283,6 +267,22 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			ret = ES_SUCCESS;
 			dbgprintf("ES:ListTmdContentsOnCard():%d\n", ret );
 		} break;
+		case IOCTL_ES_GETDEVICECERT:
+		{
+			_sprintf( path, "/sys/device.cert" );
+
+			u8 *data = NANDLoadFile( path, size );
+			if( data == NULL )
+			{
+				GetDeviceCert( (void*)(v[0].data) );
+			} else {
+				memcpy( (u8*)(v[0].data), data, 0x180 );
+				free( data );
+			}
+
+			ret = ES_SUCCESS;
+			dbgprintf("ES:GetDeviceCert():%d\n", ret );			
+		} break;
 		case IOCTL_ES_GETDEVICEID:
 		{
 			_sprintf( path, "/sys/device.cert" );
@@ -294,7 +294,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			} else {
 			
 				u32 value = 0;
-
+				
 				//Convert from string to value
 				for( i=0; i < 8; ++i )
 				{
@@ -776,25 +776,25 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		{
 			ret = IOS_Read( *(u32*)(v[0].data), (u8*)(v[1].data), v[1].len );
 
-			int i;
-			for( i=0; i < v[1].len; i+=4 )
-			{
-				if( memcmp( (void*)((u8*)(v[1].data)+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
-				{
-					dbgprintf("ES:[patcher] Found __fwrite pattern:%08X\n",  (u32)((u8*)(v[1].data)+i) | 0x80000000 );
-					memcpy( (void*)((u8*)(v[1].data)+i), patch_fwrite, sizeof(patch_fwrite) );
-				}
-				//if( *(vu32*)((u8*)(v[1].data)+i) == 0x3C608000 )
-				//{
-				//	if( ((*(vu32*)((u8*)(v[1].data)+i+4) & 0xFC1FFFFF ) == 0x800300CC) && ((*(vu32*)((u8*)(v[1].data)+i+8) >> 24) == 0x54 ) )
-				//	{
-				//		//dbgprintf("ES:[patcher] Found VI pattern:%08X\n", (u32)((u8*)(v[1].data)+i) | 0x80000000 );
-				//		*(vu32*)0xCC = 1;
-				//		dbgprintf("ES:VideoMode:%d\n", *(vu32*)0xCC );
-				//		//*(vu32*)((u8*)(v[1].data)+i+4) = 0x5400F0BE | ((*(vu32*)((u8*)(v[1].data)+i+4) & 0x3E00000) >> 5 );
-				//	}
-				//}
-			}
+			//int i;
+			//for( i=0; i < v[1].len; i+=4 )
+			//{
+			//	if( memcmp( (void*)((u8*)(v[1].data)+i), sig_fwrite, sizeof(sig_fwrite) ) == 0 )
+			//	{
+			//		dbgprintf("ES:[patcher] Found __fwrite pattern:%08X\n",  (u32)((u8*)(v[1].data)+i) | 0x80000000 );
+			//		memcpy( (void*)((u8*)(v[1].data)+i), patch_fwrite, sizeof(patch_fwrite) );
+			//	}
+			//	//if( *(vu32*)((u8*)(v[1].data)+i) == 0x3C608000 )
+			//	//{
+			//	//	if( ((*(vu32*)((u8*)(v[1].data)+i+4) & 0xFC1FFFFF ) == 0x800300CC) && ((*(vu32*)((u8*)(v[1].data)+i+8) >> 24) == 0x54 ) )
+			//	//	{
+			//	//		//dbgprintf("ES:[patcher] Found VI pattern:%08X\n", (u32)((u8*)(v[1].data)+i) | 0x80000000 );
+			//	//		*(vu32*)0xCC = 1;
+			//	//		dbgprintf("ES:VideoMode:%d\n", *(vu32*)0xCC );
+			//	//		*(vu32*)((u8*)(v[1].data)+i+4) = 0x5400F0BE | ((*(vu32*)((u8*)(v[1].data)+i+4) & 0x3E00000) >> 5 );
+			//	//	}
+			//	//}
+			//}
 
 			dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(v[0].data), v[1].data, v[1].len, ret );
 		} break;
@@ -1053,10 +1053,10 @@ int _main( int argc, char *argv[] )
 	struct ipcmessage *message=NULL;
 	u8 MessageHeap[0x10];
 	u32 MessageQueue=0xFFFFFFFF;
-
-	thread_set_priority( 0, 0x79 );
+	
+	thread_set_priority( 0, 0x79 );	// do not remove this, this waits for FS to be ready!
 	thread_set_priority( 0, 0x50 );
-	thread_set_priority( 0, 0x0A );
+	thread_set_priority( 0, 0x79 );
 
 #ifdef DEBUG
 	dbgprintf("$IOSVersion: ES: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
@@ -1065,11 +1065,9 @@ int _main( int argc, char *argv[] )
 #endif
 
 	KernelVersion = *(vu32*)0x00003140;
-	dbgprintf("ES:KernelVersion:%d\n", KernelVersion );
+	dbgprintf("ES:KernelVersion:%08X, %d\n", KernelVersion, (KernelVersion<<8)>>0x18 );
 
-	dbgprintf("ES:Heap Init...");
 	MessageQueue = mqueue_create( MessageHeap, 1 );
-	dbgprintf("ok\n");
 
 	device_register( "/dev/es", MessageQueue );
 
@@ -1081,7 +1079,6 @@ int _main( int argc, char *argv[] )
 	ret = SetUID( pid, 0 );
 	dbgprintf("ES:SetUID():%d\n", ret );
 	ret = _cc_ahbMemFlush( pid, 0 );
-	dbgprintf("ES:_cc_ahbMemFlush():%d\n", ret );
 
 	u32 Flag1;
 	u16	Flag2;
@@ -1144,11 +1141,13 @@ int _main( int argc, char *argv[] )
 
 		MenuType = 1;
 		
-	}/* else if ( (TitleID >> 32) ==  0x00010000LL ) {
+	}/* else if ( (TitleID >> 32) ==  0x00010001LL ) {
 		MenuType = 2;
 	}*/
 
 	LoadAndRebuildChannelCache();
+
+	thread_set_priority( 0, 0x0A );
 
 	dbgprintf("ES:looping!\n");
 		
@@ -1203,7 +1202,7 @@ int _main( int argc, char *argv[] )
 
 		//dbgprintf("ES:Command:%02X\n", message->command );
 		//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d ioctlv:\"%X\"\n", queueid, ret, message->command, message->ioctlv.command );
-
+		
 		switch( message->command )
 		{
 			case IOS_OPEN:

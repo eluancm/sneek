@@ -20,7 +20,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include "font.h"
-u32* fontfx=NULL;
+#include "DI.h"
+
+u32 *fontfx = (u32*)NULL;
 
 void PrintChar( u32 FrameBuffer, int xx, int yy, char c )
 {
@@ -29,7 +31,7 @@ void PrintChar( u32 FrameBuffer, int xx, int yy, char c )
 	if( fb == NULL )
 		return;
 
-	if( c >= 0x7F || c < 0x20)
+	if( c >= 0x7F || c < 0x20 )
 		c = ' ';
 
 	int x,y;
@@ -72,13 +74,29 @@ void PrintFormat( u32 FrameBuffer, int x, int y, const char *str, ... )
 }
 s32 LoadFont( char *str )
 {
-	u32 *size = malloca( sizeof(u32), 32 );
+	u32 *size = (u32*)malloca( sizeof(u32), 32 );
+
 	fontfx = (u32*)NANDLoadFile( str, size );
 	if( fontfx == NULL )
 	{
 		dbgprintf("ES:Couldn't open:\"%s\":%d\n", str, *size );
 		free( size );
-		return 0;
+		//Try USB device
+
+		s32 fd = DVDOpen( str );
+		if( fd < 0 )
+		{
+			free(size);
+			return 0;
+
+		} else {
+
+			fontfx = (u32*)heap_alloc_aligned( 0, 0xBE00, 32 );
+			DVDRead( fd, fontfx, 0xBE00 );
+			DVDClose( fd );
+			
+			return 1;
+		}
 	}
 
 	free( size );

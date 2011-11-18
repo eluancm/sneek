@@ -72,12 +72,12 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 
 	return data;
 }
-s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
+s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
 {
 	//Create file in tmp folder and move it to destination
 	char *path = (char*)heap_alloc_aligned( 0, 0x40, 32 );
 
-	_sprintf( path, "/tmp/file.tmp" );
+	_sprintf( path, "/tmp/%s", FileName );
 
 	s32 r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( r == FS_EEXIST2 )
@@ -86,12 +86,14 @@ s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
 		r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 		if( r < 0 )
 		{
+			dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
 			heap_free( 0, path );
 			return r;
 		}
 	} else {
 		if( r < 0 )
 		{
+			dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
 			heap_free( 0, path );
 			return r;
 		}
@@ -100,6 +102,7 @@ s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
 	s32 fd = IOS_Open( path, 2 );
 	if( fd < 0 )
 	{
+		dbgprintf("IOS_Open(%s):%d\n",path,r);
 		heap_free( 0, path );
 		return r;
 	}
@@ -107,6 +110,7 @@ s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
 	r = IOS_Write( fd, data, size );
 	if( r < 0 || r != size )
 	{
+		dbgprintf("IOS_Write():%d\n",r);
 		IOS_Close( fd );
 		heap_free( 0, path );
 		return r;
@@ -117,6 +121,7 @@ s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
 	r = ISFS_Rename( path, pathdst );
 	if( r < 0 )
 	{
+		dbgprintf("ISFS_Rename(%s,%s):%d\n",path,pathdst,r);
 		heap_free( 0, path );
 		return r;
 	}

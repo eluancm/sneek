@@ -16,6 +16,7 @@ void SD_Ioctl( struct ipcmessage *msg )
 
 	switch( msg->ioctl.command )
 	{
+#ifdef SDI
 		case 0x01:	// Write HC Register
 		{
 			u32 reg = *(u32*)(bufin);
@@ -203,6 +204,7 @@ void SD_Ioctl( struct ipcmessage *msg )
 			ret = 0;
 			dbgprintf("SD:GetOCRegister(%08X):%d\n", *(u32*)(bufout), ret);
 		} break;
+#endif
 		default:
 			ret = -1;
 			dbgprintf("SD:IOS_Ioctl( %d 0x%x 0x%p 0x%x 0x%p 0x%x )\n", msg->fd, msg->ioctl.command, bufin, lenin, bufout, lenout);
@@ -221,6 +223,7 @@ void SD_Ioctlv( struct ipcmessage *msg )
 
 	switch(msg->ioctl.command)
 	{
+#ifdef SDI
 		case 0x07:
 		{
 			ret = IOS_Ioctlv( FFSHandle, 0x20, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv );
@@ -241,6 +244,7 @@ void SD_Ioctlv( struct ipcmessage *msg )
 				dbgprintf("isDMA  :%08X\n", scmd->isDMA );
 			}
 		} break;
+#endif
 		default:
 			for( i=0; i<InCount+OutCount; ++i)
 			{

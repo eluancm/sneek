@@ -46,7 +46,7 @@ enum SNEEKConfig
 	CONFIG_PATCH_FWRITE		= (1<<0),
 	CONFIG_PATCH_MPVIDEO	= (1<<1),
 	CONFIG_PATCH_VIDEO		= (1<<2),
-
+	
 	CONFIG_DUMP_ERROR_SKIP	= (1<<3),
 
 	CONFIG_DEBUG_GAME		= (1<<4),
@@ -54,6 +54,8 @@ enum SNEEKConfig
 	
 	CONFIG_SHOW_COVERS		= (1<<6),
 	CONFIG_AUTO_UPDATE_LIST	= (1<<7),
+
+	CONFIG_DUMP_MODE		= (1<<8),
 };
 
 enum HookTypes
@@ -111,6 +113,7 @@ enum DIOpcodes
 	DVD_READ				= 0x41,
 	DVD_WRITE				= 0x42,
 	DVD_CLOSE				= 0x43,
+	DVD_CREATEDIR			= 0x44,
 };
 enum DIError
 {
@@ -146,8 +149,10 @@ void DVDInit( void );
 void DVDLowReset( void );
 u32 DVDLowRead( void *data, u64 offset, u32 length );
 
+s32 DVDCreateDir( char *FileName );
 s32 DVDOpen( char *FileName );
 s32 DVDWrite( s32 fd, void *ptr, u32 len );
+s32 DVDRead( s32 fd, void *ptr, u32 len );
 s32 DVDClose( s32 fd );
 
 s32 DVDLowEnableVideo( u32 Mode );

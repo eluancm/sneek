@@ -310,7 +310,7 @@ ImageStruct* LoadImage(char* str){
 			strcpy(&periodPlace[1],"raw");
 		else
 			strcpy(&newFile[strlen(newFile)],".raw");
-		NANDWriteFileSafe(newFile,image,sizeof(ImageStruct) + image->height * image->width / 2 * sizeof(u32));
+		NANDWriteFileSafe( "str", newFile,image,sizeof(ImageStruct) + image->height * image->width / 2 * sizeof(u32));
 		free(newFile);
 	}
 	return image;

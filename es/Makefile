@@ -3,13 +3,13 @@ CC	=	$(PREFIX)gcc
 AS	=	$(PREFIX)as
 LD	=	$(PREFIX)gcc
 
-CFLAGS	=	-mbig-endian -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy -fno-builtin-memset  -fno-builtin-memcmp -mthumb -fno-builtin-malloc  -mthumb -fno-builtin-free
+CFLAGS	=	-mbig-endian -fno-unwind-tables -fomit-frame-pointer -Os -Wall -I. -mcpu=arm926ej-s -mthumb -fno-builtin-memcpy -fno-builtin-memset  -fno-builtin-memcmp -fno-builtin-malloc -fno-builtin-free
 ASFLAGS	=	-mbig-endian -mcpu=arm926ej-s
 LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,esmodule.ld,-Map,esmodule.map -n
 LIBS	=	-lgcc
 
 TARGET	=	esmodule.elf
-OBJECTS	=	start.o image.o font.o common.o alloc.o gecko.o DI.o SDI.o SMenu.o FS.o utils_asm.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
+OBJECTS	=	start.o image.o font.o common.o alloc.o gecko.o DI.o SDI.o Dump.o SMenu.o FS.o utils_asm.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
 
 .PHONY: FORCE
 

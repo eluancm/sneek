@@ -8,11 +8,10 @@ u32	FBSize		= 0;
 u32 *WPad		= NULL;
 u32 *GameCount;
 
+u32 DVDReinsertDisc=false;
+
 u32 ShowMenu=0;
 u32 MenuType=0;
-u32 DVDStatus = 0;
-u32 DVDType = 0;
-u32 DVDError=0;
 u32 SLock=0;
 s32 PosX=0,ScrollX=0;
 
@@ -35,20 +34,6 @@ DIConfig *DICfg;
 
 ChannelCache* channelCache;
 
-u32 DVDErrorSkip=0;
-u32 DVDErrorRetry=0;
-double DVDTimer = 0;
-u32 DVDTimeStart = 0;
-u32 DVDSectorSize = 0;
-u32 DVDOffset = 0;
-u32 DVDOldOffset = 0;
-u32 DVDSpeed = 0;
-u32 DVDTimeLeft = 0;
-s32 DVDHandle = 0;
-u32 DVDReinsertDisc=false;
-char *DiscName	= (char*)NULL;
-char *DVDTitle	= (char*)NULL;
-char *DVDBuffer	= (char*)NULL;
 ImageStruct* curDVDCover = NULL;
 
 char *PICBuffer = (char*)NULL;
@@ -105,12 +90,18 @@ void LoadAndRebuildChannelCache()
 	channelCache = NULL;
 	u32 size, i;
 	UIDSYS *uid = (UIDSYS *)NANDLoadFile( "/sys/uid.sys", &size );
+
 	if (uid == NULL)
 		return;
+
 	u32 numChannels = 0;
-	for (i = 0; i * 12 < size; i++){
+
+	for( i = 0; i * 12 < size; i++ )
+	{
 		u32 majorTitleID = uid[i].TitleID >> 32;
-		switch (majorTitleID){
+
+		switch (majorTitleID)
+		{
 			case 0x00000001: //IOSes
 			case 0x00010000: //left over disc stuff
 			case 0x00010005: //DLC
@@ -119,7 +110,8 @@ void LoadAndRebuildChannelCache()
 			default:
 			{
 				s32 fd = ES_OpenContent(uid[i].TitleID,0);
-				if (fd >= 0){
+				if (fd >= 0 )
+				{
 					numChannels++;
 					IOS_Close(fd);
 				}
@@ -127,8 +119,9 @@ void LoadAndRebuildChannelCache()
 		}
 	}
 
-	channelCache = (ChannelCache*)NANDLoadFile("/sneek/channelcache.bin",&i);
-	if (channelCache == NULL){
+	channelCache = (ChannelCache*)NANDLoadFile("/sneek/cnlcache.bin", &i );
+	if( channelCache == NULL )
+	{
 		channelCache = (ChannelCache*)malloca(sizeof(ChannelCache),32);
 		channelCache->numChannels = 0;
 	}
@@ -163,7 +156,7 @@ void LoadAndRebuildChannelCache()
 				} break;
 			}
 		}
-		NANDWriteFileSafe("/sneek/channelcache.bin",channelCache,sizeof(ChannelCache) + sizeof(ChannelInfo) * channelCache->numChannels);
+		NANDWriteFileSafe( "cnlcache.bin", "/sneek/cnlcache.bin", channelCache,sizeof(ChannelCache) + sizeof(ChannelInfo) * channelCache->numChannels);
 	}
 	free(uid);
 }
@@ -271,10 +264,7 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 	PosValX	= 0;
 	Hits	= 0;
 	edit	= 0;
-	DVDStatus = 0;
-	DVDError=0;
-	DVDReinsertDisc=false;
-	DICfg	= NULL;
+	DICfg	= (DIConfig*)NULL;
 	PICBuffer = (char*)NULL;
 
 	Offsets		= (u32*)malloca( sizeof(u32) * MAX_HITS, 32 );
@@ -472,7 +462,7 @@ void SMenuDraw( void )
 				}
 
 				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*22, "%d/%d", ScrollX/EntryCount + 1, *GameCount/EntryCount + (*GameCount % EntryCount > 0));
-
+				
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
 
@@ -508,286 +498,50 @@ void SMenuDraw( void )
 
 			case 1:
 			{
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Game Region     :%s", RegionStr[DICfg->Region] );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*1, "__fwrite patch  :%s", (DICfg->Config&CONFIG_PATCH_FWRITE) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*2, "MotionPlus video:%s", (DICfg->Config&CONFIG_PATCH_MPVIDEO) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*3, "Video mode patch:%s", (DICfg->Config&CONFIG_PATCH_VIDEO) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*4, "Error skipping  :%s", (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*5, "Display Covers  :%s", (DICfg->Config&CONFIG_SHOW_COVERS) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*6, "AutoUpdate Games:%s", (DICfg->Config&CONFIG_AUTO_UPDATE_LIST) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*7, "Game debugging  :%s", (DICfg->Config&CONFIG_DEBUG_GAME) ? "On" : "Off" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*8, "Debugger wait   :%s", (DICfg->Config&CONFIG_DEBUG_GAME_WAIT) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*0, "Game Region            :%s", RegionStr[DICfg->Region] );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*1, "__fwrite patch         :%s", (DICfg->Config&CONFIG_PATCH_FWRITE) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*2, "MotionPlus video       :%s", (DICfg->Config&CONFIG_PATCH_MPVIDEO) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*3, "Videomode patch        :%s", (DICfg->Config&CONFIG_PATCH_VIDEO) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*4, "Skip read errors (dump):%s", (DICfg->Config&CONFIG_DUMP_ERROR_SKIP) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*5, "Disc dump mode         :%s", (DICfg->Config&CONFIG_DUMP_MODE) ? "Ex" : "RAW" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*6, "Display covers         :%s", (DICfg->Config&CONFIG_SHOW_COVERS) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*7, "Autoupdate game list   :%s", (DICfg->Config&CONFIG_AUTO_UPDATE_LIST) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*8, "Game debugging         :%s", (DICfg->Config&CONFIG_DEBUG_GAME) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*9, "Debugger wait          :%s", (DICfg->Config&CONFIG_DEBUG_GAME_WAIT) ? "On" : "Off" );
 				
 				switch( (DICfg->Config&HOOK_TYPE_MASK) )
 				{
 					case HOOK_TYPE_VSYNC:
-						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "VIWaitForRetrace" );
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*10, "Hook type              :%s", "VIWaitForRetrace" );
 					break;
 					case HOOK_TYPE_OSLEEP:
-						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "OSSleepThread" );
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*10, "Hook type              :%s", "OSSleepThread" );
 					break;
 					//case HOOK_TYPE_AXNEXT:
-					//	PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :%s", "__AXNextFrame" );
+					//	PrintFormat( FB[i], MENU_POS_X+60, 104+16*9, "Hook type       :%s", "__AXNextFrame" );
 					//break;
 					default:
-						PrintFormat( FB[i], MENU_POS_X+80, 104+16*9, "Hook type       :Invalid Type:%d", (DICfg->Config&HOOK_TYPE_MASK)>>28 );
+						DICfg->Config &= ~HOOK_TYPE_MASK;
 					break;
 				}
 
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*11, "save config" );
-				PrintFormat( FB[i], MENU_POS_X+80, 104+16*12, "recreate game cache(restarts!!)" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*12, "save config" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*13, "recreate game cache(restarts!!)" );
 				if( FSUSB )
-					PrintFormat( FB[i], MENU_POS_X+80, 104+16*13, "Boot NMM" );				
+					PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "Boot NMM" );				
 
-				PrintFormat( FB[i], MENU_POS_X+60, 40+64+16*PosX, "-->");
+				PrintFormat( FB[i], MENU_POS_X+30, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
 
 			case 2:
 			{
-				if( DVDStatus == 0 )
-				{
-					DVDEjectDisc();
-					DVDStatus = 1;					
-				}
-
-				if( DIP_COVER & 1 )
-				{
-					PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "Please insert a disc" );
-
-					DVDStatus = 1;
-					DVDError  = 0;
-
-				} else {
-
-					if( DVDError )
-					{
-						switch(DVDError)
-						{
-							default:
-								PrintFormat( FB[i], MENU_POS_X+80, 104+16*0, "DVDCommand failed with:%08X", DVDError );	
-							break;
-						}					
-					} else {
-						switch( DVDStatus )
-						{
-							case 1:
-							{
-								DVDLowReset();
-
-								s32 r = DVDLowReadDiscID( (void*)0 );
-								if( r != DI_SUCCESS )
-								{
-									dbgprintf("DVDLowReadDiscID():%d\n", r );
-									DVDError = DVDLowRequestError();
-									dbgprintf("DVDLowRequestError():%X\n", DVDError );
-								} else {
-
-									hexdump( (void*)0, 0x20);
-
-									//Detect disc type
-									if( *(u32*)0x18 == 0x5D1C9EA3 )
-									{
-										//try a read outside the normal single layer area
-										r = DVDLowRead( (char*)0x01000000, 0x172A33100LL, 0x8000 );
-										if( r != 0 )
-										{
-											r = DVDLowRequestError();
-											if( r == 0x052100 )
-												DVDType = 2;
-											else 
-												DVDError = r;
-										} else {
-											DVDType = 3;
-										}										
-
-									} else if( *(u32*)0x1C == 0xC2339F3D ) {
-										DVDType = 1;
-									}
-
-									DVDStatus = 2;
-
-									r = DVDLowRead( (char*)(0x01000000+READSIZE), 0x20, 0x40 );
-									if( r == DI_SUCCESS )
-										DVDTitle = (char*)(0x01000000+READSIZE);
-
-									DVDTimer = *(vu32*)0x0d800010;
-								}
-							} break;
-							case 2:
-							{
-								switch(DVDType)
-								{
-									case 1:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.24s(GC)", DVDTitle );
-									break;
-									case 2:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.20s(WII-SL)", DVDTitle );
-									break;
-									case 3:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Press A to dump: %.20s(WII-DL)", DVDTitle );
-									break;
-									default:
-										PrintFormat( FB[i], MENU_POS_X, 104+16*0, "UNKNOWN disc type!");
-									break;
-								}
-								
-							} break;
-							case 3:		// Setup ripping 
-							{
-								DiscName = (char*)malloca( 64, 32 );
-
-								switch( DVDType )
-								{
-									case 1:	// GC		0x57058000,44555
-									{
-										_sprintf( DiscName, "/%.6s.gcm", (void*)0 );
-
-										DVDSectorSize = 44555;
-										DVDStatus = 4;
-									} break;
-									case 2:	// WII-SL	0x118240000, 143432
-									{
-										_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
-
-										DVDSectorSize = 143432;
-										DVDStatus = 4;
-									} break;
-									case 3:	// WII-DL	0x1FB4E0000, 259740 
-									{
-										_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
-
-										DVDSectorSize = 259740;
-										DVDStatus = 4;
-									} break;
-								}
-
-								if( DVDStatus == 4 )
-								{
-									DVDHandle = DVDOpen( DiscName );
-									if( DVDHandle < 0 )
-									{
-										dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
-										DVDError = DI_FATAL|(DVDHandle<<16);
-										break;
-									}
-
-									DVDErrorRetry = 0;
-									DVDBuffer = (char*)0x01000000;
-									memset32( DVDBuffer, 0, READSIZE );
-									DVDTimer = *(vu32*)0x0d800010;
-									DVDTimeStart = DVDTimer;
-								}
-
-							} break;
-							case 4:
-							{
-								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumping:  %.24s", DVDTitle );
-								if( DVDSpeed / 1024 / 1024 )
-									PrintFormat( FB[i], MENU_POS_X, 104+16*2, "Speed:    %u.%uMB/s ", DVDSpeed / 1024 / 1024, (DVDSpeed / 1024) % 1024 );
-								else
-									PrintFormat( FB[i], MENU_POS_X, 104+16*2, "Speed:    %uKB/s ", DVDSpeed / 1024 );
-								PrintFormat( FB[i], MENU_POS_X, 104+16*3, "Progress: %u%%", DVDOffset*100 / DVDSectorSize );
-								PrintFormat( FB[i], MENU_POS_X, 104+16*4, "Time left:%02d:%02d:%02d", DVDTimeLeft/3600, (DVDTimeLeft/60)%60, DVDTimeLeft%60%60 );
-
-								if( (DVDOffset%16) == 0 )
-									dbgprintf("\rES:Dumping:%s %08X/%08X", DiscName, DVDOffset, DVDSectorSize );
-
-								if( i == 0 )
-								{
-									double Now = *(vu32*)0x0d800010;
-									if( (u32)((Now-DVDTimer) * 128.0f / 243000000.0f) )	//Update values once per second
-									{	
-										DVDSpeed	= ( DVDOffset - DVDOldOffset ) * READSIZE;
-										DVDTimeLeft = ( DVDSectorSize - DVDOffset ) / ( DVDSpeed / READSIZE );
-
-										DVDOldOffset=  DVDOffset;
-										DVDTimer	= *(vu32*)0x0d800010;
-									}
-
-									s32 ret = DVDLowRead( DVDBuffer, (u64)DVDOffset * READSIZE, READSIZE );
-									if( ret != 0 )
-									{
-										DVDError = DVDLowRequestError();
-										if( DVDError == 0x0030200 )
-										{
-											if( DVDErrorSkip == 1 )
-											{
-												memset32( DVDBuffer, 0, READSIZE );
-											} else {
-												if( DICfg->Config & CONFIG_DUMP_ERROR_SKIP )
-												{
-													dbgprintf("\nES:Enabled error skipping\n");
-													DVDErrorSkip = 1;
-												} else {
-													dbgprintf("\nES:DVDLowRead():%d\n", ret );
-													dbgprintf("ES:DVDError:%X\n", DVDError );
-													break;
-												}
-											}
-
-										} else if ( DVDError == 0x0030201 && DVDErrorRetry < 5 ) {
-
-											dbgprintf("\nES:DVDLowRead failed:%x Retry:%d\n", DVDError, DVDErrorRetry );
-											DVDError = 0;
-											DVDErrorRetry++;
-											DVDOffset--;
-											continue;
-
-										} else {
-
-											dbgprintf("\nES:DVDLowRead():%d\n", ret );
-											dbgprintf("ES:DVDError:%X\n", DVDError );
-											break;
-
-										}
-									}
-
-									ret = DVDWrite( DVDHandle, DVDBuffer, READSIZE );
-									if( ret != READSIZE )
-									{
-										dbgprintf("\nES:DVDWrite():%d\n", ret );
-										DVDError = DI_FATAL|(ret<<16);
-										break;
-									}
-
-									DVDOffset++;
-									if( DVDOffset == 131071 )
-									{
-										DVDClose( DVDHandle );
-
-										_sprintf( DiscName, "/%.6s_1.iso", (void*)0 );
-										DVDHandle = DVDOpen( DiscName );
-										if( DVDHandle < 0 )
-										{
-											dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
-											DVDError = DI_FATAL|(DVDHandle<<16);
-											break;
-										}
-
-									}
-									if( DVDOffset >= DVDSectorSize )
-									{
-										DVDClose( DVDHandle );
-										free( DiscName );
-										DVDStatus = 5;
-										break;
-									}
-								}
-
-							} break;
-							case 5:
-							{
-								PrintFormat( FB[i], MENU_POS_X, 104+16*0, "Dumped:   %.25s", DVDTitle );
-							} break;
-						}
-					}
-				}
+				MenuType = DumpDoTick(i);
 
 			} break;
 			case 3:
 			{
-				memcpy( FB[i], PICBuffer, FBSize );
+				memcpy( (void*)(FB[i]), PICBuffer, FBSize );
 			} break;
 			default:
 			{
@@ -1173,23 +927,27 @@ void SMenuReadPad ( void )
 					} break;
 					case 5:
 					{
-						DICfg->Config ^= CONFIG_SHOW_COVERS;
+						DICfg->Config ^= CONFIG_DUMP_MODE;
 					} break;
 					case 6:
 					{
-						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
 					} break;
 					case 7:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 8:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME;
 						DVDReinsertDisc=true;
 					} break;
-					case 8:
+					case 9:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
 						DVDReinsertDisc=true;
 					} break;
-					case 9:
+					case 10:
 					{
 						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
 						{
@@ -1201,7 +959,7 @@ void SMenuReadPad ( void )
 
 						DVDReinsertDisc=true;
 					} break;
-					case 11:
+					case 12:
 					{
 						if( DVDReinsertDisc )
 							DVDSelectGame( DICfg->SlotID );
@@ -1210,14 +968,14 @@ void SMenuReadPad ( void )
 
 						DVDReinsertDisc=false;
 					} break;
-					case 12:
+					case 13:
 					{
 						DICfg->Gamecount = 0;
 						DICfg->Config	|= CONFIG_AUTO_UPDATE_LIST;
 						DVDWriteDIConfig( DICfg );
 						LaunchTitle( 0x0000000100000002LL );	
 					} break;
-					case 13:
+					case 14:
 					{
 						LaunchTitle( 0x0000000100000100LL );						
 					} break;
@@ -1230,34 +988,34 @@ void SMenuReadPad ( void )
 					PosX--;
 				else {
 					if( FSUSB )
-						PosX  = 13;
+						PosX  = 14;
 					else
-						PosX = 12;
+						PosX = 13;
 				}
 
-				if( PosX == 10 )
-					PosX  = 9;
+				if( PosX == 11 )
+					PosX  = 10;
 
 				SLock = 1;
 			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
 				if( FSUSB )
 				{
-					if( PosX >= 13 )
+					if( PosX >= 14 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				} else {
-					if( PosX >= 12 )
+					if( PosX >= 13 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				}
 
-				if( PosX == 10 )
-					PosX  = 11;
+				if( PosX == 11 )
+					PosX  = 12;
 
 				SLock = 1;
 			}
@@ -1295,23 +1053,27 @@ void SMenuReadPad ( void )
 					} break;
 					case 5:
 					{
-						DICfg->Config ^= CONFIG_SHOW_COVERS;
+						DICfg->Config ^= CONFIG_DUMP_MODE;
 					} break;
 					case 6:
 					{
-						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
 					} break;
 					case 7:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 8:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME;
 						DVDReinsertDisc=true;
 					} break;
-					case 8:
+					case 9:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
 						DVDReinsertDisc=true;
 					} break;
-					case 9:
+					case 10:
 					{
 						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
 						{
@@ -1358,23 +1120,27 @@ void SMenuReadPad ( void )
 					} break;
 					case 5:
 					{
-						DICfg->Config ^= CONFIG_SHOW_COVERS;
+						DICfg->Config ^= CONFIG_DUMP_MODE;
 					} break;
 					case 6:
 					{
-						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+						DICfg->Config ^= CONFIG_SHOW_COVERS;
 					} break;
 					case 7:
+					{
+						DICfg->Config ^= CONFIG_AUTO_UPDATE_LIST;
+					} break;
+					case 8:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME;
 						DVDReinsertDisc=true;
 					} break;
-					case 8:
+					case 9:
 					{
 						DICfg->Config ^= CONFIG_DEBUG_GAME_WAIT;
 						DVDReinsertDisc=true;
 					} break;
-					case 9:
+					case 10:
 					{
 						if( (DICfg->Config & HOOK_TYPE_MASK) == HOOK_TYPE_OSLEEP )
 						{
@@ -1397,7 +1163,10 @@ void SMenuReadPad ( void )
 			{
 				if( DVDStatus == 2 && DVDType > 0 )
 				{
-					DVDStatus = 3;
+					if( (DICfg->Config & CONFIG_DUMP_MODE) && DVDType != 1 )	// Ex format only works with Wii games
+						DVDStatus = 6;	// EX
+					else
+						DVDStatus = 3;	// RAW
 				}
 				SLock = 1;
 			}

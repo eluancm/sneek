@@ -22,6 +22,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #ifndef _SDI_
 #define _SDI_
 
+//#define SDI
+
 #include "string.h"
 #include "syscalls.h"
 #include "global.h"
