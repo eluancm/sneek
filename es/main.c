@@ -1072,18 +1072,14 @@ int _main( int argc, char *argv[] )
 	device_register( "/dev/es", MessageQueue );
 
 	s32 Timer = TimerCreate( 0, 0, MessageQueue, 0xDEADDEAD );
-	dbgprintf("ES:Timer:%d\n", Timer );
 
 	u32 pid = GetPID();
-	dbgprintf("ES:GetPID():%d\n", pid );
 	ret = SetUID( pid, 0 );
-	dbgprintf("ES:SetUID():%d\n", ret );
 	ret = _cc_ahbMemFlush( pid, 0 );
 
 	u32 Flag1;
 	u16	Flag2;
 	GetFlags( &Flag1, &Flag2 );
-	dbgprintf("ES:Flag1:%d Flag2:%d\n", Flag1, Flag2 );
 
 	u32 version = GetKernelVersion();
 	dbgprintf("ES:KernelVersion:%08X, %d\n", version, (version<<8)>>0x18 );
@@ -1141,15 +1137,15 @@ int _main( int argc, char *argv[] )
 
 		MenuType = 1;
 		
-	}/* else if ( (TitleID >> 32) ==  0x00010001LL ) {
-		MenuType = 2;
-	}*/
+	} else if ( (TitleID >> 32) ==  0x00010001LL ) {
+		//MenuType = 2;
+	}
 
 	LoadAndRebuildChannelCache();
-
-	thread_set_priority( 0, 0x0A );
-
+	
 	dbgprintf("ES:looping!\n");
+	
+	thread_set_priority( 0, 0x0A );
 		
 	while (1)
 	{

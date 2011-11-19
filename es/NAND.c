@@ -27,9 +27,9 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 	s32 fd = IOS_Open( path, 1 );
 	if( fd < 0 )
 	{
-		dbgprintf("ES:NANDLoadFile->IOS_Open(\"%s\", 1 ):%d\n", path, fd );
+		//dbgprintf("ES:NANDLoadFile->IOS_Open(\"%s\", 1 ):%d\n", path, fd );
 		*Size = fd;
-		return NULL;
+		return (u8*)NULL;
 	}
 
 	//dbgprintf("ES:NANDLoadFile->IOS_Open(\"%s\", 1 ):%d\n", path, fd );
@@ -40,10 +40,10 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 	//dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(\"%s\", 1 ):%d\n", path, r );
 	if( r < 0 )
 	{
-		dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(%d, %p ):%d\n", fd, status, r );
+		//dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(%d, %p ):%d\n", fd, status, r );
 		heap_free( 0, status );
 		*Size = r;
-		return NULL;
+		return (u8*)NULL;
 	}
 
 	*Size = status->Size;
@@ -52,19 +52,19 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 	u8 *data = (u8*)heap_alloc_aligned( 0, status->Size, 0x40 );
 	if( data == NULL )
 	{
-		dbgprintf("ES:NANDLoadFile(\"%s\")->Failed to alloc %d bytes!\n", path, status->Size );
+		//dbgprintf("ES:NANDLoadFile(\"%s\")->Failed to alloc %d bytes!\n", path, status->Size );
 		heap_free( 0, status );
-		return NULL;
+		return (u8*)NULL;
 	}
 
 	r = IOS_Read( fd, data, status->Size );
 	//dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
 	if( r < 0 )
 	{
-		dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
+		//dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
 		heap_free( 0, status );
 		*Size = r;
-		return NULL;
+		return (u8*)NULL;
 	}
 
 	heap_free( 0, status );
@@ -72,12 +72,25 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 
 	return data;
 }
-s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
+/*
+	This creates the file in the TMP dir and then moves it to the destination overwriting it!
+	
+	To work correctly on the real nand we must have the same filename for the
+	source and destination!
+*/
+s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size )
 {
-	//Create file in tmp folder and move it to destination
 	char *path = (char*)heap_alloc_aligned( 0, 0x40, 32 );
+	s32 i=0;
 
-	_sprintf( path, "/tmp/%s", FileName );
+//Extract filename
+
+	//search backwards for slash
+	for( i=strlen(pathdst); i > 0; --i )
+		if( pathdst[i] == '/' )
+			break;
+
+	_sprintf( path, "/tmp%s", pathdst + i );
 
 	s32 r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( r == FS_EEXIST2 )
@@ -86,14 +99,14 @@ s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
 		r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 		if( r < 0 )
 		{
-			dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
+			//dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
 			heap_free( 0, path );
 			return r;
 		}
 	} else {
 		if( r < 0 )
 		{
-			dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
+			//dbgprintf("ISFS_CreateFile(%s):%d\n",path,r);
 			heap_free( 0, path );
 			return r;
 		}
@@ -102,7 +115,7 @@ s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
 	s32 fd = IOS_Open( path, 2 );
 	if( fd < 0 )
 	{
-		dbgprintf("IOS_Open(%s):%d\n",path,r);
+		//dbgprintf("IOS_Open(%s):%d\n",path,r);
 		heap_free( 0, path );
 		return r;
 	}
@@ -110,7 +123,7 @@ s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
 	r = IOS_Write( fd, data, size );
 	if( r < 0 || r != size )
 	{
-		dbgprintf("IOS_Write():%d\n",r);
+		//dbgprintf("IOS_Write():%d\n",r);
 		IOS_Close( fd );
 		heap_free( 0, path );
 		return r;
@@ -121,7 +134,7 @@ s32 NANDWriteFileSafe( char *FileName, char *pathdst, void *data, u32 size )
 	r = ISFS_Rename( path, pathdst );
 	if( r < 0 )
 	{
-		dbgprintf("ISFS_Rename(%s,%s):%d\n",path,pathdst,r);
+		//dbgprintf("ISFS_Rename(%s,%s):%d\n",path,pathdst,r);
 		heap_free( 0, path );
 		return r;
 	}

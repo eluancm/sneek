@@ -156,7 +156,7 @@ void LoadAndRebuildChannelCache()
 				} break;
 			}
 		}
-		NANDWriteFileSafe( "cnlcache.bin", "/sneek/cnlcache.bin", channelCache,sizeof(ChannelCache) + sizeof(ChannelInfo) * channelCache->numChannels);
+		NANDWriteFileSafe( "/sneek/cnlcache.bin", channelCache,sizeof(ChannelCache) + sizeof(ChannelInfo) * channelCache->numChannels);
 	}
 	free(uid);
 }
@@ -1167,6 +1167,8 @@ void SMenuReadPad ( void )
 						DVDStatus = 6;	// EX
 					else
 						DVDStatus = 3;	// RAW
+
+					thread_set_priority( 0, 0x79 );
 				}
 				SLock = 1;
 			}

@@ -919,7 +919,7 @@ s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char 
 
 	u8 *DiscSys = (u8*)malloca( aSize, 0x40 );
 	
-	iES_GetTicketView( tik, DiscSys+8 );
+	iES_GetTicketView( (u8*)tik, DiscSys+8 );
 	
 	memcpy( DiscSys, TitleID, sizeof(u64) );
 	memcpy( DiscSys+0xE0, TMD, aSize-0xE0 );
