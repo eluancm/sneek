@@ -102,7 +102,7 @@ void DVDInit( void )
 			for( i=0; i < MAX_HANDLES; i++ )
 				FHandle[i].fs = (FATFS*)NULL;
 		} break;
-		case -1017:
+		case FS_SUCCESS:
 		{
 			dbgprintf( DEBUG_INFO, "DIP:Found FS-USB\n");
 			FSMode = UNEEK;
