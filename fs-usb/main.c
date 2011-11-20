@@ -132,7 +132,7 @@ void _main(void)
 	s32 ret=0;
 	struct IPCMessage *CMessage=NULL;
 
-	thread_set_priority( 0, 0x0B );
+	thread_set_priority( 0, 0x58 );
 
 #ifdef DEBUG
 	dbgprintf("$IOSVersion: FFS-USB: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
@@ -169,6 +169,8 @@ void _main(void)
 
 	f_mkdir("/tmp");
 	f_mkdir("/import");
+
+	thread_set_priority( 0, 0x0B );
 
 	//dbgprintf("ok\n");
 
