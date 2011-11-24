@@ -557,6 +557,10 @@ u32 DumpDoTick( u32 CurrentFB )
 					DecryptRead( GameOffset + (pf.DataOffset << 2), FSTOffset, FSTSize, FSTable );
 
 					u32 Entries = *(u32*)(FSTable+0x08);
+					u32 CurrentOff=-1;
+					u32 OldOff = 0;
+					u32 FileCount=0;
+					u32 FileDumpCnt=0;
 					char *NameOff = (char*)(FSTable + Entries * 0x0C);
 					FEntry *fe = (FEntry*)(FSTable);
 					
@@ -568,61 +572,90 @@ u32 DumpDoTick( u32 CurrentFB )
 					int j;
 					char *Path = (char*)malloca( 1024, 32 );
 
-					if( !strlen(NameOff) )
-						while(1);
-
-					for( i=1; i < Entries; ++i )
+					//Count files in FST, Entries is folder and file count!
+					for( j=0; j < Entries; ++j )
 					{
-						if( level )
-						{
-							while( LEntry[level-1] == i )
-							{
-								//printf("[%03X]leaving :\"%s\" Level:%d\n", i, buffer + NameOff + swap24( fe[Entry[level-1]].NameOffset ), level );
-								level--;
-							}
-						}
+						if( fe[j].Type )
+							continue;
 
-						if( fe[i].Type )
+						FileCount++;
+					}
+
+					while( FileDumpCnt < FileCount )
+					{
+						CurrentOff=-1;
+
+						// Find lowest offset to reduce seeking
+						for( j=0; j < Entries; ++j )
 						{
-							//Skip empty folders
-							if( fe[i].NextOffset == i+1 )
+							if( fe[j].Type )
 								continue;
 
-							//printf("[%03X]Entering:\"%s\" Level:%d leave:%04X\n", i, buffer + NameOff + swap24( fe[i].NameOffset ), level, swap32( fe[i].NextOffset ) );
-							Entry[level] = i;
-							LEntry[level++] = fe[i].NextOffset;
-							if( level > 15 )	// something is wrong!
-								break;
+							if( fe[j].FileOffset <= CurrentOff && fe[j].FileOffset > OldOff )
+								CurrentOff = fe[j].FileOffset;
+						}
 
-						} else {
+						
+						level=0;
 
-							memset32( Path, 0, 1024 );
-							_sprintf( Path, "/games/%.6s/files/", (void*)0 );
-
-							for( j=0; j<level; ++j )
+						for( i=1; i < Entries; ++i )
+						{
+							if( level )
 							{
-								if( j )
-									Path[strlen(Path)] = '/';
-
-								memcpy( Path+strlen(Path), NameOff + fe[Entry[j]].NameOffset, strlen(NameOff + fe[Entry[j]].NameOffset ) );
-
-								Asciify(Path);
-								DVDCreateDir(Path);								
+								while( LEntry[level-1] == i )
+								{
+									//printf("[%03X]leaving :\"%s\" Level:%d\n", i, buffer + NameOff + swap24( fe[Entry[level-1]].NameOffset ), level );
+									level--;
+								}
 							}
 
-							if( level )
-								Path[strlen(Path)] = '/';
+							if( fe[i].Type )
+							{
+								//Skip empty folders
+								if( fe[i].NextOffset == i+1 )
+									continue;
 
-							memcpy( Path+strlen(Path), NameOff + fe[i].NameOffset, strlen(NameOff + fe[i].NameOffset) );
+								//printf("[%03X]Entering:\"%s\" Level:%d leave:%04X\n", i, buffer + NameOff + swap24( fe[i].NameOffset ), level, swap32( fe[i].NextOffset ) );
+								Entry[level] = i;
+								LEntry[level++] = fe[i].NextOffset;
+								if( level > 15 )	// something is wrong!
+									break;
+							} else {
 
-							Asciify(Path);
+								if( CurrentOff == fe[i].FileOffset )
+								{
+									//Do not remove!
+									memset32( Path, 0, 1024 );
+									_sprintf( Path, "/games/%.6s/files/", (void*)0 );
 
-							dbgprintf("ES:[%X%08X:%08u]%s\n", (u32)(((u64)(fe[i].FileOffset)<<2)>>32), (u32)(fe[i].FileOffset<<2), fe[i].FileLength, Path + 20 );	// +20 skips "/games/<gameid>/files/"
+									for( j=0; j<level; ++j )
+									{
+										if( j )
+											Path[strlen(Path)] = '/';
+										memcpy( Path+strlen(Path), NameOff + fe[Entry[j]].NameOffset, strlen(NameOff + fe[Entry[j]].NameOffset ) );
+
+										Asciify(Path);
+										DVDCreateDir(Path);
+									}
+
+									if( level )
+										Path[strlen(Path)] = '/';
+									memcpy( Path+strlen(Path), NameOff + fe[i].NameOffset, strlen(NameOff + fe[i].NameOffset) );
+									
+
+									Asciify(Path);
+
+									dbgprintf("ES:[%X%08X:%08u]%s\n", fe[i].FileOffset>>30, (u32)(fe[i].FileOffset<<2), fe[i].FileLength, Path + 20 );	// +20 skips "/games/<gameid>/files/"
 							
-							ExtractFile( GameOffset + (pf.DataOffset << 2), (u64)(fe[i].FileOffset)<<2, fe[i].FileLength, Path );
-
+									ExtractFile( GameOffset + (pf.DataOffset << 2), (u64)(fe[i].FileOffset)<<2, fe[i].FileLength, Path );
+									OldOff = fe[i].FileOffset;
+									FileDumpCnt++;
+									break;
+								}
+							}
 						}
 					}
+					
 
 					DVDTimer = (u32)(*(vu32*)0x0d800010 - DVDTimeStart);
 					DVDTimer = (u32)( DVDTimer * 128.f / 243000000.f);
