@@ -65,15 +65,8 @@ u32 DumpFile( char *FileName, u64 Offset, u32 Size )
 }
 void ExtractFile( u64 PartDataOffset, u64 FileOffset, u32 Size, char *FileName )
 {	
-	u64 div = 0;
-	u64 cnt = 0x7C00;
-
-	while( FileOffset > cnt )
-	{
-		div++;
-		cnt+= 0x7C00;
-	}
-
+	//HACK: u64 division breaks compiling due missing shit so we do it the hard way :|
+	u32 div = (u32)(FileOffset>>10) / 31;
 	u64 roffset = div * 0x8000;
 	u64 soffset = FileOffset - (div * 0x7C00);
 	//dbgprintf("Extracting:\"%s\" RealOffset:%x%08x RealOffset:%x%08x\n", FileName, (u32)(roffset>>32), (u32)roffset, (u32)(soffset>>32), (u32)soffset );
@@ -132,14 +125,7 @@ void ExtractFile( u64 PartDataOffset, u64 FileOffset, u32 Size, char *FileName )
 void DecryptRead( u64 PartDataOffset, u64 FileOffset, u32 Size, char *Buffer )
 {
 	//HACK: u64 division breaks compiling due missing shit so we do it the hard way :|
-	u64 div = 0;
-	u64 cnt = 0x7C00;
-
-	while( FileOffset > cnt )
-	{
-		div++;
-		cnt+= 0x7C00;
-	}
+	u64 div = (u32)(FileOffset>>10) / 31;
 
 	u64 roffset = div * 0x8000;
 	u64 soffset = FileOffset - (div * 0x7C00);
