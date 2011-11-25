@@ -36,6 +36,8 @@ void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 
 void iCleanUpTikTMD( void );
 
+s32 ES_TitleCreatePath( u64 TitleID );
+
 void iES_GetTMDView( TitleMetaData *TMD, u8 *oTMDView );
 void iES_GetTicketView( u8 *Ticket, u8 *oTicketView );
 

@@ -208,12 +208,14 @@ u32 ES_Init( u8 *MessageHeap );
 
 void ES_Ioctlv( struct ipcmessage *msg );
 
-s32 ES_TitleCreatePath( u64 TitleID );
 s32 ES_LoadModules( u32 KernelVersion );
 s32 ES_LaunchSYS( u64 *TitleID );
 
 u8 *NANDLoadFile( char * path, u32 *Size );
 s32 doTicketMagic( Ticket *iTIK );
+
+u64 ES_GetTitleID( void );
+
 s32 ES_CreateKey( u8 *Ticket );
 s32 ES_CheckBootOption( char *Path, u64 *TitleID );
 s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView );

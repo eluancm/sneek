@@ -21,21 +21,6 @@ char *DiscName	= (char*)NULL;
 char *DVDTitle	= (char*)NULL;
 char *DVDBuffer	= (char*)NULL;
 
-//HACK: u64 division breaks compiling due missing shit so we do it the hard way :|
-
-u64 div64( u64 a, u64 b )
-{
-	u64 div = 0;
-	u64 cnt = b;
-
-	while( a > cnt )
-	{
-		div++;
-		cnt+= b;
-	}
-
-	return div;	
-}
 u32 DumpFile( char *FileName, u64 Offset, u32 Size )
 {
 	DVDLowRead( DVDBuffer, Offset, (Size+31) & (~31) ); // align reads by 32 bytes, doesn't effect final filesize!
@@ -186,7 +171,6 @@ void Asciify( char *str )
 u32 DumpDoTick( u32 CurrentFB )
 {
 	u32 i;
-	static u32 GameSizeMB=0,GameSizeKB=0;
 
 	if( DVDStatus == 0 )
 	{
@@ -655,15 +639,11 @@ u32 DumpDoTick( u32 CurrentFB )
 							}
 						}
 					}
-					
 
 					DVDTimer = (u32)(*(vu32*)0x0d800010 - DVDTimeStart);
 					DVDTimer = (u32)( DVDTimer * 128.f / 243000000.f);
 
 					DestroyKey( *Key );
-
-					GameSizeMB = (u32)div64(DVDWrote,1024*1024);	//Cache values, calculating it twice a frame takes too long and causes the overlaymenu to flicker
-					GameSizeKB = (u32)div64(DVDWrote,1024);
 
 					free(Key);
 					free(Path);
@@ -672,14 +652,18 @@ u32 DumpDoTick( u32 CurrentFB )
 					
 					DVDStatus = 7;
 
+					dbgprintf( "ES:Dumped   :  %s\n", DVDTitle );
+					dbgprintf( "ES:Time     :  %02u:%02u\n", (u32)DVDTimer/60, (u32)DVDTimer%60 );
+					dbgprintf( "ES:Game size:  %uMB\n", (u32)(DVDWrote>>20) );
+					dbgprintf( "ES:Speed    : ~%u.%uMB/s\n", (u32)(DVDWrote>>20) / (u32)DVDTimer, (u32)(DVDWrote>>10) % 1024 );
+
 				} break;
 				case 7:
-				{	
-
-					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*0, "Dumped   :  %.24s", DVDTitle );
-					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*1, "Time     :  %02u:%02u", (u32)DVDTimer/60, (u32)DVDTimer%60 );
-					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*2, "Game size:  %uMB", GameSizeMB );
-					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*3, "Speed    : ~%u.%uMB/s", GameSizeMB / (u32)DVDTimer, GameSizeKB % 1024 );
+				{
+					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*0, "Dumped   : %.38s", DVDTitle );
+					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*1, "Time     : %02u:%02u", (u32)DVDTimer/60, (u32)DVDTimer%60 );
+					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*2, "Game size: %uMB", (u32)(DVDWrote>>20) );
+					PrintFormat( FB[CurrentFB], MENU_POS_X, 104+16*3, "Speed    :~%u.%uMB/s", (u32)(DVDWrote>>20) / (u32)DVDTimer, (u32)(DVDWrote>>10) % 1024 );
 				} break;
 			}
 		}

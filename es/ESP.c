@@ -1,3 +1,23 @@
+/*
+
+SNEEK - SD-NAND/ES emulation kit for Nintendo Wii
+
+Copyright (C) 2009-2011  crediar
+
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation version 2.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+*/
 #include "ESP.h"
 #include "ES.h"
 
@@ -19,10 +39,6 @@ u32 *KeyID = (u32*)NULL;
 
 u16 TitleVersion;
 
-
-extern u32 KernelVersion;
-
-
 void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
 {
 	dbgprintf("\n\n************ ES FATAL ERROR ************\n");
@@ -35,7 +51,6 @@ void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg )
 
 	while(1);
 }
-
 
 s32 ES_TitleCreatePath( u64 TitleID )
 {
@@ -303,7 +318,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 		}
 	}
 
-	dbgprintf("ES:Waiting for network module...");
+	dbgprintf("ES:Waiting for network module...\n");
 
 
 	while( 1 )
@@ -318,7 +333,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 		udelay(500);
 	}
 
-	dbgprintf("done!\n");
+	dbgprintf("ES:Network module is up!\n");
 
 	free( size );
 	free( TMD );
@@ -1009,51 +1024,7 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 	{
 		case FS_ENOENT2:
 		{
-			//Create folders!
-			_sprintf( path, "/title/%08x",  (u32)(TMD->TitleID >> 32) );
-			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-			{
-				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 && r != FS_EEXIST2 )
-				{
-					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-					goto ES_DIVerfiy_end;
-				}
-			}
-
-			_sprintf( path, "/title/%08x/%08x", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
-			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-			{
-				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 && r != FS_EEXIST2 )
-				{
-					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-					goto ES_DIVerfiy_end;
-				}
-			}
-
-			_sprintf( path, "/title/%08x/%08x/data", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
-			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-			{
-				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 && r != FS_EEXIST2 )
-				{
-					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-					goto ES_DIVerfiy_end;
-				}
-			}
-
-			_sprintf( path, "/title/%08x/%08x/content", (u32)(TMD->TitleID >> 32), (u32)(TMD->TitleID) );
-			if( ISFS_GetUsage( path, NULL, NULL ) == FS_ENOENT2 )
-			{
-				r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-				if( r < 0 && r != FS_EEXIST2 )
-				{
-					dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-					goto ES_DIVerfiy_end;
-				}
-			}
-
+			ES_TitleCreatePath( TMD->TitleID );
 		} break;
 		case FS_SUCCESS:
 		{

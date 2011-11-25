@@ -48,18 +48,28 @@ int _sprintf( char *buf, const char *fmt, ... )
 	return i;
 }
 
-size_t strlcpy(char *dest, const char *src, size_t maxlen)
+char * strstr ( const char *str1, const char *str2)
 {
-	size_t len,needed;
+	char *cp = (char *) str1;
+	char *s1, *s2;
 
-	len = needed = strnlen(src, maxlen-1) + 1;
-	if (len >= maxlen)
-		len = maxlen-1;
+	if ( !*str2 )
+		return((char *)str1);
 
-	memcpy(dest, (void*)src, len);
-	dest[len]='\0';
+	while (*cp)
+	{
+		s1 = cp;
+		s2 = (char *) str2;
+		while ( *s1 && *s2 && !(*s1-*s2) )
+			s1++, s2++;
 
-	return needed-1;
+		if (!*s2)
+			return(cp);
+		cp++;
+
+	}
+
+	return(NULL);
 }
 
 char *strcpy(char *dst, const char *src)

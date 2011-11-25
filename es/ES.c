@@ -28,9 +28,12 @@ char *path		= (char*)NULL;
 u32 *size		= (u32*)NULL;
 u64 *iTitleID	= (u64*)NULL;
 
+
+static u64 TitleID ALIGNED(32);
 static u32 KernelVersion ALIGNED(32);
 static u32 SkipContent ALIGNED(32);
-static u64 TitleID ALIGNED(32);
+
+extern u32 TitleVersion;
 
 TitleMetaData *iTMD = (TitleMetaData *)NULL;			//used for information during title import
 static u8 *iTIK		= (u8 *)NULL;						//used for information during title import
@@ -63,8 +66,18 @@ u32 ES_Init( u8 *MessageHeap )
 	path		= (char*)malloca(		0x40,  32 );
 	size		= (u32*) malloca( sizeof(u32), 32 );
 	iTitleID	= (u64*) malloca( sizeof(u64), 32 );
+
+	ES_BootSystem( &TitleID, &KernelVersion );
+
+	dbgprintf("ES:TitleID:%08x-%08x version:%d\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
+
+	SMenuInit( TitleID, TitleVersion );
 	
 	return MessageQueue;
+}
+u64 ES_GetTitleID( void )
+{
+	return TitleID;
 }
 
 void iCleanUpTikTMD( void )

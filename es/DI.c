@@ -264,7 +264,6 @@ s32 DVDClose( s32 fd )
 }
 u32 DVDLowRead( void *data, u64 offset, u32 length )
 {
-
 	DIP_STATUS  = 0x2A|4|0x10;
 	DIP_CMD_0	= 0xA8000000;
 	DIP_CMD_1	= (u32)(offset>>2);
@@ -289,25 +288,15 @@ u32 DVDLowRead( void *data, u64 offset, u32 length )
 }
 u32 DVDLowReadDiscID( void *data )
 {
-	sync_before_read( data, 0x20 );
-
-	u32 val = DIP_CMD_0;
-		val|= 0xA8000000;
-	DIP_CMD_0 = val;
-
-	val = DIP_CMD_0;
-	val|= 0x40;
-	DIP_CMD_0 = val;
-
+	DIP_STATUS  = 0x2A|4|0x10;
+	DIP_CMD_0	= 0xA8000040;
 	DIP_CMD_1	= 0;
 	DIP_CMD_2	= 0x20;
-	DIP_DMA_LEN = 0x20;
-	DIP_DMA_ADR = (u32)data;
+	DIP_DMA_LEN	= 0x20;
+	DIP_DMA_ADR	= (u32)data;
+	DIP_IMM		= 0;
 
-	val = DIP_STATUS;
-	val|= (1<<3)|(1<<4);
-	val|= (1<<1)|(1<<2);
-	DIP_STATUS = val;
+	sync_before_read( data, 0x20 );
 
 	DIP_CONTROL = DMA_READ;
 
@@ -320,21 +309,6 @@ u32 DVDLowReadDiscID( void *data )
 	}
 
 	return 0;
-}
-u32 DVDLowSeek( u64 offset )
-{
-	DIP_COVER = DIP_COVER;
-
-	DIP_STATUS	= 0x3A;
-	DIP_CMD_0	= 0xAB000000;
-	DIP_CMD_1	= offset>>2;
-	DIP_IMM		= 0xdead;
-
-	DIP_CONTROL	= IMM_READ;
-
-	while( DIP_CONTROL & 1 );
-
-	return DIP_IMM;	
 }
 u32 DVDLowRequestError( void )
 {
@@ -353,5 +327,3 @@ void DVDLowReset( void )
 	*(vu32*)0xd800194 &= 0xFFFDFBFF;
 	*(vu32*)0xd800194 |= 0x00020400;
 }
-
-

@@ -7,7 +7,7 @@ __stack_size = 32;
 
 MEMORY {
 
-	code		: ORIGIN = 0x20100000,	LENGTH = 0xC200
+	code		: ORIGIN = 0x20100000,	LENGTH = 0xC120
 	ram			: ORIGIN = 0x2010E000,	LENGTH = 0x46AC
 }
 

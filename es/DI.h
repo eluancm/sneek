@@ -142,10 +142,8 @@ enum DIError
 
 u32 DVDLowReadDiscID( void *data );
 u32 DVDLowGetStatus( u32 slot );
-u32 DVDLowSeek( u64 offset );
 u32 DVDLowRequestError( void );
 s32 InitRegisters( void );
-void DVDInit( void );
 void DVDLowReset( void );
 u32 DVDLowRead( void *data, u64 offset, u32 length );
 

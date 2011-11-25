@@ -48,9 +48,6 @@ extern u32 *KeyID;
 extern u8 *CNTMap;
 extern u32 *HCR;
 extern u32 *SDStatus;
-extern u64 TitleID;
-extern u32 KernelVersion;
-
 
 int _main( int argc, char *argv[] )
 {
@@ -58,9 +55,7 @@ int _main( int argc, char *argv[] )
 	struct ipcmessage *message=NULL;
 	u8 MessageHeap[0x10];
 	u32 MessageQueue=0xFFFFFFFF;
-	static u64 TitleID ALIGNED(32);
-	static u32 KernelVersion ALIGNED(32);
-	
+
 	thread_set_priority( 0, 0x79 );	// do not remove this, this waits for FS to be ready!
 	thread_set_priority( 0, 0x50 );
 	thread_set_priority( 0, 0x79 );
@@ -72,9 +67,16 @@ int _main( int argc, char *argv[] )
 #endif
 
 	MessageQueue = ES_Init( MessageHeap );
-
+	
 	s32 Timer = TimerCreate( 0, 0, MessageQueue, 0xDEADDEAD );
 	
+//SD Card 
+	SDStatus = (u32*)malloca( sizeof(u32), 0x40 );
+	*SDStatus = 0x00000002;
+
+	HCR = (u32*)malloca( sizeof(u32)*0x30, 0x40 );
+	memset32( HCR, 0, sizeof(u32)*0x30 );
+
 	if( ISFS_IsUSB() == FS_ENOENT2 )
 	{
 		dbgprintf("ES:Found FS-SD\n");
@@ -88,30 +90,17 @@ int _main( int argc, char *argv[] )
 		dbgprintf("ES:Found FS-USB\n");
 		FSUSB = 1;
 	}
-
-//SD Card 
-	SDStatus = (u32*)malloca( sizeof(u32), 0x40 );
-	*SDStatus = 0x00000002;
-
-	HCR = (u32*)malloca( sizeof(u32)*0x30, 0x40 );
-	memset32( HCR, 0, sizeof(u32)*0x30 );
 	
-	ES_BootSystem( &TitleID, &KernelVersion );
-
-	dbgprintf("ES:TitleID:%08x-%08x version:%d\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
-
 	ret = 0;
 	u32 MenuType = 0;
 	u32 StartTimer = 1;
-
-	SMenuInit( TitleID, TitleVersion );
 
 	if( LoadFont( "/sneek/font.bin" ) )	// without a font no point in displaying the menu
 	{
 		TimerRestart( Timer, 0, 1000000 );
 	}
 	
-	if( TitleID == 0x0000000100000002LL )
+	if( ES_GetTitleID() == 0x0000000100000002LL )
 	{
 		//Disable SD access for system menu, as it breaks channel/game loading
 		if( *SDStatus == 1 )
@@ -119,7 +108,7 @@ int _main( int argc, char *argv[] )
 
 		MenuType = 1;
 		
-	} else if ( (TitleID >> 32) ==  0x00010001LL ) {
+	} else if ( (ES_GetTitleID() >> 32) ==  0x00010001LL ) {
 		//MenuType = 2;
 	}
 
