@@ -204,32 +204,22 @@ typedef struct
 
 } __attribute__((packed)) UIDSYS;
 
+u32 ES_Init( u8 *MessageHeap );
+
+void ES_Ioctlv( struct ipcmessage *msg );
+
 s32 ES_TitleCreatePath( u64 TitleID );
-void ES_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 s32 ES_LoadModules( u32 KernelVersion );
 s32 ES_LaunchSYS( u64 *TitleID );
-s32 ES_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD );
-s32 ES_AddContentData(s32 cfd, void *data, u32 data_size);
-s32 ES_AddTitleFinish( TitleMetaData *TMD );
+
 u8 *NANDLoadFile( char * path, u32 *Size );
 s32 doTicketMagic( Ticket *iTIK );
 s32 ES_CreateKey( u8 *Ticket );
-s32 ES_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char *tik, char *Hashes );
 s32 ES_CheckBootOption( char *Path, u64 *TitleID );
 s32 ES_LaunchTitle( u64 *TitleID, u8 *TikView );
-s32 ES_GetUID( u64 *TitleID, u16 *UID );
-void iES_GetTMDView( TitleMetaData *TMD, u8 *oTMDView );
-s32 ES_GetTMDView( u64 *TitleID, u8 *oTMDView );
-s32 ES_GetNumOwnedTitles( u32 *TitleCount );
-s32 ES_GetNumTitles( u32 *TitleCount );
-s32 ES_Sign( u64 *TitleID, u8 *data, u32 len, u8 *sign, u8 *cert );
+s32 ESP_Sign( u64 *TitleID, u8 *data, u32 len, u8 *sign, u8 *cert );
 s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion );
-s32 ES_DIGetTicketView( u64 *TitleID, u8 *oTikView );
-s32 ES_GetOwnedTitles( u64 *Titles );
-s32 ES_GetTitles( u64 *Titles );
 s32 ES_CheckSharedContent( void *ContentHash );
 s32 ES_GetS1ContentID( void *ContentHash );
-void iES_GetTicketView( u8 *Ticket, u8 *oTicketView );
-s32 ES_OpenContent( u64 TitleID, u32 ContentID );
 
 #endif

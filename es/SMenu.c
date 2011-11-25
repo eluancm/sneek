@@ -109,7 +109,7 @@ void LoadAndRebuildChannelCache()
 				break;
 			default:
 			{
-				s32 fd = ES_OpenContent(uid[i].TitleID,0);
+				s32 fd = ESP_OpenContent(uid[i].TitleID,0);
 				if (fd >= 0 )
 				{
 					numChannels++;
@@ -140,7 +140,7 @@ void LoadAndRebuildChannelCache()
 					break;
 				default:
 				{
-					s32 fd = ES_OpenContent(uid[i].TitleID,0);
+					s32 fd = ESP_OpenContent(uid[i].TitleID,0);
 					if (fd >= 0){
 						IOS_Seek(fd,0xF0,SEEK_SET);
 						u32 j;
@@ -163,7 +163,6 @@ void LoadAndRebuildChannelCache()
 
 u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 {
-
 	u32 i;
 	u32 r13  = 0;
 

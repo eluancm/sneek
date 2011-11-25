@@ -38,6 +38,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "bmp.h"
 #include "NAND.h"
 #include "ES.h"
+#include "ESP.h"
 #include "Dump.h"
 
 #define MAX_HITS			64
