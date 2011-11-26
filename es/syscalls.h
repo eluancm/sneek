@@ -88,7 +88,7 @@ u32 syscall_2b( u32 PID, u32 b);
 
 void syscall_2c(void);
 
-#define _cc_ahbMemFlush(a,b) syscall_2d(a,b)
+#define SetGID(a,b) syscall_2d(a,b)
 u32 syscall_2d( u32 pid, u32 b);
 
 void syscall_2e(void);
@@ -146,7 +146,6 @@ u32 syscall_50( u32 );
 
 void syscall_51(void);	//Get Some DIFLAG
 void EXICtrl( u32 flag );
-void syscall_53(void);
 
 #define DoStuff(a) syscall_54(a)
 void syscall_54( u32 a );
@@ -177,13 +176,10 @@ void syscall_6a(int keyid, void *iv, void *in, int len, void *out);
 int syscall_6b(int keyid, void *iv, void *in, int len, void *out);
 
 s32 syscall_6c( void *data, u32 b, u32 c, u32 d );
-void syscall_6d(void);
-void syscall_6e(void);
+
 s32 syscall_6f( void *data, u32 ObjectA, u32 ObjectB);
 void GetDeviceCert( void *data);
 s32 syscall_71(u32 a, u32 b);
-void syscall_72(void);
-void syscall_73(void);
 s32 syscall_74( u32 Key );
 s32 syscall_75( u8 *hash, u32 HashLength, u32 Key, u8 *Signature );
 s32 syscall_76( u32 Key, char *Issuer, u8 *Cert );

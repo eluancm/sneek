@@ -164,8 +164,24 @@ void Asciify( char *str )
 {
 	int i=0;
 	for( i=0; i < strlen(str); i++ )
+	{
 		if( str[i] < 0x20 || str[i] > 0x7F )
 			str[i] = '_';
+		else {
+			switch( str[i] )	// Replace invalid FAT chars
+			{
+				case '*':
+				case '\"':
+				case ':':
+				case '|':
+				case '<':
+				case '>':
+				case '?':
+					str[i] = '_';
+				break;
+			}
+		}
+	}
 }
 
 u32 DumpDoTick( u32 CurrentFB )

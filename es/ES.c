@@ -33,7 +33,7 @@ static u64 TitleID ALIGNED(32);
 static u32 KernelVersion ALIGNED(32);
 static u32 SkipContent ALIGNED(32);
 
-extern u32 TitleVersion;
+extern u16 TitleVersion;
 
 TitleMetaData *iTMD = (TitleMetaData *)NULL;			//used for information during title import
 static u8 *iTIK		= (u8 *)NULL;						//used for information during title import
@@ -49,18 +49,12 @@ u32 ES_Init( u8 *MessageHeap )
 
 	u32 pid = GetPID();
 	u32 ret = SetUID( pid, 0 );
-		ret = _cc_ahbMemFlush( pid, 0 );
-
-	//u32 Flag1;
-	//u16 Flag2;
-	//GetFlags( &Flag1, &Flag2 );
+		ret = SetGID( pid, 0 );
 
 	u32 version = GetKernelVersion();
 	dbgprintf("ES:KernelVersion:%08X, %d\n", version, (version<<8)>>0x18 );
 	
 	ret = ISFS_Init();
-
-	dbgprintf("ES:ISFS_Init():%d\n", ret );
 	
 //Used in Ioctlvs
 	path		= (char*)malloca(		0x40,  32 );
@@ -118,12 +112,12 @@ void ES_Ioctlv( struct ipcmessage *msg )
 		case IOCTL_ES_DECRYPT:
 		{
 			ret = aes_decrypt_( *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data));
-			dbgprintf("ES:Decrypt( %d, %p, %p, %d, %p ):%d\n", *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data), ret );	
+			//dbgprintf("ES:Decrypt( %d, %p, %p, %d, %p ):%d\n", *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data), ret );	
 		} break;
 		case IOCTL_ES_ENCRYPT:
 		{
 			ret = aes_encrypt( *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data));
-			dbgprintf("ES:Encrypt( %d, %p, %p, %d, %p ):%d\n", *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data), ret );	
+			//dbgprintf("ES:Encrypt( %d, %p, %p, %d, %p ):%d\n", *(u32*)(v[0].data), (u8*)(v[1].data), (u8*)(v[2].data), v[2].len, (u8*)(v[4].data), ret );	
 		} break;
 		case IOCTL_ES_SIGN:
 		{
@@ -162,7 +156,7 @@ void ES_Ioctlv( struct ipcmessage *msg )
 				ret = ISFS_GetFileStats( fd, status );
 				if( ret < 0 )
 				{
-					dbgprintf("ES:ISFS_GetFileStats(%d, %p ):%d\n", fd, status, ret );
+					;//dbgprintf("ES:ISFS_GetFileStats(%d, %p ):%d\n", fd, status, ret );
 				} else
 					*(u32*)(v[0].data) = status->Size;
 
@@ -367,32 +361,32 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			if( SkipContent )
 			{
 				ret = ES_SUCCESS;
-				dbgprintf("ES:AddContentFinish():%d\n", ret );
-				break;
-			}
 
-			if( iTMD == NULL )
-				ret = ES_FATAL;
-			else {
-				//load Ticket to forge the decryption key
-				_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(iTMD->TitleID>>32), (u32)(iTMD->TitleID) );
+			} else {
 
-				iTIK = NANDLoadFile( path, size );
-				if( iTIK == NULL )
-				{
-					iCleanUpTikTMD();
-					ret = ES_ETIKTMD;
+				if( iTMD == NULL )
+					ret = ES_FATAL;
+				else {
+					//load Ticket to forge the decryption key
+					_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(iTMD->TitleID>>32), (u32)(iTMD->TitleID) );
 
-				} else {
-
-					ret = ES_CreateKey( iTIK );
-					if( ret >= 0 )
+					iTIK = NANDLoadFile( path, size );
+					if( iTIK == NULL )
 					{
-						ret = ESP_AddContentFinish( *(vu32*)(v[0].data), iTIK, iTMD );
-						DestroyKey( *KeyID );
-					}
+						iCleanUpTikTMD();
+						ret = ES_ETIKTMD;
 
-					free( iTIK );
+					} else {
+
+						ret = ES_CreateKey( iTIK );
+						if( ret >= 0 )
+						{
+							ret = ESP_AddContentFinish( *(vu32*)(v[0].data), iTIK, iTMD );
+							DestroyKey( *KeyID );
+						}
+
+						free( iTIK );
+					}
 				}
 			}
 
@@ -458,19 +452,19 @@ void ES_Ioctlv( struct ipcmessage *msg )
 			ret = ISFS_CreateFile( path, 0, 3, 3, 3 );
 			if( ret < 0 )
 			{
-				dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
+				;//dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
 			} else {
 
 				s32 fd = IOS_Open( path, ISFS_OPEN_WRITE );
 				if( fd < 0 )
 				{
-					dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
+					//dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
 					ret = fd;
 				} else {
 					ret = IOS_Write( fd, (u8*)(v[0].data), v[0].len );
 					if( ret < 0 || ret != v[0].len )
 					{
-						dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, v[0].data, v[0].len, ret );
+						;//dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, v[0].data, v[0].len, ret );
 					} else {
 						ret = ES_SUCCESS;
 					}
@@ -846,9 +840,9 @@ void ES_Ioctlv( struct ipcmessage *msg )
 					{
 						ret = *size;
 					} else {
-						ret = _cc_ahbMemFlush( 0xF, TMD->GroupID );
+						ret = SetGID( 0xF, TMD->GroupID );
 						if( ret < 0 )
-							dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, TMD->GroupID, ret );
+							dbgprintf("SetGID( %d, %04X ):%d\n", 0xF, TMD->GroupID, ret );
 						free( TMD );
 					}
 				} else {

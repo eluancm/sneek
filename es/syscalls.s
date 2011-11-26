@@ -320,12 +320,7 @@ syscall_51:
 EXICtrl:
 	.long 0xe6000a50
 	bx lr
-
-	.global syscall_53
-syscall_53:
-	.long 0xe6000a70
-	bx lr
-
+	
 	.global syscall_54
 syscall_54:
 	.long 0xe6000a90
@@ -404,15 +399,6 @@ syscall_6c:
 	.long 0xe6000d90
 	bx lr
 
-	.global syscall_6d
-syscall_6d:
-	.long 0xe6000db0
-	bx lr
-
-	.global syscall_6e
-syscall_6e:
-	.long 0xe6000dd0
-	bx lr
 
 	.global syscall_6f
 syscall_6f:
@@ -428,17 +414,7 @@ GetDeviceCert:
 syscall_71:
 	.long 0xe6000e30
 	bx lr
-
-	.global syscall_72
-syscall_72:
-	.long 0xe6000e50
-	bx lr
-
-	.global syscall_73
-syscall_73:
-	.long 0xe6000e70
-	bx lr
-
+	
 	.global syscall_74
 syscall_74:
 	.long 0xe6000e90

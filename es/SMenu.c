@@ -272,7 +272,6 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 
 	for( i=0; i < MAX_FB; ++i )
 		FB[i] = 0;
-
 //Patches and SNEEK Menu
 	switch( TitleID )
 	{
@@ -302,7 +301,7 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 
 					//GC-Disc Region free hack
 					*(u32*)0x137DAEC = 0x7F60DB78;
-					
+									
 					//Autoboot disc
 					//*(u32*)0x0137AEF4 = 0x48000020;
 					//*(u32*)0x01379B40 = 0x60000000;

@@ -217,16 +217,7 @@ s32 ES_LoadModules( u32 KernelVersion )
 	s32 r=0;
 	int i;
 	
-	//_sprintf( path, "/sneek/kernel.bin");
-
-	////now load IOS kernel
-	//IOSBoot( path, 0, GetKernelVersion() );			
-	//
-	//dbgprintf("ES:Booting file failed!\nES:Loading kernel.bin.." );
-	//while(1);
-
-	//load TMD
-	
+	//load TMD	
 	_sprintf( path, "/title/00000001/%08x/content/title.tmd", KernelVersion );
 
 	u32 *size = (u32*)malloca( sizeof(u32), 0x40 );
@@ -499,10 +490,10 @@ s32 ES_LaunchSYS( u64 *TitleID )
 		return r;
 	}
 
-	r = _cc_ahbMemFlush( 0xF, *(vu16*)((u8*)TMD+0x198) );
+	r = SetGID( 0xF, *(vu16*)((u8*)TMD+0x198) );
 	if( r < 0 )
 	{
-		dbgprintf("_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, *(vu16*)((u8*)TMD+0x198), r );
+		dbgprintf("SetGID( %d, %04X ):%d\n", 0xF, *(vu16*)((u8*)TMD+0x198), r );
 
 		free( TIK_Data );
 		free( TMD );
@@ -548,7 +539,7 @@ s32 ES_LaunchSYS( u64 *TitleID )
 				return ES_FATAL;
 		}
 	} else {
-		dbgprintf("PPCBoot(\"%s\"):", path );
+		dbgprintf("ES:PPCBoot(\"%s\"):", path );
 		r = PPCBoot( path );
 		dbgprintf("%d\n", r );
 	}
@@ -713,7 +704,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 		free( TMD );
 	}
 
-	dbgprintf("ES:Loading IOS%d v%d...\n", IOSVersion, TitleVersion );
+	dbgprintf("ES:Loading IOS%d ...\n", IOSVersion );
 	
 	//Load TMD of the requested IOS and build KernelVersion
 	_sprintf( path, "/title/00000001/%08x/content/title.tmd", IOSVersion );
@@ -767,8 +758,7 @@ s32 ES_BootSystem( u64 *TitleID, u32 *KernelVersion )
 			r = LoadPPC( data+0x29A );
 			dbgprintf("ES:Disc->LoadPPC(%p):%d\n", data+0x29A, r );
 
-			r = ISFS_Delete( path );
-			dbgprintf("ES:Disc->ISFS_Delete(%s):%d\n", path, r );
+			ISFS_Delete( path );
 
 			free( data );
 			free( path );
@@ -1109,10 +1099,10 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 		goto ES_DIVerfiy_end;
 	}
 
-	r = _cc_ahbMemFlush( 0xF, TMD->GroupID );
+	r = SetGID( 0xF, TMD->GroupID );
 	if( r < 0 )
 	{
-		dbgprintf("ES:_cc_ahbMemFlush( %d, %04X ):%d\n", 0xF, TMD->GroupID, r );
+		dbgprintf("ES:SetGID( %d, %04X ):%d\n", 0xF, TMD->GroupID, r );
 		goto ES_DIVerfiy_end;
 	}
 
