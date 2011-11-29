@@ -337,18 +337,18 @@ syscall_5a:
 	.long 0xe6000b50
 	bx lr
 
-	.global CreateKey
-CreateKey:
+	.global KeyCreate
+KeyCreate:
 	.long 0xe6000b70
 	bx lr
 
-	.global DestroyKey
-DestroyKey:
+	.global KeyDelete
+KeyDelete:
 	.long 0xe6000b90
 	bx lr
 
-	.global syscall_5d
-syscall_5d:
+	.global KeyInitialize
+KeyInitialize:
 	.long 0xe6000bb0
 	bx lr
 
@@ -410,8 +410,8 @@ GetDeviceCert:
 	.long 0xe6000e10
 	bx lr
 
-	.global syscall_71
-syscall_71:
+	.global KeySetPermissions
+KeySetPermissions:
 	.long 0xe6000e30
 	bx lr
 	

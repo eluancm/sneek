@@ -512,9 +512,9 @@ u32 DumpDoTick( u32 CurrentFB )
 					
 					Key = (u32*)malloca( sizeof(u32), 32 );
 
-					CreateKey( Key, 0, 0 );
-					syscall_71( *Key, 8 );
-					syscall_5d( *Key, 0, 4, 1, 0, TitleID, TitleKey );
+					KeyCreate( Key, 0, 0 );
+					KeySetPermissions( *Key, 8 );
+					KeyInitialize( *Key, 0, 4, 1, 0, TitleID, TitleKey );
 
 					//Dump boot.bin files
 					
@@ -659,7 +659,7 @@ u32 DumpDoTick( u32 CurrentFB )
 					DVDTimer = (u32)(*(vu32*)0x0d800010 - DVDTimeStart);
 					DVDTimer = (u32)( DVDTimer * 128.f / 243000000.f);
 
-					DestroyKey( *Key );
+					KeyDelete( *Key );
 
 					free(Key);
 					free(Path);

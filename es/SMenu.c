@@ -6,7 +6,6 @@ u32 FBOffset	= 0;
 u32 FBEnable	= 0;
 u32	FBSize		= 0;
 u32 *WPad		= NULL;
-u32 *GameCount;
 
 u32 DVDReinsertDisc=false;
 
@@ -58,32 +57,6 @@ unsigned char VISetFB[] =
 	0x38, 0xA7, 0x00, 0x38,
 	0x38, 0xC7, 0x00, 0x4C, 
 };
-
-s32 LaunchTitle(u64 TitleID)
-{
-	u32 majorTitleID = (TitleID) >> 32;
-	u32 minorTitleID = (TitleID) & 0xFFFFFFFF;
-
-	char* ticketPath = (char*) malloca(128,32);
-	_sprintf(ticketPath,"/ticket/%08x/%08x.tik",majorTitleID,minorTitleID);
-	s32 fd = IOS_Open(ticketPath,1);
-	free(ticketPath);
-
-	u32 size = IOS_Seek(fd,0,SEEK_END);
-	IOS_Seek(fd,0,SEEK_SET);
-
-	u8* ticketData = (u8*) malloca(size,32);
-	IOS_Read(fd,ticketData,size);
-	IOS_Close(fd);
-
-	u8* ticketView = (u8*) malloca(0xD8,32);
-	iES_GetTicketView(ticketData,ticketView);
-	free(ticketData);
-
-	s32 r = ES_LaunchTitle(&TitleID,ticketView);
-	free(ticketView);
-	return r;
-}
 
 void LoadAndRebuildChannelCache()
 {
@@ -263,11 +236,9 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 	PosValX	= 0;
 	Hits	= 0;
 	edit	= 0;
-	DICfg	= (DIConfig*)NULL;
 	PICBuffer = (char*)NULL;
 
 	Offsets		= (u32*)malloca( sizeof(u32) * MAX_HITS, 32 );
-	GameCount	= (u32*)malloca( sizeof(u32), 32 );
 	FB			= (u32*)malloca( sizeof(u32) * MAX_FB, 32 );
 
 	for( i=0; i < MAX_FB; ++i )
@@ -389,9 +360,9 @@ void SMenuDraw( void )
 		{
 			if( FSUSB )
 			{
-				PrintFormat( FB[i], MENU_POS_X, 20, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+				PrintFormat( FB[i], MENU_POS_X, 20, "UNEEK+DI %s  Games:%d  Region:%s", __DATE__, DICfg->Gamecount, RegionStr[DICfg->Region] );
 			} else {
-				PrintFormat( FB[i], MENU_POS_X, 20, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, *GameCount, RegionStr[DICfg->Region] );
+				PrintFormat( FB[i], MENU_POS_X, 20, "SNEEK+DI %s  Games:%d  Region:%s", __DATE__, DICfg->Gamecount, RegionStr[DICfg->Region] );
 			}
 		}
 
@@ -435,7 +406,7 @@ void SMenuDraw( void )
 
 				for( j=0; j<EntryCount; ++j )
 				{
-					if( j+ScrollX >= *GameCount )
+					if( j+ScrollX >= DICfg->Gamecount )
 						break;
 
 					if( *(vu32*)(DICfg->GameInfo[ScrollX+j]+0x1C) == 0xc2339f3d )
@@ -459,7 +430,7 @@ void SMenuDraw( void )
 						PrintFormat( FB[i], MENU_POS_X+6*12, MENU_POS_Y+(j+6)*16, "no cover image found!" );
 				}
 
-				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*22, "%d/%d", ScrollX/EntryCount + 1, *GameCount/EntryCount + (*GameCount % EntryCount > 0));
+				PrintFormat( FB[i], MENU_POS_X+575, MENU_POS_Y+16*22, "%d/%d", ScrollX/EntryCount + 1, DICfg->Gamecount/EntryCount + (DICfg->Gamecount % EntryCount > 0));
 				
 				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
@@ -506,6 +477,7 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*7, "Autoupdate game list   :%s", (DICfg->Config&CONFIG_AUTO_UPDATE_LIST) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*8, "Game debugging         :%s", (DICfg->Config&CONFIG_DEBUG_GAME) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*9, "Debugger wait          :%s", (DICfg->Config&CONFIG_DEBUG_GAME_WAIT) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*11,"Fake console region    :%s", (DICfg->Config&CONFIG_FAKE_CONSOLE_RG) ? "On" : "Off" );
 				
 				switch( (DICfg->Config&HOOK_TYPE_MASK) )
 				{
@@ -523,10 +495,10 @@ void SMenuDraw( void )
 					break;
 				}
 
-				PrintFormat( FB[i], MENU_POS_X+50, 104+16*12, "save config" );
-				PrintFormat( FB[i], MENU_POS_X+50, 104+16*13, "recreate game cache(restarts!!)" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*13, "save config" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "recreate game cache(restarts!!)" );
 				if( FSUSB )
-					PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "Boot NMM" );				
+					PrintFormat( FB[i], MENU_POS_X+50, 104+16*15, "Boot NMM" );				
 
 				PrintFormat( FB[i], MENU_POS_X+30, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -556,7 +528,7 @@ void LoadDVDCover()
 
 	curDVDCover = NULL;
 	
-	if (DICfg == NULL || PosX + ScrollX >= DICfg->Gamecount)
+	if (DICfg == NULL || PosX + ScrollX >= DICfg->Gamecount )
 		return;
 
 	char* imgPathBuffer = (char*)malloca(160,32);
@@ -616,14 +588,6 @@ void SMenuReadPad ( void )
 		ShowMenu = !ShowMenu;
 		if(ShowMenu)
 		{
-			if( DICfg == NULL )
-			{
-				DVDGetGameCount( GameCount );
-
-                DICfg = (DIConfig *)malloca( *GameCount * 0x80 + 0x10, 32 );
-                DVDReadGameInfo( 0, *GameCount * 0x80 + 0x10, DICfg );
-			}
-
 			if( MenuType == 0 && (DICfg->Config & CONFIG_SHOW_COVERS) )
 				LoadDVDCover();
 		}
@@ -842,13 +806,13 @@ void SMenuReadPad ( void )
 			{
 				if( PosX >= EntryCount-1 )
 				{
-					if( PosX+ScrollX+1 < *GameCount )
+					if( PosX+ScrollX+1 < DICfg->Gamecount )
 					{
 						ScrollX++;
 						if( DICfg->Config & CONFIG_SHOW_COVERS )
 							LoadDVDCover();
 					}
-				} else if ( PosX+ScrollX+1 < *GameCount )
+				} else if ( PosX+ScrollX+1 < DICfg->Gamecount )
 				{
 					PosX++;
 					if( DICfg->Config & CONFIG_SHOW_COVERS )
@@ -957,7 +921,11 @@ void SMenuReadPad ( void )
 
 						DVDReinsertDisc=true;
 					} break;
-					case 12:
+					case 11:
+					{
+						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
+					} break;
+					case 13:
 					{
 						if( DVDReinsertDisc )
 							DVDSelectGame( DICfg->SlotID );
@@ -966,14 +934,14 @@ void SMenuReadPad ( void )
 
 						DVDReinsertDisc=false;
 					} break;
-					case 13:
+					case 14:
 					{
 						DICfg->Gamecount = 0;
 						DICfg->Config	|= CONFIG_AUTO_UPDATE_LIST;
 						DVDWriteDIConfig( DICfg );
 						LaunchTitle( 0x0000000100000002LL );	
 					} break;
-					case 14:
+					case 15:
 					{
 						LaunchTitle( 0x0000000100000100LL );						
 					} break;
@@ -986,34 +954,34 @@ void SMenuReadPad ( void )
 					PosX--;
 				else {
 					if( FSUSB )
-						PosX  = 14;
+						PosX  = 15;
 					else
-						PosX = 13;
+						PosX = 14;
 				}
 
-				if( PosX == 11 )
-					PosX  = 10;
+				if( PosX == 12 )
+					PosX  = 11;
 
 				SLock = 1;
 			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
 				if( FSUSB )
 				{
-					if( PosX >= 14 )
+					if( PosX >= 15 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				} else {
-					if( PosX >= 13 )
+					if( PosX >= 14 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				}
 
-				if( PosX == 11 )
-					PosX  = 12;
+				if( PosX == 12 )
+					PosX  = 13;
 
 				SLock = 1;
 			}
@@ -1083,6 +1051,10 @@ void SMenuReadPad ( void )
 						
 						DVDReinsertDisc=true;
 					} break;
+					case 11:
+					{
+						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
+					} break;
 				}
 				SLock = 1;
 			} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
@@ -1150,6 +1122,10 @@ void SMenuReadPad ( void )
 						
 						DVDReinsertDisc=true;
 					} break;
+					case 11:
+					{
+						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
+					} break;
 				}
 				SLock = 1;
 			} 
@@ -1210,6 +1186,7 @@ void SMenuReadPad ( void )
 		} break;
 	}
 }
+#ifdef CHEATMENU
 void SCheatDraw( void )
 {
 	u32 i,j;
@@ -1517,3 +1494,4 @@ void SCheatReadPad ( void )
 		}
 	}
 }
+#endif

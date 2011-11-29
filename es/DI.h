@@ -56,6 +56,8 @@ enum SNEEKConfig
 	CONFIG_AUTO_UPDATE_LIST	= (1<<7),
 
 	CONFIG_DUMP_MODE		= (1<<8),
+
+	CONFIG_FAKE_CONSOLE_RG	= (1<<9),
 };
 
 enum HookTypes

@@ -43,6 +43,7 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 		//dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(%d, %p ):%d\n", fd, status, r );
 		heap_free( 0, status );
 		*Size = r;
+		IOS_Close( fd );
 		return (u8*)NULL;
 	}
 
@@ -54,6 +55,7 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 	{
 		//dbgprintf("ES:NANDLoadFile(\"%s\")->Failed to alloc %d bytes!\n", path, status->Size );
 		heap_free( 0, status );
+		IOS_Close( fd );
 		return (u8*)NULL;
 	}
 
@@ -64,6 +66,7 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 		//dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
 		heap_free( 0, status );
 		*Size = r;
+		IOS_Close( fd );
 		return (u8*)NULL;
 	}
 

@@ -9,7 +9,7 @@ LDFLAGS	=	-nostartfiles -nodefaultlibs -mbig-endian -Wl,-T,esmodule.ld,-Map,esmo
 LIBS	=	-lgcc
 
 TARGET	=	esmodule.elf
-OBJECTS	=	start.o image.o font.o common.o alloc.o gecko.o DI.o SDI.o Dump.o SMenu.o FS.o utils_asm.o ESP.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
+OBJECTS	=	start.o image.o font.o common.o alloc.o gecko.o DI.o SDI.o Dump.o Config.o SMenu.o FS.o utils_asm.o ES.o NAND.o main.o syscalls.o vsprintf.o string.o
 
 .PHONY: FORCE
 

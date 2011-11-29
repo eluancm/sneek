@@ -130,10 +130,10 @@ void syscall_47( u32 *Flag1, u16 *Flag2 );
 #define DebugPrint(a) syscall_4b(a)
 void syscall_4b(unsigned int);
 
-#define SetKernelVersion( Version ) syscall_4c( Version )
+#define KernelSetVersion( Version ) syscall_4c( Version )
 s32 syscall_4c( u32 Version );
 
-#define GetKernelVersion( void ) syscall_4d( void )
+#define KernelGetVersion( void ) syscall_4d( void )
 s32 syscall_4d(void);
 
 void syscall_4e( u32 value );	//Poke GPIO OUT
@@ -157,9 +157,9 @@ s32 syscall_59( u8 *TMD );
 s32 syscall_5a( char *Path );
 
 
-s32 CreateKey( u32 *Object, u32 ValueA, u32 ValueB );
-void DestroyKey( u32 KeyID );
-s32 syscall_5d(u32 a, u32 b, u32 c, u32 d, u32 e, void *f, void *g);
+s32 KeyCreate( u32 *Object, u32 ValueA, u32 ValueB );
+void KeyDelete( u32 KeyID );
+s32 KeyInitialize(u32 a, u32 b, u32 c, u32 d, u32 e, void *f, void *g);
 s32 syscall_5f( u8 *unknown, u32 b, u32 c );
 s32 syscall_61(u32 a, u32 b, u32 c);
 void GetKey( u32 KeyID, u8 *Key );
@@ -179,7 +179,7 @@ s32 syscall_6c( void *data, u32 b, u32 c, u32 d );
 
 s32 syscall_6f( void *data, u32 ObjectA, u32 ObjectB);
 void GetDeviceCert( void *data);
-s32 syscall_71(u32 a, u32 b);
+s32 KeySetPermissions(u32 a, u32 b);
 s32 syscall_74( u32 Key );
 s32 syscall_75( u8 *hash, u32 HashLength, u32 Key, u8 *Signature );
 s32 syscall_76( u32 Key, char *Issuer, u8 *Cert );

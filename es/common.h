@@ -12,4 +12,6 @@ extern void *memset8( void *dst, int x, size_t len );
 
 void udelay(int us);
 
+void PanicBlink(int Pattern, ...);
+
 #endif

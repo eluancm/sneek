@@ -26,7 +26,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "string.h"
 #include "syscalls.h"
 #include "global.h"
-#include "ipc.h"
 #include "gecko.h"
 #include "alloc.h"
 #include "vsprintf.h"
@@ -37,9 +36,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "image.h"
 #include "bmp.h"
 #include "NAND.h"
-#include "ES.h"
-#include "ESP.h"
 #include "Dump.h"
+#include "ES.h"
 
 #define MAX_HITS			64
 #define MAX_FB				3
@@ -64,8 +62,10 @@ void SMenuAddFramebuffer( void );
 void SMenuDraw( void );
 void SMenuReadPad( void );
 
+#ifdef CHEATMENU
 void SCheatDraw( void );
 void SCheatReadPad( void );
+#endif
 
 void LoadAndRebuildChannelCache();
 

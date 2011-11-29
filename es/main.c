@@ -28,10 +28,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "alloc.h"
 #include "font.h"
 #include "DI.h"
-#include "ES.h"
-#include "ESP.h"
 #include "SDI.h"
 #include "SMenu.h"
+#include "ES.h"
 
 int verbose = 0;
 u32 base_offset=0;
@@ -100,23 +99,19 @@ int _main( int argc, char *argv[] )
 		TimerRestart( Timer, 0, 1000000 );
 	}
 	
-	if( ES_GetTitleID() == 0x0000000100000002LL )
+	if( GetTitleID() == 0x0000000100000002LL )
 	{
-		//Disable SD access for system menu, as it breaks channel/game loading
-		if( *SDStatus == 1 )
-			*SDStatus = 2;
-
 		MenuType = 1;
 		
-	} else if ( (ES_GetTitleID() >> 32) ==  0x00010001LL ) {
+	} else if ( (GetTitleID() >> 32) ==  0x00010001LL ) {
 		//MenuType = 2;
 	}
 
 	LoadAndRebuildChannelCache();
-	
-	dbgprintf("ES:looping!\n");
-	
+		
 	thread_set_priority( 0, 0x0A );
+
+	dbgprintf("ES:looping!\n");
 		
 	while (1)
 	{
@@ -157,11 +152,14 @@ int _main( int argc, char *argv[] )
 			{
 				SMenuDraw();
 				SMenuReadPad();
-			} else if( MenuType == 2 ) {
+			}
+#ifdef CHEATMENU
+			else if( MenuType == 2 ) {
 
 				SCheatDraw();
 				SCheatReadPad();
 			}
+#endif
 
 			TimerRestart( Timer, 0, 2500 );
 			continue;
@@ -176,7 +174,7 @@ int _main( int argc, char *argv[] )
 			{
 				//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d device:\"%s\":%d\n", queueid, ret, message->command, message->open.device, message->open.mode );
 				// Is it our device?
-				if( strncmp( message->open.device, "/dev/es", 7 ) == 0 )
+				if( memcmp( message->open.device, "/dev/es", 8 ) == 0 )
 				{
 					ret = ES_FD;
 				} else if( strncmp( message->open.device, "/dev/sdio/slot", 14 ) == 0 ) {
@@ -197,7 +195,6 @@ int _main( int argc, char *argv[] )
 				if( message->fd == ES_FD || message->fd == SD_FD )
 				{
 					mqueue_ack( (void *)message, ES_SUCCESS );
-					break;
 				} else 
 					mqueue_ack( (void *)message, FS_EINVAL );
 
@@ -207,7 +204,6 @@ int _main( int argc, char *argv[] )
 			case IOS_WRITE:
 			case IOS_SEEK:
 			{
-				dbgprintf("ES:Error Read|Write|Seek called!\n");
 				mqueue_ack( (void *)message, FS_EINVAL );
 			} break;
 			case IOS_IOCTL:
@@ -220,13 +216,16 @@ int _main( int argc, char *argv[] )
 			} break;
 
 			case IOS_IOCTLV:
+			{
 				if( message->fd == ES_FD )
-					ES_Ioctlv( message );
-				else if( message->fd == SD_FD ) 
+				{
+					ES_IoctlvN( message );
+				} else if( message->fd == SD_FD ) {
 					SD_Ioctlv( message );
-				else
+				} else {
 					mqueue_ack( (void *)message, FS_EINVAL );
-			break;
+				}
+			} break;
 			
 			default:
 				dbgprintf("ES:unimplemented/invalid msg: %08x argv[0]:%08x\n", message->command, message->args[0] );

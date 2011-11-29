@@ -6,7 +6,7 @@
 struct ioctl_vector {
 	void *data;
 	unsigned int len;
-} __attribute__((packed));
+}  __attribute__((packed)) ;
 
 
 /* IOCTL vector */

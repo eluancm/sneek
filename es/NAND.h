@@ -28,7 +28,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "ipc.h"
 #include "common.h"
 #include "FS.h"
-#include "ES.h"
 
 u8 *NANDLoadFile( char * path, u32 *Size );
 s32 NANDWriteFileSafe( char *pathdst, void *data, u32 size );
