@@ -70,13 +70,17 @@ enum HookTypes
 
 };
 
+#define DVD_CONFIG_SIZE		0x10
+#define DVD_GAMEINFO_SIZE	0x80
+#define DVD_GAME_NAME_OFF	0x60
+
 typedef struct
 {
 	u32		SlotID;
 	u32		Region;
 	u32		Gamecount;
 	u32		Config;
-	u8		GameInfo[][0x80];
+	u8		GameInfo[][DVD_GAMEINFO_SIZE];
 } DIConfig;
 
 enum DIOpcodes

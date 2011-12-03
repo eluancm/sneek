@@ -49,7 +49,14 @@ typedef s32(*ipccallback)(s32 result,void *usrdata);
 
 #define ALIGNED(x) __attribute__((aligned(x)))
 
+/* Attributes */
+#ifndef ATTRIBUTE_ALIGN
+# define ATTRIBUTE_ALIGN(v) __attribute__((aligned(v)))
+#endif
 
+#ifndef ATTRIBUTE_PACKED
+# define ATTRIBUTE_PACKED __attribute__((packed))
+#endif
 typedef struct
 {
 	u32 data;

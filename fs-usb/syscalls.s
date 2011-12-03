@@ -396,8 +396,8 @@ syscall_4e:
 	.long 0xe60009d0
 	bx lr
 
-	.global syscall_4f
-syscall_4f:
+	.global VirtualToPhysical
+VirtualToPhysical:
 	.long 0xe60009f0
 	bx lr
 

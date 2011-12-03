@@ -492,6 +492,7 @@ void SMenuDraw( void )
 					//break;
 					default:
 						DICfg->Config &= ~HOOK_TYPE_MASK;
+						DICfg->Config |= HOOK_TYPE_OSLEEP;
 					break;
 				}
 

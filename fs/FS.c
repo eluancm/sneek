@@ -204,7 +204,7 @@ void FFS_Ioctl(struct IPCMessage *msg)
 
 		case IOCTL_GETATTR:
 		{
-			char *s=NULL;
+			char *s = (char*)NULL;
 			
 			switch( lenin )
 			{
@@ -332,7 +332,7 @@ u32 FS_CheckHandle( s32 fd )
 }
 s32 FS_GetUsage( char *path, u32 *FileCount, u32 *TotalSize )
 {
-	char *file = heap_alloc_aligned( 0, 0x40, 0x40 );
+	char *file = (char*)heap_alloc_aligned( 0, 0x40, 0x40 );
 
 	DIR d;
 	FILINFO FInfo;
@@ -598,17 +598,21 @@ s32 FS_Open( char *Path, u8 Mode )
 			} break;
 			case FR_NO_FILE:
 			{
-				if( Mode & FA_WRITE )
-				{
-					if( f_open( &fd_stack[i], Path, Mode | FA_CREATE_ALWAYS ) != FR_OK )
+				if( ( *(vu32*)0 >> 8 ) == 0x525559 )	// HACK: for whatever reason NMH2 fails when -106(FS_NO_ENTRY) is returned
+				{										// Most games don't seem to mind the change but it breaks MH Tri so we need a hack.
+
+					if( f_open( &fd_stack[i], Path, Mode | FA_OPEN_ALWAYS ) != FR_OK )
 					{
 						memset32( &fd_stack[i], 0, sizeof(FIL) );
 						return FS_NO_ENTRY;						
-					}
+					}		
+
 				} else {
+
 					memset32( &fd_stack[i], 0, sizeof(FIL) );
 					return FS_NO_ENTRY;
 				}
+
 			} break;
 			default:
 			{

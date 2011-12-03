@@ -224,7 +224,7 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 		
 		//Create default config
 		DICfg->Gamecount= 0;
-		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST;
+		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST | HOOK_TYPE_OSLEEP;
 		DICfg->SlotID	= 0;
 		DICfg->Region	= GetSystemMenuRegion();
 
@@ -236,7 +236,7 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 		
 		//Create default config
 		DICfg->Gamecount= 0;
-		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST;
+		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST | HOOK_TYPE_OSLEEP;
 		DICfg->SlotID	= 0;
 		DICfg->Region	= GetSystemMenuRegion();
 		
@@ -267,7 +267,7 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 
 		//Create default config
 		DICfg->Gamecount= 0;
-		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST;
+		DICfg->Config	= CONFIG_AUTO_UPDATE_LIST | HOOK_TYPE_OSLEEP;
 		DICfg->SlotID	= 0;
 		DICfg->Region	= GetSystemMenuRegion();
 		

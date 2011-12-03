@@ -163,8 +163,8 @@ s32 ES_BootSystem( void )
 
 	if( DVDGetGameCount( GameCount ) == 1 )
 	{
-        DICfg = (DIConfig *)malloca( *GameCount * 0x80 + 0x10, 32 );
-        DVDReadGameInfo( 0, *GameCount * 0x80 + 0x10, DICfg );
+        DICfg = (DIConfig *)malloca( *GameCount * DVD_GAMEINFO_SIZE + 0x10, 32 );
+        DVDReadGameInfo( 0, *GameCount * DVD_GAMEINFO_SIZE + 0x10, DICfg );
 	}
 
 	free( GameCount );
@@ -574,11 +574,11 @@ void iGetTMDView( TitleMetaData *TMD, u8 *oTMDView )
 		}
 	}
 
-//region free hack
-	memset8( TMDView+0x1E, 0, 16 );
-	*(u8*) (TMDView+0x21) = 0x0F;
-	*(u16*)(TMDView+0x1C) = 3;
-//-
+////region free hack
+//	memset8( TMDView+0x1E, 0, 16 );
+//	*(u8*) (TMDView+0x21) = 0x0F;
+//	*(u16*)(TMDView+0x1C) = 3;
+////-
 
 	memcpy( oTMDView, TMDView, TMDViewSize );
 	free( TMDView );
@@ -2719,6 +2719,10 @@ s32 ES_DeleteTitleContent( struct ioctl_vector *Data, u32 In, u32 Out )
 
 	return ret;
 }
+s32 ES_DeleteTicket( struct ioctl_vector *Data, u32 In, u32 Out )
+{
+	return ES_SUCCESS;
+}
 ESIoctlv ESIoctlvs[0x46] = {
 	ES_Invalid,				//	0x00
 	ES_AddTicket,			//	0x01
@@ -2743,10 +2747,10 @@ ESIoctlv ESIoctlvs[0x46] = {
 	ES_GetTMDViewSize,		//	0x14
 	ES_GetTMDView,			//	0x15
 	ES_GetConsumption,		//	0x16
-	ES_Invalid,				//	0x17
-	ES_Invalid,				//	0x18
-	ES_Invalid,				//	0x19
-	ES_Invalid,				//	0x1a
+	ES_Invalid,				//	0x17	ES_DeleteTitle
+	ES_DeleteTicket,		//	0x18
+	ES_Invalid,				//	0x19	ES_DIGetTmdViewSize
+	ES_Invalid,				//	0x1a	ES_DiGetTmdView
 	ES_GetDITicketViews,	//	0x1b
 	ES_DIVerify,			//	0x1c
 	ES_GetTitleDir,			//	0x1d
@@ -2757,8 +2761,8 @@ ESIoctlv ESIoctlvs[0x46] = {
 	ES_DeleteTitleContent,	//	0x22
 	ES_SeekContent,			//	0x23
 	ES_OpenTitleContent,	//	0x24
-	ES_Invalid,				//	0x25
-	ES_Invalid,				//	0x26
+	ES_Invalid,				//	0x25	ES_LaunchBC
+	ES_Invalid,				//	0x26	ES_ExportTitleInit
 	ES_ExportContentBegin,	//	0x27
 	ES_ExportContentData,	//	0x28
 	ES_ExportContentEnd,	//	0x29
@@ -2776,7 +2780,7 @@ ESIoctlv ESIoctlvs[0x46] = {
 	ES_GetStoredTMD,		//	0x35
 	ES_GetSharedContentCount,//	0x36
 	ES_GetSharedContents,	//	0x37
-	ES_Invalid,				//	0x38
+	ES_Invalid,				//	0x38	ES_DeleteSharedContent?
 	ES_DIGetStoredTMDSize,	//	0x39
 	ES_DIGetStoredTMD,		//	0x3a
 	ES_Invalid,				//	0x3b

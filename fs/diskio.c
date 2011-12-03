@@ -41,7 +41,7 @@ DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 		sdmmc_read( sector, count, buffer ) ;
 
 		_ahbMemFlush( 9 );
-		memcpy( buff, buffer, count*512 );
+		memcpy( (void*)buff, buffer, count*512 );
 
 		heap_free( 0, buffer );
 	} else {

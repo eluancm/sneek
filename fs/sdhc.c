@@ -27,6 +27,7 @@
 #include "string.h"
 #include "utils.h"
 #include "syscalls.h"
+#include "vsprintf.h"
 
 struct sdhc_host sc_host;
 

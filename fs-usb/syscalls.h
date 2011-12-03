@@ -157,7 +157,7 @@ void syscall_4c(void);
 void syscall_4d(void);
 void syscall_4e(void);
 
-#define virt_to_phys(a) syscall_4f(a)
+void *VirtualToPhysical(void *ptr);
 unsigned int syscall_4f(void *ptr);
 
 #define EnableVideo(a) syscall_50(a)

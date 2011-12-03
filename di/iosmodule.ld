@@ -7,7 +7,7 @@ __stack_size = 0x8000;
 
 MEMORY {
 
-	code		: ORIGIN = 0x20200000,	LENGTH = 0x7F00
+	code		: ORIGIN = 0x20200000,	LENGTH = 0x8000
 	ram			: ORIGIN = 0x20208000,	LENGTH = 0x140
 	stk			: ORIGIN = 0x20209000,	LENGTH = 0x2BDC4
 }

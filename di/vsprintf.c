@@ -316,16 +316,16 @@ void hexdump(void *d, int len)
   int i, off;
   data = (u8*)d;
   for (off=0; off<len; off += 16) {
-    dbgprintf( DEBUG_ALL, "%08x  ",off);
+    dbgprintf( DEBUG_INFO, "%08x  ",off);
     for(i=0; i<16; i++)
-      if((i+off)>=len) dbgprintf( DEBUG_ALL, "   ");
-      else dbgprintf( DEBUG_ALL, "%02x ",data[off+i]);
+      if((i+off)>=len) dbgprintf( DEBUG_INFO, "   ");
+      else dbgprintf( DEBUG_INFO, "%02x ",data[off+i]);
 
-    dbgprintf( DEBUG_ALL, " ");
+    dbgprintf( DEBUG_INFO, " ");
     for(i=0; i<16; i++)
-      if((i+off)>=len) dbgprintf( DEBUG_ALL, " ");
-      else dbgprintf( DEBUG_ALL, "%c",ascii(data[off+i]));
-    dbgprintf( DEBUG_ALL, "\n");
+      if((i+off)>=len) dbgprintf( DEBUG_INFO, " ");
+      else dbgprintf( DEBUG_INFO, "%c",ascii(data[off+i]));
+    dbgprintf( DEBUG_INFO, "\n");
   }
 }
 
@@ -351,6 +351,22 @@ int dbgprintf( u32 dbglevel, const char *fmt, ...)
 
 	//GeckoSendBuffer( buffer );
 	OSReport( buffer );
+	//s32 fd = IOS_Open("/dilog.txt", 2 );
+	//if( fd < 0 )
+	//{
+	//} else {
+
+	//	IOS_Seek( fd, 0, 2 );
+
+	//	char *ptr = HeapAllocAligned( 0, strlen(buffer), 32 );
+
+	//	memcpy( ptr, buffer, strlen(buffer));
+	//	IOS_Write( fd, ptr, strlen(buffer));
+
+	//	HeapFree( 0, ptr );
+
+	//	IOS_Close( fd );
+	//}
 
 	return i;
 }

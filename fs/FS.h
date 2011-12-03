@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "string.h"
 #include "utils.h"
 #include "vsprintf.h"
+#include "diskio.h"
 
 #define MAX_FILE		20
 #define FS_FD			0x99		// 153
@@ -43,6 +44,13 @@ enum FSError
 	FS_NO_ENTRY		=	-106,
 	FS_NO_HANDLE	=	-109,
 };
+
+enum
+{
+	ISFS_OPEN_READ = 1,
+	ISFS_OPEN_WRITE,
+	ISFS_OPEN_RW = (ISFS_OPEN_READ | ISFS_OPEN_WRITE)
+}; 
 
 // FFS ioctl's
 #define	IOCTL_INIT       0x01
@@ -79,6 +87,7 @@ typedef struct {
 	u32 file_length;
 	u32 file_pos;
 } FDStat;
+
 
 void FS_Fatal( char *name, u32 line, char *file, s32 error, char *msg );
 void FFS_Ioctl(struct IPCMessage *msg);
