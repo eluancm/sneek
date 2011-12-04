@@ -601,17 +601,14 @@ s32 FS_Open( char *Path, u8 Mode )
 				if( ( *(vu32*)0 >> 8 ) == 0x525559 )	// HACK: for whatever reason NMH2 fails when -106(FS_NO_ENTRY) is returned
 				{										// Most games don't seem to mind the change but it breaks MH Tri so we need a hack.
 
-					if( f_open( &fd_stack[i], Path, Mode | FA_OPEN_ALWAYS ) != FR_OK )
+					if( f_open( &fd_stack[i], Path, Mode | FA_OPEN_ALWAYS ) == FR_OK )
 					{
-						memset32( &fd_stack[i], 0, sizeof(FIL) );
-						return FS_NO_ENTRY;						
-					}		
-
-				} else {
-
-					memset32( &fd_stack[i], 0, sizeof(FIL) );
-					return FS_NO_ENTRY;
+						return i;
+					}
 				}
+
+				memset32( &fd_stack[i], 0, sizeof(FIL) );
+				return FS_NO_ENTRY;				
 
 			} break;
 			default:

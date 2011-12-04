@@ -105,6 +105,7 @@ int _main( int argc, char *argv[] )
 		
 	} else if ( (GetTitleID() >> 32) ==  0x00010001LL ) {
 		//MenuType = 2;
+		*SDStatus = 0x00000002;
 	}
 
 	LoadAndRebuildChannelCache();

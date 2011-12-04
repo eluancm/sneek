@@ -50,6 +50,15 @@ u32 GameHook=0;
 
 extern u32 FSMode;
 
+void DICfgFlush( DIConfig *cfg )
+{
+	s32 fd = DVDOpen( "/sneek/diconfig.bin", DWRITE );
+	if( fd >= 0 )
+	{
+		DVDWrite( fd, cfg, DVD_CONFIG_SIZE );
+		DVDClose( fd );
+	}
+}
 void Asciify( char *str )
 {
 	int i=0;
@@ -525,7 +534,102 @@ unsigned char patch_iplmovie[] =
     0x49, 0x50, 0x4C, 0x2E,
 	0x45, 0x55, 0x4C, 0x41,
 	0x00, 
-} ;
+};
+u32 FSTRebuild( void )
+{
+	dbgprintf( DEBUG_INFO, "DIP:Rebuilding FST please wait...\n");
+
+	u32 Entries = *(u32*)(FSTable+0x08);
+	char *NameOff = (char*)(FSTable + Entries * 0x0C);
+	FEntry *fe = (FEntry*)(FSTable);
+	
+	dbgprintf( DEBUG_INFO,"DIP:FST entries:%u\n", Entries );
+
+	if( Entries > 1000000 )	// something is wrong!
+		return 0;
+
+	u32 Entry[16];
+	u32 LEntry[16];
+	char Path[256];
+	u32 level=0;
+	u64 CurrentOffset = -1;
+	u32 i,j;
+
+	// Find lowest offset
+	for( j=0; j < Entries; ++j )
+	{
+		if( fe[j].Type )
+			continue;
+
+		if( fe[j].FileOffset <= CurrentOffset )
+			CurrentOffset = fe[j].FileOffset;
+	}
+
+	CurrentOffset <<= 2;
+	
+	for( i=1; i < Entries; ++i )
+	{
+		if( level )
+		{
+			while( LEntry[level-1] == i )
+			{
+				level--;
+			}
+		}
+
+		if( fe[i].Type )
+		{
+			//Skip empty folders
+			if( fe[i].NextOffset == i+1 )
+				continue;
+
+			Entry[level] = i;
+			LEntry[level++] = fe[i].NextOffset;
+			if( level > 15 )	// something is wrong!
+				break;
+
+		} else {
+
+			memset32( Path, 0, 256 );
+			sprintf( Path, "%sfiles/", GamePath );
+
+			for( j=0; j<level; ++j )
+			{
+				if( j )
+					Path[strlen(Path)] = '/';
+				memcpy( Path+strlen(Path), NameOff + fe[Entry[j]].NameOffset, strlen(NameOff + fe[Entry[j]].NameOffset ) );
+			}
+			if( level )
+				Path[strlen(Path)] = '/';
+			memcpy( Path+strlen(Path), NameOff + fe[i].NameOffset, strlen(NameOff + fe[i].NameOffset) );
+
+			Asciify( Path );
+
+			s32 fd = DVDOpen( Path, DREAD );
+			if( fd < 0 )
+			{
+				dbgprintf( DEBUG_ERROR, "DIP:Couldn't open:\"%s\"\n", Path );				
+				return 0;
+			}
+			
+			fe[i].FileLength = DVDGetSize(fd);
+
+			if( CurrentOffset == 0 )
+				CurrentOffset = fe[i].FileOffset << 2;
+
+			fe[i].FileOffset = CurrentOffset >> 2;
+
+			DVDClose( fd );
+
+			CurrentOffset += (fe[i].FileLength + 31) & (~31);	//align by 32 bytes
+
+			dbgprintf( DEBUG_INFO, "\rDIP: %u/%u ...", i, Entries );
+			//dbgprintf( DEBUG_INFO, "%s Size:%08X Offset:0x%X%08X\n", Path, fe[i].FileLength, (fe[i].FileOffset>>30), (u32)(fe[i].FileOffset<<2) );
+		}
+	}
+
+	return 1;
+}
 s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 {
 	s32 fd;
@@ -769,7 +873,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 	} else if( Offset < FSTableOffset+(FSTableSize>>2) )
 	{
 		Offset -= FSTableOffset;
-
+		
 		sprintf( Path, "%ssys/fst.bin", GamePath );
 		fd = DVDOpen( Path, DREAD );
 		if( fd < 0 )
@@ -777,7 +881,7 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 			dbgprintf( DEBUG_ERROR, "DIP:[fst.bin]  Failed to open!\n" );
 			return DI_FATAL;
 		} else {
-			//dbgprintf("DIP:[fst.bin]  Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
+			dbgprintf( DEBUG_INFO, "DIP:[fst.bin]  Offset:%08X Size:%08X Dst:%p\n", Offset, Length, ptr );
 			DVDSeek( fd, (u64)Offset<<2, 0 );
 			DVDRead( fd, ptr, Length );
 			DVDClose( fd );
@@ -922,6 +1026,38 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 								DVDRead( FC[FCEntry].File, ptr, Length );
 							
 								FCEntry++;
+								
+								if( DICfg->Config & ( CONFIG_FST_REBUILD_TEMP | CONFIG_FST_REBUILD_PERMA ) )
+								{
+									//After the game read the opening.bnr we rebuild the FST
+									if( strstr( Path, "opening.bnr" ) != NULL )
+									{
+										if( FSTRebuild() )
+										{
+											if( DICfg->Config & CONFIG_FST_REBUILD_PERMA )
+											{
+												sprintf( Path, "%ssys/fst.bin", GamePath );
+												fd = DVDOpen( Path, DWRITE );
+												if( fd >= 0 )
+												{
+													if( DVDWrite( fd, (void*)FSTable, FSTableSize ) != FSTableSize )
+													{
+														dbgprintf( DEBUG_INFO, "DIP:Failed to write:%p %u\n", FSTable, FSTableSize );														
+													}
+													DVDClose( fd );
+												} else {
+													dbgprintf( DEBUG_INFO, "DIP:Failed to open:\"%s\":%d\n", Path, fd );
+												}
+											}
+										} else {
+											ChangeDisc = 1;	// set to no disc, an half modified FST will just cause trouble
+											DICover |= 2;
+										}
+
+										DICfg->Config &= ~(CONFIG_FST_REBUILD_PERMA|CONFIG_FST_REBUILD_TEMP);
+										DICfgFlush( DICfg );
+									}
+								}
 
 								return DI_SUCCESS;
 							}

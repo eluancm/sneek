@@ -58,6 +58,9 @@ enum SNEEKConfig
 	CONFIG_DUMP_MODE		= (1<<8),
 
 	CONFIG_FAKE_CONSOLE_RG	= (1<<9),
+
+	CONFIG_FST_REBUILD_TEMP	= (1<<10),
+	CONFIG_FST_REBUILD_PERMA= (1<<11),
 };
 
 enum HookTypes
@@ -82,6 +85,33 @@ typedef struct
 	u32		Config;
 	u8		GameInfo[][DVD_GAMEINFO_SIZE];
 } DIConfig;
+
+typedef struct
+{
+	union
+	{
+		struct
+		{
+			u32 Type		:8;
+			u32 NameOffset	:24;
+		};
+		u32 TypeName;
+	};
+	union
+	{
+		struct		// File Entry
+		{
+			u32 FileOffset;
+			u32 FileLength;
+		};
+		struct		// Dir Entry
+		{
+			u32 ParentOffset;
+			u32 NextOffset;
+		};
+		u32 entry[2];
+	};
+} FEntry;
 
 enum DIOpcodes
 {

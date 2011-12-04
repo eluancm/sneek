@@ -478,6 +478,20 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*8, "Game debugging         :%s", (DICfg->Config&CONFIG_DEBUG_GAME) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*9, "Debugger wait          :%s", (DICfg->Config&CONFIG_DEBUG_GAME_WAIT) ? "On" : "Off" );
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*11,"Fake console region    :%s", (DICfg->Config&CONFIG_FAKE_CONSOLE_RG) ? "On" : "Off" );
+
+				switch( DICfg->Config & (CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA ) )
+				{
+					case CONFIG_FST_REBUILD_TEMP:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*12,"Rebuild FST            :%s", "Temporary" );
+					break;
+					case CONFIG_FST_REBUILD_PERMA:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*12,"Rebuild FST            :%s", "Permanent" );
+					break;
+					default:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*12,"Rebuild FST            :%s", "Disabled" );
+					break;
+					
+				}
 				
 				switch( (DICfg->Config&HOOK_TYPE_MASK) )
 				{
@@ -496,10 +510,10 @@ void SMenuDraw( void )
 					break;
 				}
 
-				PrintFormat( FB[i], MENU_POS_X+50, 104+16*13, "save config" );
-				PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "recreate game cache(restarts!!)" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "save config" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*15, "recreate game cache(restarts!!)" );
 				if( FSUSB )
-					PrintFormat( FB[i], MENU_POS_X+50, 104+16*15, "Boot NMM" );				
+					PrintFormat( FB[i], MENU_POS_X+50, 104+16*16, "Boot NMM" );				
 
 				PrintFormat( FB[i], MENU_POS_X+30, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -589,6 +603,8 @@ void SMenuReadPad ( void )
 		ShowMenu = !ShowMenu;
 		if(ShowMenu)
 		{
+			DVDReadGameInfo( 0, 0x10, (void*)DICfg );
+
 			if( MenuType == 0 && (DICfg->Config & CONFIG_SHOW_COVERS) )
 				LoadDVDCover();
 		}
@@ -926,7 +942,24 @@ void SMenuReadPad ( void )
 					{
 						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
 					} break;
-					case 13:
+					case 12:
+					{
+						switch( DICfg->Config & (CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA) )
+						{
+							case CONFIG_FST_REBUILD_TEMP:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+								DICfg->Config |= CONFIG_FST_REBUILD_PERMA;
+							break;
+							case CONFIG_FST_REBUILD_PERMA:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+							break;
+							default:
+								DICfg->Config |= CONFIG_FST_REBUILD_TEMP;
+							break;
+						}
+						DVDReinsertDisc=true;
+					} break;
+					case 14:
 					{
 						if( DVDReinsertDisc )
 							DVDSelectGame( DICfg->SlotID );
@@ -935,14 +968,14 @@ void SMenuReadPad ( void )
 
 						DVDReinsertDisc=false;
 					} break;
-					case 14:
+					case 15:
 					{
 						DICfg->Gamecount = 0;
 						DICfg->Config	|= CONFIG_AUTO_UPDATE_LIST;
 						DVDWriteDIConfig( DICfg );
 						LaunchTitle( 0x0000000100000002LL );	
 					} break;
-					case 15:
+					case 16:
 					{
 						LaunchTitle( 0x0000000100000100LL );						
 					} break;
@@ -955,34 +988,34 @@ void SMenuReadPad ( void )
 					PosX--;
 				else {
 					if( FSUSB )
-						PosX  = 15;
+						PosX  = 16;
 					else
-						PosX = 14;
+						PosX = 15;
 				}
 
-				if( PosX == 12 )
-					PosX  = 11;
+				if( PosX == 13 )
+					PosX  = 12;
 
 				SLock = 1;
 			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
 			{
 				if( FSUSB )
 				{
-					if( PosX >= 15 )
+					if( PosX >= 16 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				} else {
-					if( PosX >= 14 )
+					if( PosX >= 15 )
 					{
 						PosX=0;
 					} else 
 						PosX++;
 				}
 
-				if( PosX == 12 )
-					PosX  = 13;
+				if( PosX == 13 )
+					PosX  = 14;
 
 				SLock = 1;
 			}
@@ -1056,6 +1089,23 @@ void SMenuReadPad ( void )
 					{
 						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
 					} break;
+					case 12:
+					{
+						switch( DICfg->Config & (CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA) )
+						{
+							case CONFIG_FST_REBUILD_TEMP:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+							break;
+							case CONFIG_FST_REBUILD_PERMA:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+								DICfg->Config |= CONFIG_FST_REBUILD_TEMP;
+							break;
+							default:
+								DICfg->Config |= CONFIG_FST_REBUILD_PERMA;
+							break;
+						}
+						DVDReinsertDisc=true;
+					} break;
 				}
 				SLock = 1;
 			} else if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
@@ -1126,6 +1176,23 @@ void SMenuReadPad ( void )
 					case 11:
 					{
 						DICfg->Config ^= CONFIG_FAKE_CONSOLE_RG;
+					} break;
+					case 12:
+					{
+						switch( DICfg->Config & (CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA) )
+						{
+							case CONFIG_FST_REBUILD_TEMP:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+								DICfg->Config |= CONFIG_FST_REBUILD_PERMA;
+							break;
+							case CONFIG_FST_REBUILD_PERMA:
+								DICfg->Config &= ~(CONFIG_FST_REBUILD_TEMP|CONFIG_FST_REBUILD_PERMA);
+							break;
+							default:
+								DICfg->Config |= CONFIG_FST_REBUILD_TEMP;
+							break;
+						}
+						DVDReinsertDisc=true;
 					} break;
 				}
 				SLock = 1;

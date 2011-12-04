@@ -23,33 +23,6 @@ typedef struct
 } PartOffsets;
 
 
-typedef struct
-{
-	union
-	{
-		struct
-		{
-			u32 Type		:8;
-			u32 NameOffset	:24;
-		};
-		u32 TypeName;
-	};
-	union
-	{
-		struct		// File Entry
-		{
-			u32 FileOffset;
-			u32 FileLength;
-		};
-		struct		// Dir Entry
-		{
-			u32 ParentOffset;
-			u32 NextOffset;
-		};
-		u32 entry[2];
-	};
-} FEntry;
-
 u32 DumpDoTick( u32 CurrentFB );
 
 
