@@ -378,6 +378,8 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 						CurrentGame++;
 					}
 				}
+			} else {
+				DVDCreateDir("/games");	// create dir otherwise dumping games will fail
 			}
 
 			if( FSMode == UNEEK )
@@ -417,6 +419,12 @@ u32 DMLite = 0;
 s32 DVDSelectGame( int SlotID )
 {
 	GameHook = 0;
+
+	if( DICfg->Gamecount == 0 )
+	{
+		DICover |= 1;	// set to no disc
+		return DI_FATAL;
+	}
 
 	if( SlotID < 0 )
 		SlotID = 0;
@@ -1050,15 +1058,13 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 												}
 											}
 										} else {
-											ChangeDisc = 1;	// set to no disc, an half modified FST will just cause trouble
-											DICover |= 2;
+											DICover |= 1;	// set to no disc an half modified FST will just cause trouble
 										}
 
 										DICfg->Config &= ~(CONFIG_FST_REBUILD_PERMA|CONFIG_FST_REBUILD_TEMP);
 										DICfgFlush( DICfg );
 									}
 								}
-
 								return DI_SUCCESS;
 							}
 						//}
