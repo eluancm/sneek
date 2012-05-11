@@ -479,6 +479,37 @@ s32 DVDSelectGame( int SlotID )
 	ApploaderSize = DVDGetSize( fd ) >> 2;
 	DVDClose( fd );
 
+if( DICfg->GameInfo[SlotID][0x1C] == 0xC2 )	//GC Game write info for DM(L)
+	{
+		char *gpath = (char*)malloca( 256, 32 );
+
+		sprintf( gpath, "/games/%s/game.iso", &DICfg->GameInfo[SlotID][0x60] );
+
+		s32 fdi = DVDOpen( gpath, DREAD );
+		if( fdi < 0 )
+		{
+			//fst mode
+			sprintf( gpath, "/games/%s/", &DICfg->GameInfo[SlotID][0x60] );
+
+		} else {
+			DVDClose(fdi);
+		}
+		DML_CFG *dcfg = (DML_CFG*)0x01200000;
+
+		memset32( dcfg, 0, sizeof( DML_CFG ) );
+
+		dcfg->Version		= 0x00000001;
+		dcfg->Magicbytes	= 0xD1050CF6;
+
+		dcfg->Config		= DML_CFG_PADHOOK|DML_CFG_GAME_PATH;
+
+		memcpy( dcfg->GamePath, gpath, strlen(gpath) );
+
+		free( gpath );
+
+		dbgprintf( DEBUG_INFO, "DIP:Wrote config for DM(L)\n");
+	}
+
 	if( DMLite )
 		FSMode = SNEEK;
 
