@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "alloc.h"
 #include "vsprintf.h"
 #include "DIGlue.h"
+#include "Config.h"
 #include "utils.h"
 
 #define DI_SUCCESS	1
@@ -112,6 +113,28 @@ enum SNEEKConfig
 
 	CONFIG_FST_REBUILD_TEMP	= (1<<10),
 	CONFIG_FST_REBUILD_PERMA= (1<<11),
+	
+	CONFIG_DML_CHEATS		= (1<<12),
+	CONFIG_DML_DEBUGGER		= (1<<13),
+	CONFIG_DML_DEBUGWAIT	= (1<<14),
+	CONFIG_DML_NMM			= (1<<16),
+	CONFIG_DML_ACTIVITY_LED	= (1<<17),
+	CONFIG_DML_PADHOOK		= (1<<18),
+	CONFIG_DML_BOOT_DISC	= (1<<19),
+	CONFIG_DML_WIDESCREEN	= (1<<20),
+	CONFIG_DML_PROG_PATCH	= (1<<27),
+	
+	CONFIG_DML_VID_AUTO		= (1<<21),
+	CONFIG_DML_VID_FORCE	= (1<<22),
+	CONFIG_DML_VID_NONE		= (1<<23),
+
+	CONFIG_DML_VID_MASK		= CONFIG_DML_VID_AUTO|CONFIG_DML_VID_FORCE|CONFIG_DML_VID_NONE,
+
+	CONFIG_DML_VID_FORCE_PAL50	= (1<<24),
+	CONFIG_DML_VID_FORCE_PAL60	= (1<<25),
+	CONFIG_DML_VID_FORCE_NTSC	= (1<<26),
+
+	CONFIG_DML_VID_FORCE_MASK	= CONFIG_DML_VID_FORCE_PAL50|CONFIG_DML_VID_FORCE_PAL60|CONFIG_DML_VID_FORCE_NTSC,
 };
 
 enum HookTypes
@@ -201,53 +224,6 @@ typedef struct
 	u32	DataOffset;
 	u32 DataSize;
 } PartitionInfo;
-
-typedef struct DML_CFG 
-{
-	u32		Magicbytes;		// 0xD1050CF6
-	u32		Version;		// 0x00000001
-	u32		VideoMode;
-	u32		Config;
-	char	GamePath[255];
-	char	CheatPath[255];
-} DML_CFG;
-
-enum dmlconfig
-{
-	DML_CFG_CHEATS		= (1<<0),
-	DML_CFG_DEBUGGER	= (1<<1),
-	DML_CFG_DEBUGWAIT	= (1<<2),
-	DML_CFG_NMM			= (1<<3),
-	DML_CFG_NMM_DEBUG	= (1<<4),
-	DML_CFG_GAME_PATH	= (1<<5),
-	DML_CFG_CHEAT_PATH	= (1<<6),
-	DML_CFG_ACTIVITY_LED= (1<<7),
-	DML_CFG_PADHOOK		= (1<<8),
-	DML_CFG_NODISC		= (1<<9),
-	DML_CFG_BOOT_DISC	= (1<<10),
-	DML_CFG_BOOT_DOL	= (1<<11),
-};
-
-enum dmlvideomode
-{
-	DML_VID_AUTO		= (0<<16),
-	DML_VID_FORCE		= (1<<16),
-	DML_VID_NONE		= (2<<16),
-
-	DML_VID_FORCE_PAL50	= (1<<0),
-	DML_VID_FORCE_PAL60	= (1<<1),
-	DML_VID_FORCE_NTSC	= (1<<2),
-	DML_VID_FORCE_PROG	= (1<<3),
-	DML_VID_PROG_PATCH	= (1<<4),	// Patches the game to use Prog mode no matter what
-};
-
-enum VideoModes
-{
-	GCVideoModeNone		= 0,
-	GCVideoModePAL60	= 1,
-	GCVideoModeNTSC		= 2,
-	GCVideoModePROG		= 3,
-};
 
 u8 HardDriveConnected;//holds status of USB harddrive
 

@@ -513,7 +513,7 @@ void SMenuDraw( void )
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*14, "save config" );
 				PrintFormat( FB[i], MENU_POS_X+50, 104+16*15, "recreate game cache(restarts!!)" );
 				if( FSUSB )
-					PrintFormat( FB[i], MENU_POS_X+50, 104+16*16, "Boot NMM" );				
+					PrintFormat( FB[i], MENU_POS_X+50, 104+16*16, "Boot DM(L)" );				
 
 				PrintFormat( FB[i], MENU_POS_X+30, 40+64+16*PosX, "-->");
 				sync_after_write( (u32*)(FB[i]), FBSize );
@@ -527,6 +527,55 @@ void SMenuDraw( void )
 			case 3:
 			{
 				memcpy( (void*)(FB[i]), PICBuffer, FBSize );
+			} break;
+			case 5:
+			{
+				DML_CFG *cfg = (DML_CFG*)0x01200000;
+
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*0, "cheats                 :%s", (cfg->Config&DML_CFG_CHEATS) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*1, "debugger               :%s", (cfg->Config&DML_CFG_DEBUGGER) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*2, "debbugger wait         :%s", (cfg->Config&DML_CFG_DEBUGWAIT) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*3, "NoMoreMemory (NMM)     :%s", (cfg->Config&DML_CFG_NMM) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*4, "Activity LED           :%s", (cfg->Config&DML_CFG_ACTIVITY_LED) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*5, "PADHook                :%s", (cfg->Config&DML_CFG_PADHOOK) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*6, "Force Progressive      :%s", (cfg->VideoMode&DML_VID_FORCE_PROG) ? "On" : "Off" );
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*7, "Force Widescreen       :%s", (cfg->Config&DML_CFG_FORCE_WIDE) ? "On" : "Off" );
+
+				switch( cfg->VideoMode & DML_VID_MASK )
+				{
+					case DML_VID_DML_AUTO:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*9,"DML video              :%s", "auto" );
+					break;
+					case DML_VID_FORCE:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*9,"DML video              :%s", "force" );
+					break;
+					case DML_VID_NONE:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*9,"DML video              :%s", "none" );
+					break;					
+				}
+
+				if( (cfg->VideoMode & DML_VID_FORCE) == DML_VID_FORCE )
+				switch( cfg->VideoMode & DML_VID_FORCE_MASK )
+				{
+					case DML_VID_FORCE_PAL50:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*10, "Videomode              :%s", "PAL50" );
+					break;
+					case DML_VID_FORCE_PAL60:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*10, "Videomode              :%s", "PAL60" );
+					break;
+					case DML_VID_FORCE_NTSC:
+						PrintFormat( FB[i], MENU_POS_X+50, 104+16*10, "Videomode              :%s", "NTSC" );
+					break;
+					default:
+						cfg->VideoMode ^= DML_VID_FORCE_NTSC;
+					break;
+				}
+
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*12, "save config" );	
+				PrintFormat( FB[i], MENU_POS_X+50, 104+16*13, "Boot real disc" );	
+
+				PrintFormat( FB[i], MENU_POS_X+30, 40+64+16*PosX, "-->");
+				sync_after_write( (u32*)(FB[i]), FBSize );
 			} break;
 			default:
 			{
@@ -644,18 +693,34 @@ void SMenuReadPad ( void )
 			LoadDVDCover();
 	}
 
-	if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 && MenuType != 1 )
+	if( (GCPad.X || (*WPad&WPAD_BUTTON_PLUS) ) && SLock == 0 )
 	{
-		if( curDVDCover != NULL )
-			free(curDVDCover);
+		if( MenuType != 1 )
+		{
+			if( curDVDCover != NULL )
+				free(curDVDCover);
 
-		curDVDCover = NULL;
+			curDVDCover = (ImageStruct*)NULL;
 
-		MenuType = 1;
+			MenuType = 1;
 
-		PosX	= 0;
-		ScrollX	= 0;
-		SLock	= 1;
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+
+		} else if ( MenuType == 1 ) {
+
+			if( curDVDCover != NULL )
+				free(curDVDCover);
+
+			curDVDCover = (ImageStruct*)NULL;
+
+			MenuType = 5;
+
+			PosX	= 0;
+			ScrollX	= 0;
+			SLock	= 1;
+		}
 	}
 
 	if( (GCPad.Y || (*WPad&WPAD_BUTTON_MINUS) ) && SLock == 0 && MenuType != 2 )
@@ -1217,40 +1282,194 @@ void SMenuReadPad ( void )
 		} break;
 		case 3:
 		{
-			u32 Update = false;
-			if( GCPad.Left || (*WPad&WPAD_BUTTON_LEFT) )
+			MenuType = 0;
+			ShowMenu = 0;
+		} break;
+
+		case 5:	//DM(L) config
+		{
+			DML_CFG *cfg = (DML_CFG*)0x01200000;
+
+			if( GCPad.A || (*WPad&WPAD_BUTTON_A) )
 			{
-				if( PICNum > 0 )
+				switch(PosX)
 				{
-					PICNum--;
-					Update = true;
+					case 0:
+					{
+						DICfg->Config	^= CONFIG_DML_CHEATS;
+						cfg->Config		^= DML_CFG_CHEATS;
+					} break;
+					case 1:
+					{
+						DICfg->Config	^= CONFIG_DML_DEBUGGER;
+						cfg->Config		^= DML_CFG_DEBUGGER;
+					} break;
+					case 2:
+					{
+						DICfg->Config	^= CONFIG_DML_DEBUGWAIT;
+						cfg->Config		^= DML_CFG_DEBUGWAIT;
+					} break;
+					case 3:
+					{
+						DICfg->Config	^= CONFIG_DML_NMM;
+						cfg->Config		^= DML_CFG_NMM;
+					} break;
+					case 4:
+					{
+						DICfg->Config	^= CONFIG_DML_ACTIVITY_LED;
+						cfg->Config		^= DML_CFG_ACTIVITY_LED;
+					} break;
+					case 5:
+					{
+						DICfg->Config	^= CONFIG_DML_PADHOOK;
+						cfg->Config		^= DML_CFG_PADHOOK;
+					} break;
+					case 6:
+					{
+						DICfg->Config	^= CONFIG_DML_PROG_PATCH;
+						cfg->VideoMode	^= DML_VID_FORCE_PROG;
+					} break;
+					case 7:
+					{
+						DICfg->Config	^= CONFIG_DML_WIDESCREEN;
+						cfg->Config		^= DML_CFG_FORCE_WIDE;
+					} break;
+					case 9:
+					{
+						switch( cfg->VideoMode & DML_VID_MASK )
+						{
+							case DML_VID_DML_AUTO:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_AUTO;
+								cfg->VideoMode	&= ~DML_VID_DML_AUTO;
+
+								DICfg->Config	|= CONFIG_DML_VID_FORCE;
+								cfg->VideoMode	|= DML_VID_FORCE;
+
+							} break;
+							case DML_VID_FORCE:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_FORCE;
+								cfg->VideoMode	&= ~DML_VID_FORCE;
+
+								DICfg->Config	|= CONFIG_DML_VID_NONE;
+								cfg->VideoMode	|= DML_VID_NONE;
+
+							} break;
+							case DML_VID_NONE:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_NONE;
+								cfg->VideoMode	&= ~DML_VID_NONE;
+
+								DICfg->Config	|= CONFIG_DML_VID_AUTO;
+								cfg->VideoMode	|= DML_VID_DML_AUTO;
+
+							} break;
+						}
+					} break;
+					case 10:
+					{
+						if( (cfg->VideoMode & DML_VID_FORCE) != DML_VID_FORCE )
+							break;
+						
+						switch( cfg->VideoMode & DML_VID_FORCE_MASK )
+						{
+							case DML_VID_FORCE_PAL50:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_FORCE_PAL50;
+								cfg->VideoMode	&= ~DML_VID_FORCE_PAL50;
+
+								DICfg->Config	|= CONFIG_DML_VID_FORCE_PAL60;
+								cfg->VideoMode	|= DML_VID_FORCE_PAL60;
+							} break;
+							case DML_VID_FORCE_PAL60:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_FORCE_PAL60;
+								cfg->VideoMode	&= ~DML_VID_FORCE_PAL60;
+
+								DICfg->Config	|= CONFIG_DML_VID_FORCE_NTSC;
+								cfg->VideoMode	|= DML_VID_FORCE_NTSC;
+
+							} break;
+							case DML_VID_FORCE_NTSC:
+							{
+								DICfg->Config	&= ~CONFIG_DML_VID_FORCE_NTSC;
+								cfg->VideoMode	&= ~DML_VID_FORCE_NTSC;
+								
+								DICfg->Config	|= CONFIG_DML_VID_FORCE_PAL50;
+								cfg->VideoMode	|= DML_VID_FORCE_PAL50;
+
+							} break;
+						}
+
+					} break;
+					case 12:
+					{
+						if( DVDReinsertDisc )
+							DVDSelectGame( DICfg->SlotID );
+
+						DVDWriteDIConfig( DICfg );
+
+						DVDReinsertDisc = false;
+					} break;
+					case 13:
+					{
+						cfg->Config = DML_CFG_BOOT_DISC;
+
+						if( DICfg->Config & CONFIG_DML_PADHOOK )
+							cfg->Config |= DML_CFG_PADHOOK;
+
+						LaunchTitle( 0x0000000100000100LL );
+
+					} break;
 				}
 				SLock = 1;
 			}
-			if( GCPad.Right || (*WPad&WPAD_BUTTON_RIGHT) )
+
+			if( GCPad.Up || (*WPad&WPAD_BUTTON_UP) )
 			{
-				PICNum++;
-				Update = true;
-					
+				if( PosX )
+					PosX--;
+				else {
+					PosX = 13;
+				}
+				
+				if( PosX == 8 )
+					PosX  = 7;
+
+				if( (cfg->VideoMode & DML_VID_FORCE) == DML_VID_FORCE )
+				{
+					if( PosX == 11 )
+						PosX  = 10;
+				} else {
+					if( PosX == 11 )
+						PosX  = 9;
+				}
+
+				SLock = 1;
+			} else if( GCPad.Down || (*WPad&WPAD_BUTTON_DOWN) )
+			{
+				if( PosX >= 13 )
+				{
+					PosX=0;
+				} else 
+					PosX++;				
+				
+				if( PosX == 8 )
+					PosX  = 9;
+
+				if( (cfg->VideoMode & DML_VID_FORCE) == DML_VID_FORCE )
+				{
+					if( PosX == 11 )
+						PosX  = 12;
+				} else {
+					if( PosX == 10 )
+						PosX  = 12;
+				}
+
 				SLock = 1;
 			}
 
-			if( Update )
-			{
-				char *Path = (char*)malloca( 32, 32 );
-				_sprintf( Path, "/scrn_%02X.raw", PICNum );
-
-				s32 fd = IOS_Open( Path, 1 );
-				if( fd >= 0 )
-				{
-					PICSize = IOS_Seek( fd, 0, SEEK_END );
-					IOS_Seek( fd, 0, 0 );
-					IOS_Read( fd, PICBuffer, PICSize );
-					IOS_Close( fd );
-				}
-
-				free(Path);
-			}
 		} break;
 	}
 }

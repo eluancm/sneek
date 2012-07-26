@@ -119,7 +119,7 @@ int _main( int argc, char *argv[] )
 		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
 		if( ret != 0 )
 		{
-			dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", MessageQueue, ret);
+			;//dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", MessageQueue, ret);
 			return 0;
 		}
 	
@@ -134,13 +134,13 @@ int _main( int argc, char *argv[] )
 				{
 					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
 					{
-						dbgprintf("ES:Failed to find all menu patches!\n");
+						;//dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
 					}
 				} else if( MenuType == 2 ) {
 					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
 					{
-						dbgprintf("ES:Failed to find all menu patches!\n");
+						;//dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
 					}
 				} else {
@@ -229,7 +229,6 @@ int _main( int argc, char *argv[] )
 			} break;
 			
 			default:
-				dbgprintf("ES:unimplemented/invalid msg: %08x argv[0]:%08x\n", message->command, message->args[0] );
 				mqueue_ack( (void *)message, FS_EINVAL );
 			break;
 		}

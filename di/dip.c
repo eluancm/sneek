@@ -116,7 +116,7 @@ u32 DVDGetInstalledGamesCount( void )
 	{
 		while( DVDReadDir() == FR_OK )
 		{
-			if( DVDDirIsFile() )
+			if( strstr( DVDDirGetEntryName(), "boot.bin" ) != NULL )
 				continue;
 
 			sprintf( Path, "/games/%.31s/sys/boot.bin", DVDDirGetEntryName() );
@@ -262,6 +262,7 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 	if( fres != DVD_CONFIG_SIZE )
 	{
 		dbgprintf( DEBUG_WARNING, "DIP:Failed to read config:%d expected:%d\n", fres, DVD_CONFIG_SIZE );
+		DVDClose( fd );
 
 		sprintf( Path, "/sneek/diconfig.bin" );
 		DVDDelete(Path);
@@ -358,7 +359,11 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 						if( DVDRead( gi, GameInfo, DVD_GAMEINFO_SIZE ) != DVD_GAMEINFO_SIZE )
 						{
 							dbgprintf( DEBUG_WARNING, "DIP:Failed to read from the boot.bin!\n");
+							DVDClose( gi );
+
 						} else {
+
+							DVDClose( gi );
 
 							memcpy( GameInfo+DVD_GAME_NAME_OFF, DVDDirGetEntryName(), strlen( DVDDirGetEntryName() ) );
 
@@ -374,12 +379,9 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 								FSMode = UNEEK;
 						}
 
-						DVDClose( gi );
 						CurrentGame++;
 					}
 				}
-			} else {
-				DVDCreateDir("/games");	// create dir otherwise dumping games will fail
 			}
 
 			if( FSMode == UNEEK )
@@ -458,7 +460,7 @@ s32 DVDSelectGame( int SlotID )
 				DVDClose( bi );
 			}
 			fd = DVDOpen( str, DREAD );
-		} 
+		}
 
 		if( fd < 0 )
 		{
@@ -475,11 +477,9 @@ s32 DVDSelectGame( int SlotID )
 	} else {
 		DMLite = 0;
 	}
+	
 
-	ApploaderSize = DVDGetSize( fd ) >> 2;
-	DVDClose( fd );
-
-if( DICfg->GameInfo[SlotID][0x1C] == 0xC2 )	//GC Game write info for DM(L)
+	if( DICfg->GameInfo[SlotID][0x1C] == 0xC2 )	//GC Game write info for DM(L)
 	{
 		char *gpath = (char*)malloca( 256, 32 );
 
@@ -494,14 +494,69 @@ if( DICfg->GameInfo[SlotID][0x1C] == 0xC2 )	//GC Game write info for DM(L)
 		} else {
 			DVDClose(fdi);
 		}
+
 		DML_CFG *dcfg = (DML_CFG*)0x01200000;
 
 		memset32( dcfg, 0, sizeof( DML_CFG ) );
 
-		dcfg->Version		= 0x00000001;
+		dcfg->Version		= 0x00000002;
 		dcfg->Magicbytes	= 0xD1050CF6;
 
-		dcfg->Config		= DML_CFG_PADHOOK|DML_CFG_GAME_PATH;
+		dbgprintf( DEBUG_INFO, "DIP:Config:%08X\n", DICfg->Config );
+		
+		switch( DICfg->Config & CONFIG_DML_VID_MASK )
+		{
+			case CONFIG_DML_VID_NONE:
+				dcfg->VideoMode = DML_VID_NONE;
+			break;
+			case CONFIG_DML_VID_FORCE:
+				dcfg->VideoMode = DML_VID_FORCE;
+			break;
+			case CONFIG_DML_VID_AUTO:
+			default:
+				dcfg->VideoMode = DML_VID_AUTO;
+			break;
+		}
+
+		switch( DICfg->Config & CONFIG_DML_VID_FORCE_MASK )
+		{
+			case CONFIG_DML_VID_FORCE_PAL50:
+				dcfg->VideoMode |= DML_VID_FORCE_PAL50;
+			break;
+			case CONFIG_DML_VID_FORCE_PAL60:
+				dcfg->VideoMode |= DML_VID_FORCE_PAL60;
+			break;
+			default:
+			case CONFIG_DML_VID_FORCE_NTSC:
+				dcfg->VideoMode |= DML_VID_FORCE_NTSC;
+			break;
+		}
+
+		dcfg->Config = DML_CFG_GAME_PATH;
+		
+		if( DICfg->Config & CONFIG_DML_CHEATS )
+			dcfg->Config |= DML_CFG_CHEATS;
+
+		if( DICfg->Config & CONFIG_DML_DEBUGGER )
+			dcfg->Config |= DML_CFG_DEBUGGER;
+
+		if( DICfg->Config & CONFIG_DML_DEBUGWAIT )
+			dcfg->Config |= DML_CFG_DEBUGWAIT;
+
+		if( DICfg->Config & CONFIG_DML_NMM )
+			dcfg->Config |= DML_CFG_NMM;
+
+		if( DICfg->Config & CONFIG_DML_ACTIVITY_LED )
+			dcfg->Config |= DML_CFG_ACTIVITY_LED;
+
+		if( DICfg->Config & CONFIG_DML_PADHOOK )
+			dcfg->Config |= DML_CFG_PADHOOK;
+
+		if( DICfg->Config & CONFIG_DML_WIDESCREEN )
+			dcfg->Config |= DML_CFG_FORCE_WIDE;
+
+		if( DICfg->Config & CONFIG_DML_PROG_PATCH )
+			dcfg->VideoMode |= DML_VID_FORCE_PROG;
 
 		memcpy( dcfg->GamePath, gpath, strlen(gpath) );
 
@@ -509,6 +564,9 @@ if( DICfg->GameInfo[SlotID][0x1C] == 0xC2 )	//GC Game write info for DM(L)
 
 		dbgprintf( DEBUG_INFO, "DIP:Wrote config for DM(L)\n");
 	}
+
+	ApploaderSize = DVDGetSize( fd ) >> 2;
+	DVDClose( fd );
 
 	if( DMLite )
 		FSMode = SNEEK;
@@ -1170,7 +1228,7 @@ s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr )
 }
 s32 DVDLowReadDiscID( u32 Offset, u32 Length, void *ptr )
 {
-	char *str = (char *)malloca( 32, 32 );
+	char *str = (char *)malloca( 256, 32 );
 	sprintf( str, "%ssys/boot.bin", GamePath );
 	s32 fd = DVDOpen( str, FA_READ );
 	if( fd < 0 )

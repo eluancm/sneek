@@ -79,7 +79,7 @@ s32 Config_InitSYSCONF( void )
 	s32 fd = IOS_Open("/shared2/sys/SYSCONF", 1 );
 
 	SysconfBuf = (u8*)malloca( 0x4000, 32 );
-
+	
 	IOS_Read( fd, SysconfBuf, 0x4000 );
 
 	IOS_Close( fd );
@@ -91,8 +91,15 @@ s32 Config_InitSYSCONF( void )
 u32 Config_UpdateSysconf( void )
 {
 	s32 fd = IOS_Open("/shared2/sys/SYSCONF", 2 );
+	if( fd < 0 )
+	{
+		dbgprintf("ES:Fail:%d\n", fd );
+	}
 
-	IOS_Write( fd, SysconfBuf, 0x4000 );
+	if( IOS_Write( fd, SysconfBuf, 0x4000 ) != 0x4000 )
+	{
+		dbgprintf("ES:Fail:write\n" );		
+	}
 
 	IOS_Close( fd );
 
@@ -373,5 +380,5 @@ void Config_ChangeSystem( u64 TitleID, u16 TitleVersion )
 	}
 
 	Config_SettingsFlush();
-	//Config_UpdateSysconf();
+//	Config_UpdateSysconf();
 }
