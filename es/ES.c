@@ -943,20 +943,72 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 	//System wants to switch into GC mode
 	if( *TitleID == 0x0000000100000100LL )
 	{
-		_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)((*TitleID)>>32), (u32)(*TitleID) );
-		u32 *size = (u32*)malloca( sizeof(32), 32 ); 
-		TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
-		if( TMD == NULL )
+		u32 LoadOK = 0;
+
+		switch( *(u32*)0 )		// Current GameID
 		{
-			dbgprintf("ES:Couldn't find TMD of BC!\n");
-			_sprintf( path, "/sneek/kernel.bin");
-			free( size );
+			case 0x474D4745:	// Mario Kart GP
+			case 0x474D3245:	// Mario Kart GP 2
+			{
+				_sprintf( path, "/sneek/quadforce.bin" );
+				s32 fd = IOS_Open( path, 1 );
+				if( fd >= 0 )
+				{
+					((DML_CFG*)0x01200000)->Version = 1;
+					
+					LoadOK = 1;
+					IOS_Close(fd);
+				}
+			} break;
+			default:
+			{
+				if( ISFS_IsUSB() == -106 )	// SNEEK
+				{
+					// Find out if the game is on SD or USB
+					_sprintf( path, "/games/%s/sys/boot.bin", DICfg->GameInfo[DICfg->SlotID]+0x60 );
 
-		} else {
+					s32 fd = IOS_Open( path, 1 );
+					if( fd >= 0 )
+					{
+						_sprintf( path, "/sneek/diosmioslite.bin" );
+						IOS_Close(fd);
+					} else {
+						_sprintf( path, "/sneek/diosmios.bin" );
+					}
 
-			_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)((*TitleID)>>32), (u32)(*TitleID), TMD->Contents[ TMD->BootIndex ].ID );
-			free( TMD );
-			free( size );
+				} else {							// UNEEK
+					
+					_sprintf( path, "/sneek/diosmios.bin" );
+				}
+
+				s32 fd = IOS_Open( path, 1 );
+				if( fd >= 0 )
+				{
+					LoadOK = 1;
+					IOS_Close(fd);
+				}
+
+			} break;
+		}
+
+		//Fall back to installed BC
+		if( !LoadOK )
+		{
+			_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)((*TitleID)>>32), (u32)(*TitleID) );
+			u32 *size = (u32*)malloca( sizeof(32), 32 ); 
+			TitleMetaData *TMD = (TitleMetaData *)NANDLoadFile( path, size );
+			if( TMD == NULL )
+			{
+				dbgprintf("ES:Couldn't find TMD of BC!\n");
+				_sprintf( path, "/sneek/kernel.bin");
+				free( size );
+
+			} else {
+
+				_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)((*TitleID)>>32), (u32)(*TitleID), TMD->Contents[ TMD->BootIndex ].ID );
+				free( TMD );
+				free( size );
+			}
 		}
 
 		dbgprintf("ES:IOSBoot( %s, 0, %d )\n", path, 0, KernelGetVersion() );
@@ -986,9 +1038,7 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 	
 	free( data );
 	free( path );
-
-	dbgprintf("NANDWriteFileSafe():%d\n", r );
-
+	
 	if( r < 0 )
 		return r;
 
@@ -1024,7 +1074,7 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 		} break;
 		default:
 		{
-			dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
+			//;dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
 		} break;
 	}
 
@@ -1061,14 +1111,12 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 	if( r < 0 )
 	{
 		dbgprintf("ES:KeyCreate():%d\n", r );
-		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
 		return r;
 	}
 
 	r = KeySetPermissions( *Key, 8 );
 	if( r < 0 )
 	{
-		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
 		dbgprintf("ES:KeySetPermissions():%d\n", r);
 		return r;
 	}
@@ -1176,7 +1224,6 @@ s32 ES_CreateKey( u8 *Ticket )
 	if( r < 0 )
 	{
 		dbgprintf("CreateKey( %p, %d, %d ):%d\n", KeyID, 0, 0, r );
-		dbgprintf("KeyID:%d\n", KeyID[0] );
 		free( sTitleID );
 		free( encTitleKey );
 		return r;
@@ -1184,7 +1231,7 @@ s32 ES_CreateKey( u8 *Ticket )
 
 	r = KeyInitialize( KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey );
 	if( r < 0 )
-		dbgprintf("syscall_5d( %d, %d, %d, %d, %d, %p, %p ):%d\n", KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey, r );
+		dbgprintf("KeyInitialize( %d, %d, %d, %d, %d, %p, %p ):%d\n", KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey, r );
 
 	free( sTitleID );
 	free( encTitleKey );
@@ -1205,7 +1252,6 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 in = IOS_Open( path, 1 );
 	if( in < 0 )
 	{
-		dbgprintf("IOS_Open(\"%s\",1):%d\n", path, in );
 		free( path );
 		if( in == ES_NFOUND )
 			return ES_SUCCESS;
@@ -1216,7 +1262,6 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( r < 0 )
 	{
-		dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, r );
 		IOS_Close( in );
 		free( path );
 		return r;
@@ -1225,7 +1270,6 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 out = IOS_Open( path, 2 );
 	if( out < 0 )
 	{
-		dbgprintf("IOS_Open(\"%s\",2):%d\n", path, out );
 		IOS_Close( in );
 		free( path );
 		return out;
@@ -1248,14 +1292,12 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 		{
 			*(u16*)iv	= TMD->Contents[i].Index;
 			FileSize	= (u32)TMD->Contents[i].Size;
-			dbgprintf("ES:Found CID:%d Size:%d\n",  TMD->Contents[i].Index, FileSize );
 			break;
 		}
 	}
 
 	if( FileSize == 0 )
 	{
-		dbgprintf("ES:CID not found in TMD!\n");
 		IOS_Close( out );
 		IOS_Close( in );
 		free( path );
@@ -1270,7 +1312,6 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	r = sha1( SHA1i, 0, 0, SHA_INIT, Object );
 	if( r < 0 )
 	{
-		dbgprintf("ES:sha1():%d\n", r );
 		free( SHA1i );
 		free( hash );
 		free( Object );
@@ -1287,22 +1328,15 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 		r = IOS_Read( in, block, (FileSize+31)&(~31) );
 		if( r < 0 || r < FileSize )
 		{
-			dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, (FileSize+31)&(~31), r );
 			r = ES_EHASH;
 			goto ACF_Fail;
 		}
 
-		r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
-		if(  r < 0 )
-			dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
+		aes_decrypt_( *KeyID, iv, block, 0x4000, block );
 
-		r = IOS_Write( out, block, FileSize );
-		if( r < 0 || r != FileSize )
-			dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, FileSize, r );
+		IOS_Write( out, block, FileSize );
 
-		r = sha1( SHA1i, block, FileSize, SHA_FINISH, hash );
-		if( r < 0 )
-			dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, FileSize, SHA_FINISH, hash, r );
+		sha1( SHA1i, block, FileSize, SHA_FINISH, hash );
 
 	} else {
 
@@ -1312,21 +1346,18 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			r = IOS_Read( in, block, 0x4000 );
 			if( r < 0 || r != 0x4000 )
 			{
-				dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, 0x4000, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
 			r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
 			if(  r < 0 )
 			{
-				dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
 			r = IOS_Write( out, block, 0x4000 );
 			if( r < 0 || r != 0x4000 )
 			{
-				dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, 0x4000, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
@@ -1335,26 +1366,18 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			if( i+1 >= FileSize/0x4000 )
 			{
 				//is last block; now check if there is some data left
-
 				if( (FileSize%0x4000) == 0 )
 				{
 					//finish
-					r = sha1( SHA1i, block, 0x4000, SHA_FINISH, hash );
-					if( r < 0 )
-						dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_FINISH, hash, r );
+					sha1( SHA1i, block, 0x4000, SHA_FINISH, hash );
 
 				} else {
 					//just update
-					r = sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
-					if( r < 0 )
-						dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_UPDATE, hash, r );
-
+					sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
 				}
 			} else {
 				//just update
-				r = sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
-				if( r < 0 )
-					dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_UPDATE, hash, r );
+				sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
 			}
 		}
 
@@ -1366,21 +1389,14 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			r = IOS_Read( in, block, (readsize+31)&(~31) );
 			if( r < 0 || r < readsize )
 			{
-				dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, readsize, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
-			r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
-			if(  r < 0 )
-				dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
+			aes_decrypt_( *KeyID, iv, block, 0x4000, block );
 
-			r = IOS_Write( out, block, readsize );
-			if( r < 0 || r != readsize )
-				dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, readsize, r );
+			IOS_Write( out, block, readsize );
 
-			r = sha1( SHA1i, block, readsize, SHA_FINISH, hash );
-			if( r < 0 )
-				dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, readsize, SHA_FINISH, hash, r );
+			sha1( SHA1i, block, readsize, SHA_FINISH, hash );
 		}
 	}
 
@@ -2805,8 +2821,8 @@ void ES_IoctlvN( struct ipcmessage *IPCMessage )
 #ifdef DEBUG
 		s32 ret = ESIoctlvs[ IPCMessage->ioctlv.command ]( IPCMessage->ioctlv.argv, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io );
 
-		if( ret < 0 )
-			dbgprintf("ES:ES_Ioctlv() Ioctlv:%02X In:%u Out:%u Data:%p failed with %d\n", IPCMessage->ioctlv.command, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io, IPCMessage->ioctlv.argv, ret );
+		//if( ret < 0 )
+		//	dbgprintf("ES:ES_Ioctlv() Ioctlv:%02X In:%u Out:%u Data:%p failed with %d\n", IPCMessage->ioctlv.command, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io, IPCMessage->ioctlv.argv, ret );
 
 		mqueue_ack( IPCMessage, ret );
 #else

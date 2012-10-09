@@ -187,6 +187,7 @@ void Asciify( char *str )
 u32 DumpDoTick( u32 CurrentFB )
 {
 	u32 i;
+	static char GameID[6];
 
 	if( DVDStatus == 0 )
 	{
@@ -228,6 +229,8 @@ u32 DumpDoTick( u32 CurrentFB )
 					} else {
 
 						hexdump( (void*)0, 0x20);
+
+						memcpy( GameID, (void*)0, 6 );
 
 						//Detect disc type
 						if( *(u32*)0x18 == 0x5D1C9EA3 )
@@ -287,21 +290,44 @@ u32 DumpDoTick( u32 CurrentFB )
 					{
 						case 1:	// GC		0x57058000,44555
 						{
-							_sprintf( DiscName, "/%.6s.gcm", (void*)0 );
+							_sprintf( DiscName, "/games/%.6s", GameID );							
+							DVDCreateDir( DiscName );
 
+							_sprintf( DiscName, "/games/%.6s/sys", GameID );							
+							DVDCreateDir( DiscName );
+							
+							_sprintf( DiscName, "/games/%.6s/sys/boot.bin", GameID );
+							DumpFile( DiscName, 0, 0x440 );
+							
+							_sprintf( DiscName, "/games/%.6s/sys/bi2.bin", GameID );
+							DumpFile( DiscName, 0x440, 0x2000 );
+
+							char *appheader = (char*)malloca( 64, 32 );
+
+							DVDLowRead( appheader, 0x2440, 0x20 );
+							
+							u32 app_size = *(u32*)(appheader+5*4) + *(u32*)(appheader+6*4) + 0x20;
+							
+							_sprintf( DiscName, "/games/%.6s/sys/apploader.img", GameID );
+							DumpFile( DiscName, 0x2440, app_size );
+							
+							free( appheader );
+
+							_sprintf( DiscName, "/games/%.6s/game.iso", GameID );
+							
 							DVDSectorSize = 44555;
 							DVDStatus = 4;
 						} break;
 						case 2:	// WII-SL	0x118240000, 143432
 						{
-							_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
+							_sprintf( DiscName, "/%.6s_0.iso", GameID );
 
 							DVDSectorSize = 143432;
 							DVDStatus = 4;
 						} break;
 						case 3:	// WII-DL	0x1FB4E0000, 259740 
 						{
-							_sprintf( DiscName, "/%.6s_0.iso", (void*)0 );
+							_sprintf( DiscName, "/%.6s_0.iso", GameID );
 
 							DVDSectorSize = 259740;
 							DVDStatus = 4;
@@ -313,7 +339,7 @@ u32 DumpDoTick( u32 CurrentFB )
 						DVDHandle = DVDOpen( DiscName );
 						if( DVDHandle < 0 )
 						{
-							dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
+							dbgprintf("\%s\":%d\n", DiscName, DVDHandle );
 							DVDError = DI_FATAL|(DVDHandle<<16);
 							break;
 						}
@@ -406,7 +432,6 @@ u32 DumpDoTick( u32 CurrentFB )
 							DVDHandle = DVDOpen( DiscName );
 							if( DVDHandle < 0 )
 							{
-								dbgprintf("ES:DVDOpen():%d\n", DVDHandle );
 								DVDError = DI_FATAL|(DVDHandle<<16);
 								break;
 							}
@@ -440,11 +465,11 @@ u32 DumpDoTick( u32 CurrentFB )
 					DVDBuffer = (char*)0x01000000;
 					memset32( DVDBuffer, 0, READSIZE );
 
-					_sprintf( FilePath, "/games/%.6s", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s", GameID );
 					DVDCreateDir( FilePath );
-					_sprintf( FilePath, "/games/%.6s/sys", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys", GameID );
 					DVDCreateDir( FilePath );
-					_sprintf( FilePath, "/games/%.6s/files", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/files", GameID );
 					DVDCreateDir( FilePath );
 
 					DVDLowRead( DVDBuffer, 0x40000, 32 );	// Read partition table info
@@ -452,14 +477,14 @@ u32 DumpDoTick( u32 CurrentFB )
 					u32 PartCount = *(vu32*)DVDBuffer;
 					u32 GameOffset= 0;
 					
-					dbgprintf("ES:Partitions:%d\n", PartCount );
-					dbgprintf("ES:Partition Info Offset:0x%08X\n", *(vu32*)(DVDBuffer+4) << 2 );
+					//dbgprintf("ES:Partitions:%d\n", PartCount );
+					//dbgprintf("ES:Partition Info Offset:0x%08X\n", *(vu32*)(DVDBuffer+4) << 2 );
 					
 					DVDLowRead( DVDBuffer, *(vu32*)(DVDBuffer+4) << 2, 64 ); // Read partition info
 
 					for( i=0; i < PartCount; ++i)
 					{
-						dbgprintf("ES:\t%d: Offset:0x%08X Type:%d\n", i, (((vu32*)DVDBuffer)[i*2])<<2, (((vu32*)DVDBuffer)[i*2+1])<<2 );
+						//dbgprintf("ES:\t%d: Offset:0x%08X Type:%d\n", i, (((vu32*)DVDBuffer)[i*2])<<2, (((vu32*)DVDBuffer)[i*2+1])<<2 );
 						if( (((vu32*)DVDBuffer)[i*2+1])<<2 == 0 )
 						{
 							GameOffset = (((vu32*)DVDBuffer)[i*2])<<2;
@@ -467,7 +492,7 @@ u32 DumpDoTick( u32 CurrentFB )
 						}
 					}
 
-					dbgprintf("ES:Game parition offset: %08X\n", GameOffset );
+					//dbgprintf("ES:Game parition offset: %08X\n", GameOffset );
 					
 					//Get TMD,TICKET,CERT and DATA offsets
 
@@ -477,25 +502,25 @@ u32 DumpDoTick( u32 CurrentFB )
 
 					memcpy( &pf, DVDBuffer, sizeof(PartOffsets) );					
 
-					dbgprintf( "ES:tmd size    = %08x\n", pf.TMDSize );
-					dbgprintf( "ES:tmd Offset  = %08x\n", pf.TMDOffset << 2);
-					dbgprintf( "ES:cert size   = %08x\n", pf.CertSize );
-					dbgprintf( "ES:cert Offset = %08x\n", pf.CertOffset << 2);
-					dbgprintf( "ES:data size   = %08x\n", pf.DataSize );
-					dbgprintf( "ES:data Offset = %08x\n", pf.DataOffset << 2);
+					//dbgprintf( "ES:tmd size    = %08x\n", pf.TMDSize );
+					//dbgprintf( "ES:tmd Offset  = %08x\n", pf.TMDOffset << 2);
+					//dbgprintf( "ES:cert size   = %08x\n", pf.CertSize );
+					//dbgprintf( "ES:cert Offset = %08x\n", pf.CertOffset << 2);
+					//dbgprintf( "ES:data size   = %08x\n", pf.DataSize );
+					//dbgprintf( "ES:data Offset = %08x\n", pf.DataOffset << 2);
 
 					//Fist the easy parts: BOOT TMD TICKET CERT
 					
 				//Extract Ticket					
-					_sprintf( FilePath, "/games/%.6s/ticket.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/ticket.bin", GameID );
 					DumpFile( FilePath, GameOffset, 0x2A4 );
 
 				//Extract TMD
-					_sprintf( FilePath, "/games/%.6s/tmd.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/tmd.bin", GameID );
 					DumpFile( FilePath, (pf.TMDOffset<<2) + GameOffset, pf.TMDSize );
 					
 				//Extract cert
-					_sprintf( FilePath, "/games/%.6s/cert.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/cert.bin", GameID );
 					DumpFile( FilePath, (pf.CertOffset<<2) + GameOffset, pf.CertSize );
 
 
@@ -518,10 +543,10 @@ u32 DumpDoTick( u32 CurrentFB )
 
 					//Dump boot.bin files
 					
-					_sprintf( FilePath, "/games/%.6s/sys/boot.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys/boot.bin", GameID );
 					ExtractFile( GameOffset + (pf.DataOffset << 2), 0, 0x440, FilePath );
 
-					_sprintf( FilePath, "/games/%.6s/sys/bi2.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys/bi2.bin", GameID );
 					ExtractFile( GameOffset + (pf.DataOffset << 2), 0x440, 0x2000, FilePath );
 					
 					char *Info = (char*)malloca( 0x20, 32 );
@@ -535,10 +560,10 @@ u32 DumpDoTick( u32 CurrentFB )
 
 					u64 DolSize	  = FSTOffset - DolOffset;
 					
-					_sprintf( FilePath, "/games/%.6s/sys/main.dol", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys/main.dol", GameID );
 					ExtractFile( GameOffset + (pf.DataOffset << 2), DolOffset, DolSize, FilePath );
 
-					_sprintf( FilePath, "/games/%.6s/sys/fst.bin", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys/fst.bin", GameID );
 					ExtractFile( GameOffset + (pf.DataOffset << 2), FSTOffset, FSTSize, FilePath );
 
 					//Get apploader size
@@ -546,13 +571,13 @@ u32 DumpDoTick( u32 CurrentFB )
 
 					u32 AppSize = *(vu32*)(Info+0x14) + *(vu32*)(Info+0x18) + 0x20;
 
-					_sprintf( FilePath, "/games/%.6s/sys/apploader.img", (void*)0 );
+					_sprintf( FilePath, "/games/%.6s/sys/apploader.img", GameID );
 					ExtractFile( GameOffset + (pf.DataOffset << 2), 0x2440, AppSize, FilePath );
 
 					//Now dump the files
 					char *FSTable = (char*)( 0x01800000 - ( (FSTSize+31) & (~31) ) ); // FST can be VERY large, also align the address as dvd can only read to 32byte bounds
 
-					dbgprintf("ES:Fst:%p Size:%x\n", FSTable, FSTSize );
+					//dbgprintf("ES:Fst:%p Size:%x\n", FSTable, FSTSize );
 
 					DecryptRead( GameOffset + (pf.DataOffset << 2), FSTOffset, FSTSize, FSTable );
 
@@ -564,7 +589,7 @@ u32 DumpDoTick( u32 CurrentFB )
 					char *NameOff = (char*)(FSTable + Entries * 0x0C);
 					FEntry *fe = (FEntry*)(FSTable);
 					
-					dbgprintf("ES:Entries:%u\n", Entries );
+					//dbgprintf("ES:Entries:%u\n", Entries );
 
 					u32 Entry[16];
 					u32 LEntry[16];
@@ -626,7 +651,7 @@ u32 DumpDoTick( u32 CurrentFB )
 								{
 									//Do not remove!
 									memset32( Path, 0, 1024 );
-									_sprintf( Path, "/games/%.6s/files/", (void*)0 );
+									_sprintf( Path, "/games/%.6s/files/", GameID );
 
 									for( j=0; j<level; ++j )
 									{
@@ -645,7 +670,7 @@ u32 DumpDoTick( u32 CurrentFB )
 
 									Asciify(Path);
 
-									dbgprintf("ES:[%X%08X:%08u]%s\n", fe[i].FileOffset>>30, (u32)(fe[i].FileOffset<<2), fe[i].FileLength, Path + 20 );	// +20 skips "/games/<gameid>/files/"
+									//dbgprintf("ES:[%X%08X:%08u]%s\n", fe[i].FileOffset>>30, (u32)(fe[i].FileOffset<<2), fe[i].FileLength, Path + 20 );	// +20 skips "/games/<gameid>/files/"
 							
 									ExtractFile( GameOffset + (pf.DataOffset << 2), (u64)(fe[i].FileOffset)<<2, fe[i].FileLength, Path );
 									OldOff = fe[i].FileOffset;
@@ -668,10 +693,10 @@ u32 DumpDoTick( u32 CurrentFB )
 					
 					DVDStatus = 7;
 
-					dbgprintf( "ES:Dumped   :  %s\n", DVDTitle );
-					dbgprintf( "ES:Time     :  %02u:%02u\n", (u32)DVDTimer/60, (u32)DVDTimer%60 );
-					dbgprintf( "ES:Game size:  %uMB\n", (u32)(DVDWrote>>20) );
-					dbgprintf( "ES:Speed    : ~%u.%uMB/s\n", (u32)(DVDWrote>>20) / (u32)DVDTimer, (u32)(DVDWrote>>10) % 1024 );
+					//dbgprintf( "ES:Dumped   :  %s\n", DVDTitle );
+					//dbgprintf( "ES:Time     :  %02u:%02u\n", (u32)DVDTimer/60, (u32)DVDTimer%60 );
+					//dbgprintf( "ES:Game size:  %uMB\n", (u32)(DVDWrote>>20) );
+					//dbgprintf( "ES:Speed    : ~%u.%uMB/s\n", (u32)(DVDWrote>>20) / (u32)DVDTimer, (u32)(DVDWrote>>10) % 1024 );
 
 				} break;
 				case 7:
