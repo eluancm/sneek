@@ -87,42 +87,6 @@ s32 ISFS_Init( void )
 		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
 	}
 
-//	_sprintf( path, "/sneek" );
-//	r = ISFS_CreateDir( path, 0, 3, 3, 3 );
-//	if( r >= 0 )
-//	{
-//		dbgprintf("ES:ISFS_CreateDir(\"%s\"):%d\n", path, r );
-//	}
-//	
-////copy kernel.bin		
-//	_sprintf( path, "/title/00000001/00000050/content/0000000e.app" );
-//	u32 size;
-//	u8 *data = (u8*)NANDLoadFile( path, &size );
-//	if( data != NULL )
-//	{
-//		_sprintf( path, "/sneek/kernel.bin" );
-//		NANDWriteFileSafe( "kernel.bin", path, data, size );
-//		free(data);
-//	}	
-////copy di.bin		
-//	_sprintf( path, "/title/00000001/00000050/content/00000001.app" );
-//	data = (u8*)NANDLoadFile( path, &size );
-//	if( data != NULL )
-//	{
-//		_sprintf( path, "/sneek/di.bin" );
-//		NANDWriteFileSafe( "di.bin", path, data, size );
-//		free(data);
-//	}
-////copy font.bin		
-//	_sprintf( path, "/title/00000001/00000050/content/00000023.app" );
-//	data = (u8*)NANDLoadFile( path, &size );
-//	if( data != NULL )
-//	{
-//		_sprintf( path, "/sneek/font.bin" );
-//		NANDWriteFileSafe( "font.bin", path, data, size );
-//		free(data);
-//	}
-
 	_sprintf( path, "/shared1/content.map" );
 	r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( r != -105 )
@@ -243,7 +207,7 @@ s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 		{
 			*usage1 = *FileCount;
 		} else {
-			dbgprintf("ES:Warning unaligned memory access:%p\n", usage1 );
+			;//dbgprintf("ES:Warning unaligned memory access:%p\n", usage1 );
 		}
 	}
 
@@ -253,7 +217,7 @@ s32 ISFS_GetUsage( const char* filepath, u32* usage1, u32* usage2 )
 		{
 			*usage2 = *FileSize;
 		} else {
-			dbgprintf("ES:Warning unaligned memory access:%p\n", usage2 );
+			;//dbgprintf("ES:Warning unaligned memory access:%p\n", usage2 );
 		}
 	}
 

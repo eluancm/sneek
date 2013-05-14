@@ -32,7 +32,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 extern DIConfig *DICfg;;
 extern char *RegionStr;
-u32 DebugLevel =  DEBUG_DEBUG;
+u32 DebugLevel =  DEBUG_ERROR;
 
 void udelay(int us)
 {
@@ -78,9 +78,9 @@ void _main(void)
 	ThreadSetPriority( 0, 0xF4 );
 
 #ifdef DEBUG
-	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
+	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP:%s %s 64M DEBUG$\n", __DATE__, __TIME__ );
 #else
-	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP: %s %s 64M Release$\n", __DATE__, __TIME__ );
+	dbgprintf( DEBUG_NOTICE, "$IOSVersion: DIP:%s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
 	
 	HeapInit();

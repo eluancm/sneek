@@ -624,59 +624,80 @@ s32 ehci_bulk_message(struct ehci_device *dev,u8 bEndpoint,u16 wLength,void *rpD
 
 	return ret;
 }
-
-
 int ehci_reset_port(int port)
 {
-    u32 __iomem	*status_reg = &ehci->regs->port_status[port];
-    struct ehci_device *dev = &ehci->devices[port];
+    u32 __iomem	*status_reg		= &ehci->regs->port_status[port];
+    struct ehci_device *dev		= &ehci->devices[port];
+
     u32 status = ehci_readl(status_reg);
     int retval = 0;
-    dev->id = 0;
-    if ((PORT_OWNER&status) || !(PORT_CONNECT&status))
-    {
-		ehci_writel( PORT_OWNER, status_reg);
-		//ehci_dbg ( "port %d had no usb2 device connected at startup %X \n", port,ehci_readl(status_reg));
-		return -ENODEV;// no USB2 device connected
-    }
-    ehci_dbg ( "port %d has usb2 device connected! reset it...\n", port);
-    ehci_writel( 0x1803,status_reg);
-    while ((ehci_readl(status_reg) & 0x1801) != 0x1801){
-      ehci_dbg ( "Waiting for port %d to settle...(%04x)\n", port, ehci_readl(status_reg));
-      ehci_writel( 0x1803,status_reg);
-      msleep(500);
-    }
-    ehci_writel( 0x1903,status_reg);
-    //ehci_writel( PORT_OWNER|PORT_POWER|PORT_RESET,status_reg);
-    msleep(50);// wait 50ms for the reset sequence
-    ehci_writel( 0x1001,status_reg);
-    retval = handshake( status_reg, PORT_RESET, 0, 2000);
 
-    if (retval != 0)
+	dev->id = 0;
+
+    if( (PORT_OWNER&status) || !(PORT_CONNECT&status) )
     {
-        ehci_dbg ( "port %d reset error %d\n", port, retval);
-        return retval;
+		int retries = 10;
+		while( !(PORT_CONNECT&status) && retries > 0 )
+		{
+		    msleep(1000);  // sleep 1 second
+		    status = ehci_readl(status_reg);
+		    ehci_dbg ( "EHCI:port %d status at retry %d %X \n", port,retries,status);
+		    retries--;
+		}
+
+		if( retries <= 0 )
+		{
+			ehci_writel( PORT_OWNER, status_reg );
+			ehci_dbg ( "EHCI:port %d had no usb2 device connected at startup %X \n", port,ehci_readl(status_reg) );
+			return -ENODEV;// no USB2 device connected
+		}
     }
-    ehci_dbg ( "port %d reseted status:%04x...\n", port,ehci_readl(status_reg));
-    msleep(50);
+
+    ehci_dbg ( "EHCI:port %d has usb2 device connected! reset it...\n", port);
+
+	if( PORT_USB11(ehci_readl(status_reg)) )
+	{
+		ehci_dbg("EHCI:Device is USB1.1\n");
+	}
+
+	status = ehci_readl(status_reg);
+	status|= PORT_RESET;
+	ehci_writel( status, status_reg );
+
+    msleep(50); // wait 50ms for the reset sequence
+
+	status = ehci_readl(status_reg);
+	status ^= PORT_RESET;
+	ehci_writel( status, status_reg );
+	
+    retval = handshake( status_reg, PORT_RESET, 0, 2000 );
+    if(retval != 0)
+	{
+        ehci_dbg ( "EHCI:port %d reset error %d\n", port, retval);
+        return retval;
+    } 
+
+    ehci_dbg ( "EHCI:port %d reseted status:%04x...\n", port,ehci_readl(status_reg));
+    msleep(100);
+		
     // now the device has the default device id
-    retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_DEVICE2HOST, USB_REQ_GETDESCRIPTOR, USB_DT_DEVICE<<8, 0, sizeof(dev->desc), &dev->desc );
-    
-    while (retval < 0){
-        ehci_dbg("unable to get device desc...\n");
-        retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_DEVICE2HOST, USB_REQ_GETDESCRIPTOR, USB_DT_DEVICE<<8, 0, sizeof(dev->desc), &dev->desc );
+    retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_DEVICE2HOST, USB_REQ_GETDESCRIPTOR, USB_DT_DEVICE<<8, 0, sizeof(dev->desc), &dev->desc );    
+    if (retval < 0)
+	{
+        ehci_dbg("EHCI:unable to get device desc...\n");
+        return retval;
     }
 
     retval = ehci_control_message( dev, USB_CTRLTYPE_DIR_HOST2DEVICE, USB_REQ_SETADDRESS,port+1,0,0,0);
     if (retval < 0)
 	{
-        ehci_dbg("unable to set device addr...\n");
+        ehci_dbg("EHCI:unable to set device addr...\n");
         return retval;
     }
     dev->toggles = 0;
 
     dev->id = port+1;
-    ehci_dbg ( "device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
+    ehci_dbg ( "EHCI:device %d: %X %X...\n", dev->id,le16_to_cpu(dev->desc.idVendor),le16_to_cpu(dev->desc.idProduct));
     return retval;
 }
 int ehci_reset_device(struct ehci_device *dev)

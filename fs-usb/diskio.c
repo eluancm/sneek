@@ -63,7 +63,7 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 
 	if( USBStorage_Read_Sectors( sector, count, buffer ) != 1 )
 	{
-		dbgprintf("DIP: Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
+		dbgprintf("DIP:Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
 		return RES_ERROR;
 	}
 
@@ -81,7 +81,7 @@ DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
 
 	if( USBStorage_Write_Sectors( sector, count, buffer ) != 1 )
 	{
-		dbgprintf("DIP: Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
+		dbgprintf("DIP:Failed to read disc: Sector:%d Count:%d dst:%p\n", sector, count, buff );
 		return RES_ERROR;
 	}
 	free( buffer );

@@ -4,7 +4,7 @@
 #include "global.h"
 
 #define thread_create( proc, priority, stack, stacksize, arg, autostart ) syscall_00( proc, priority, stack, stacksize, arg, autostart )
-u32 syscall_00( u32 (*proc)(void* arg), u8 priority, u32* stack, u32 stacksize, void* arg, u32 autostart );
+u32 syscall_00( u32 (*proc)(void* arg), void* arg, u32* stack, u32 stacksize, u8 priority, u32 autostart );
 
 void syscall_01(void);
 
@@ -44,14 +44,12 @@ void syscall_0f(int device, int queue, int message);
 
 void syscall_10(void);
 
-#define timer_create(a, b, c, d) syscall_11(a, b, c, d)
-int syscall_11(int time, int dummy, int mqueue, int message);
-void syscall_12(void);
-void syscall_13(void);
 
-#define timer_destroy(a) syscall_14(a)
-void syscall_14(int timer);
-void syscall_15(void);
+int  TimerCreate(int Time, int Dummy, int MessageQueue, int Message );
+void TimerRestart( int TimerID, int Dummy, int Time );
+void TimerStop( int TimerID );
+void TimerDestroy( int TimerID );
+int  TimerNow( int TimerID );
 
 #define heap_create(a, b) syscall_16(a, b)
 int syscall_16(void *ptr, int len);
@@ -81,6 +79,8 @@ void syscall_1e(void);
 void syscall_1f(void);
 void syscall_20(void);
 //void syscall_21(void);
+
+int device_ioctl_async(int fd, u32 request, void *input_buffer, u32 input_buffer_len, void *output_buffer, u32 output_buffer_len, int queueid, void *message);
 
 #define ios_ioctl(fd, request, buffer_in, bytes_in, buffer_io, bytes_io) syscall_21(fd, request, buffer_in, bytes_in, buffer_io, bytes_io)
 #define os_ioctl(a, b, c, d, e, f) syscall_21(a, b, c, d, e, f)
@@ -123,12 +123,15 @@ unsigned int syscall_4f(void *ptr);
 unsigned int syscall_50( unsigned int );
 
 
-#define aes_decrypt(a, b, c, d, e) syscall_6b(a, b, c, d, e)
+s32 KeyCreate( u32 *Object, u32 ValueA, u32 ValueB );
+void KeyDelete( u32 KeyID );
+s32 KeyInitialize(u32 a, u32 b, u32 c, u32 d, u32 e, void *f, void *g);
+
+#define aes_decrypt_( KeyID, iv, in, len, out) syscall_6b(KeyID, iv, in, len, out)
 int syscall_6b(int keyid, void *iv, void *in, int len, void *out);
 
 
 void svc_write(const char *);
-s32 os_ioctl(s32 fd, s32 request, void *buffer_in, s32 bytes_in, void *buffer_io, s32 bytes_io);
 
 
 #endif

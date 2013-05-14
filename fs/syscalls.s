@@ -86,28 +86,28 @@ syscall_10:
 	.long 0xe6000210
 	bx lr
 
-	.global syscall_11
-syscall_11:
+	.global TimerCreate
+TimerCreate:
 	.long 0xe6000230
 	bx lr
 
-	.global syscall_12
-syscall_12:
+	.global TimerRestart
+TimerRestart:
 	.long 0xe6000250
 	bx lr
 
-	.global syscall_13
-syscall_13:
+	.global TimerStop
+TimerStop:
 	.long 0xe6000270
 	bx lr
 
-	.global syscall_14
-syscall_14:
+	.global TimerDestroy
+TimerDestroy:
 	.long 0xe6000290
 	bx lr
 
-	.global syscall_15
-syscall_15:
+	.global TimerNow
+TimerNow:
 	.long 0xe60002b0
 	bx lr
 
@@ -164,6 +164,11 @@ syscall_1f:
 	.global syscall_20
 syscall_20:
 	.long 0xe6000410
+	bx lr
+
+	.global device_ioctl_async
+device_ioctl_async:
+	.long 0xe6000510
 	bx lr
 
 	.global syscall_21
@@ -227,6 +232,21 @@ syscall_4f:
 	.global syscall_50
 syscall_50:
 	.long 0xe6000a10
+	bx lr
+	
+	.global KeyCreate
+KeyCreate:
+	.long 0xe6000b70
+	bx lr
+
+	.global KeyDelete
+KeyDelete:
+	.long 0xe6000b90
+	bx lr
+
+	.global KeyInitialize
+KeyInitialize:
+	.long 0xe6000bb0
 	bx lr
 
 	.global syscall_6b

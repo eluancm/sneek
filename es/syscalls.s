@@ -171,6 +171,11 @@ IOS_Ioctl:
 	.long 0xe6000430
 	bx lr
 
+	.global IOS_IoctlAsync
+IOS_IoctlAsync:
+	.long 0xe6000510
+	bx lr
+
 	.global IOS_Ioctlv
 IOS_Ioctlv:
 	.long 0xe6000450
@@ -409,10 +414,15 @@ syscall_6f:
 GetDeviceCert:
 	.long 0xe6000e10
 	bx lr
-
+	
 	.global KeySetPermissions
 KeySetPermissions:
 	.long 0xe6000e30
+	bx lr
+
+	.global KeyGetPermissions
+KeyGetPermissions:
+	.long 0xe6000e50
 	bx lr
 	
 	.global syscall_74

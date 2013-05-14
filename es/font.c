@@ -86,7 +86,6 @@ s32 LoadFont( char *str )
 		s32 fd = DVDOpen( str );
 		if( fd < 0 )
 		{
-			free(size);
 			return 0;
 
 		} else {

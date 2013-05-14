@@ -123,7 +123,7 @@ int	sdhc_wait_state(struct sdhc_host *, u_int32_t, u_int32_t);
 int	sdhc_soft_reset(struct sdhc_host *, int);
 void sdhc_reset_intr_status(struct sdhc_host *hp);
 int	sdhc_wait_intr_debug(const char *func, int line, struct sdhc_host *, int, int);
-void	sdhc_transfer_data(struct sdhc_host *, struct sdmmc_command *);
+s32	sdhc_transfer_data(struct sdhc_host *, struct sdmmc_command *);
 void	sdhc_read_data(struct sdhc_host *, u_char *, int);
 void	sdhc_write_data(struct sdhc_host *, u_char *, int);
 //#define SDHC_DEBUG 1
@@ -594,8 +594,7 @@ sdhc_start_command(struct sdhc_host *hp, struct sdmmc_command *cmd)
 	return 0;
 }
 
-void
-sdhc_transfer_data(struct sdhc_host *hp, struct sdmmc_command *cmd)
+s32 sdhc_transfer_data(struct sdhc_host *hp, struct sdmmc_command *cmd)
 {
 	int error;
 	int status;
@@ -603,14 +602,15 @@ sdhc_transfer_data(struct sdhc_host *hp, struct sdmmc_command *cmd)
 	error = 0;
 
 	DPRINTF(1,("resp=%#x datalen=%d\n", MMC_R1(cmd->c_resp), cmd->c_datalen));
-	if (ISSET(hp->flags, SHF_USE_DMA)) {
-		for(;;) {
-			status = sdhc_wait_intr(hp, SDHC_TRANSFER_COMPLETE |
-					SDHC_DMA_INTERRUPT,
-					SDHC_TRANSFER_TIMEOUT);
-			if (!status) {
+	if (ISSET(hp->flags, SHF_USE_DMA))
+	{
+		for(;;)
+		{
+			status = sdhc_wait_intr( hp, SDHC_TRANSFER_COMPLETE | SDHC_DMA_INTERRUPT, SDHC_TRANSFER_TIMEOUT );
+			if( !status )
+			{
 				dbgprintf("DMA timeout %08x\n", status);
-				error = ETIMEDOUT;
+				return ETIMEDOUT;
 				break;
 			}
 
@@ -650,7 +650,7 @@ sdhc_transfer_data(struct sdhc_host *hp, struct sdmmc_command *cmd)
 	SET(cmd->c_flags, SCF_ITSDONE);
 
 	DPRINTF(1,("sdhc: data transfer done (error=%d)\n", cmd->c_error));
-	return;
+	return 0;
 }
 
 /* Prepare for another command. */

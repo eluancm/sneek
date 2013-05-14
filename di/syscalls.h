@@ -4,7 +4,7 @@
 #include "global.h"
 #include "ipc.h"
 
-u32 ThreadCreate( u32 (*proc)(void* arg), u8 priority, u32* stack, u32 stacksize, void* arg, int autostart );
+u32 ThreadCreate( u32 (*proc)(void* arg), void* arg, u32* stack, u32 stacksize, u8 priority, int autostart );
 void ThreadJoin(void);
 void ThreadCancel( u32 ThreadID, u32 when);
 

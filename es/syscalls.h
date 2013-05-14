@@ -3,7 +3,7 @@
 
 #include "global.h"
 
-u32 thread_create( u32 (*proc)(void* arg), u8 priority, u32* stack, u32 stacksize, void* arg, bool autostart );
+u32 thread_create( u32 (*proc)(void* arg), void* arg, u32* stack, u32 stacksize, u8 priority, bool detach );
 
 void syscall_01(void);
 
@@ -74,11 +74,12 @@ s32 IOS_Read(s32 fd,void *buffer,u32 length);
 s32 IOS_Write( s32 fd, void *buffer, u32 length );
 s32 IOS_Seek( u32 fd, u32 where, u32 whence );
 
+s32 IOS_IoctlAsync(s32 fd, u32 request, void *input_buffer, u32 input_buffer_len, void *output_buffer, u32 output_buffer_len, int queueid, void *message);
 s32 IOS_Ioctl(s32 fd, s32 request, void *buffer_in, s32 bytes_in, void *buffer_io, s32 bytes_io);
 s32 IOS_Ioctlv(s32 fd, s32 request, s32 InCount, s32 OutCont, void *vec);
 
-#define IOS_OpenAsync( filepath, mode, ipc_cb, usrdata ) syscall_23( filepath, mode, ipc_cb, usrdata )
-s32 syscall_23( const char *filepath,u32 mode,ipccallback ipc_cb,void *usrdata );
+#define IOS_OpenAsync( Device, Mode, QueueID, message ) syscall_23(  Device, Mode, QueueID, message )
+s32 syscall_23( const char *Device, u32 Mode, u32 QueueID, void *message );
 
 #define mqueue_ack(a, b) syscall_2a(a, b)
 void syscall_2a(void *message, int retval);
@@ -180,6 +181,7 @@ s32 syscall_6c( void *data, u32 b, u32 c, u32 d );
 s32 syscall_6f( void *data, u32 ObjectA, u32 ObjectB);
 void GetDeviceCert( void *data);
 s32 KeySetPermissions(u32 a, u32 b);
+s32 KeyGetPermissions(u32 a, u32 *b);
 s32 syscall_74( u32 Key );
 s32 syscall_75( u8 *hash, u32 HashLength, u32 Key, u8 *Signature );
 s32 syscall_76( u32 Key, char *Issuer, u8 *Cert );

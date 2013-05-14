@@ -221,13 +221,15 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 				}
 
 			} break;
-			case DVD_SUCCESS:
-				break;
-			default:
+			case DVD_FATAL:
 			{
 				dbgprintf( DEBUG_ERROR, "DIP:DVDUpdateCache(%d):Failed to open/create diconfig.bin\n", fd );
 				free( Path );
 				return DI_FATAL;
+			} break;
+			case DVD_SUCCESS:
+			default:
+			{
 			} break;
 		}
 		
@@ -266,6 +268,8 @@ s32 DVDUpdateCache( u32 ForceUpdate )
 
 		sprintf( Path, "/sneek/diconfig.bin" );
 		DVDDelete(Path);
+
+		free(Path);
 
 		return DVDUpdateCache(1);
 	}
@@ -561,6 +565,9 @@ s32 DVDSelectGame( int SlotID )
 		memcpy( dcfg->GamePath, gpath, strlen(gpath) );
 
 		free( gpath );
+		
+		dbgprintf( DEBUG_INFO, "DIP:DML->Config   :%08X\n", dcfg->Config );
+		dbgprintf( DEBUG_INFO, "DIP:DML->VideoMode:%08X\n", dcfg->VideoMode );
 
 		dbgprintf( DEBUG_INFO, "DIP:Wrote config for DM(L)\n");
 	}
@@ -720,7 +727,7 @@ u32 FSTRebuild( void )
 
 			CurrentOffset += (fe[i].FileLength + 31) & (~31);	//align by 32 bytes
 
-			dbgprintf( DEBUG_INFO, "\rDIP: %u/%u ...", i, Entries );
+			dbgprintf( DEBUG_INFO, "\rDIP:%u/%u ...", i, Entries );
 			//dbgprintf( DEBUG_INFO, "%s Size:%08X Offset:0x%X%08X\n", Path, fe[i].FileLength, (fe[i].FileOffset>>30), (u32)(fe[i].FileOffset<<2) );
 		}
 	}
@@ -1089,74 +1096,60 @@ s32 DVDLowRead( u32 Offset, u32 Length, void *ptr )
 
 						Asciify( Path );
 
-						//if( strstr( Path, "fluff_param.txt") != NULL )
-						//{
-						//	dbgprintf("DIP:Fluff[%08X:%05X]\n", (u32)(nOffset), Length );
-						//	sprintf( Path, "/fluff_param.txt" );
-						//	s32 fd = IOS_Open( Path, 1 );
-						//	IOS_Seek( fd, (u32)(nOffset), 0 );
-						//	IOS_Read( fd, ptr, Length );
-						//	IOS_Close( fd );
+						FC[FCEntry].File = DVDOpen( Path, DREAD );
+						if( FC[FCEntry].File < 0 )
+						{
+							FC[FCEntry].File = 0xdeadbeef;
 
-						//	return DI_SUCCESS;
+							//dbgprintf( DEBUG_ERROR, "DIP:[%s] Failed to open!\n", Path );
+							error = 0x031100;
+							return DI_FATAL;
+						} else {
 
-						//} else{
+							FC[FCEntry].Size	= fe[i].FileLength;
+							FC[FCEntry].Offset	= fe[i].FileOffset;
 
-							FC[FCEntry].File = DVDOpen( Path, DREAD );
-							if( FC[FCEntry].File < 0 )
-							{
-								FC[FCEntry].File = 0xdeadbeef;
+							//Don't output anything while debugging!
+							if( !(DICfg->Config & CONFIG_DEBUG_GAME) )
+								dbgprintf( DEBUG_INFO, "DIP:[%s][%08X:%05X]\n", Path+7, (u32)(nOffset>>2), Length );	// +7 skips the "/games/" part
 
-								////dbgprintf( DEBUG_ERROR, "DIP:[%s] Failed to open!\n", Path );
-								error = 0x031100;
-								return DI_FATAL;
-							} else {
-
-								FC[FCEntry].Size	= fe[i].FileLength;
-								FC[FCEntry].Offset	= fe[i].FileOffset;
-
-								//Don't output anything while debugging!
-								if( !(DICfg->Config & CONFIG_DEBUG_GAME) )
-									dbgprintf( DEBUG_INFO, "DIP:[%s][%08X:%05X]\n", Path+7, (u32)(nOffset>>2), Length );	// +7 skips the "/games/" part
-
-								DVDSeek( FC[FCEntry].File, nOffset, 0 );
-								DVDRead( FC[FCEntry].File, ptr, Length );
+							DVDSeek( FC[FCEntry].File, nOffset, 0 );
+							DVDRead( FC[FCEntry].File, ptr, Length );
 							
-								FCEntry++;
+							FCEntry++;
 								
-								if( DICfg->Config & ( CONFIG_FST_REBUILD_TEMP | CONFIG_FST_REBUILD_PERMA ) )
+							if( DICfg->Config & ( CONFIG_FST_REBUILD_TEMP | CONFIG_FST_REBUILD_PERMA ) )
+							{
+								//After the game read the opening.bnr we rebuild the FST
+								if( strstr( Path, "opening.bnr" ) != NULL )
 								{
-									//After the game read the opening.bnr we rebuild the FST
-									if( strstr( Path, "opening.bnr" ) != NULL )
+									if( FSTRebuild() )
 									{
-										if( FSTRebuild() )
+										if( DICfg->Config & CONFIG_FST_REBUILD_PERMA )
 										{
-											if( DICfg->Config & CONFIG_FST_REBUILD_PERMA )
+											sprintf( Path, "%ssys/fst.bin", GamePath );
+											fd = DVDOpen( Path, DWRITE );
+											if( fd >= 0 )
 											{
-												sprintf( Path, "%ssys/fst.bin", GamePath );
-												fd = DVDOpen( Path, DWRITE );
-												if( fd >= 0 )
+												if( DVDWrite( fd, (void*)FSTable, FSTableSize ) != FSTableSize )
 												{
-													if( DVDWrite( fd, (void*)FSTable, FSTableSize ) != FSTableSize )
-													{
-														dbgprintf( DEBUG_INFO, "DIP:Failed to write:%p %u\n", FSTable, FSTableSize );														
-													}
-													DVDClose( fd );
-												} else {
-													dbgprintf( DEBUG_INFO, "DIP:Failed to open:\"%s\":%d\n", Path, fd );
+													dbgprintf( DEBUG_INFO, "DIP:Failed to write:%p %u\n", FSTable, FSTableSize );														
 												}
+												DVDClose( fd );
+											} else {
+												dbgprintf( DEBUG_INFO, "DIP:Failed to open:\"%s\":%d\n", Path, fd );
 											}
-										} else {
-											DICover |= 1;	// set to no disc an half modified FST will just cause trouble
 										}
-
-										DICfg->Config &= ~(CONFIG_FST_REBUILD_PERMA|CONFIG_FST_REBUILD_TEMP);
-										DICfgFlush( DICfg );
+									} else {
+										DICover |= 1;	// set to no disc an half modified FST will just cause trouble
 									}
+
+									DICfg->Config &= ~(CONFIG_FST_REBUILD_PERMA|CONFIG_FST_REBUILD_TEMP);
+									DICfgFlush( DICfg );
 								}
-								return DI_SUCCESS;
 							}
-						//}
+							return DI_SUCCESS;
+						}
 					}
 				}
 			}
@@ -1215,7 +1208,7 @@ s32 DVDLowReadUnencrypted( u32 Offset, u32 Length, void *ptr )
 			*(u32*)(ptr)		= DICfg->Region;
 			*(u32*)(ptr+0x1FFC)	= 0xC3F81A8E;
 
-			//dbgprintf("DIP:Region:%d\n", DICfg->Region );
+			dbgprintf( DEBUG_DEBUG, "DIP:Region:%d\n", DICfg->Region );
 
 			return DI_SUCCESS;
 		} break;
@@ -1498,8 +1491,8 @@ int DIP_Ioctl( struct ipcmessage *msg )
 			} else {
 				;//DIP_Fatal("DVDLowRead", __LINE__, __FILE__, 64, "Partition not opened!");
 			}
-			//if( ret < 0 )
-			//	dbgprintf( DEBUG_DEBUG, "DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
+			if( ret < 0 )
+				dbgprintf( DEBUG_DEBUG, "DIP:DVDLowRead( %08X, %08X, %p ):%d\n", *(u32*)(bufin+8), *(u32*)(bufin+4), bufout, ret );
 		} break;
 		case DVD_READ_UNENCRYPTED:
 		{
@@ -1777,7 +1770,7 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 
 			Partition=1;
 
-			//dbgprintf( DEBUG_DEBUG, "DIP:DVDOpenPartition(0x%08X):%d\n", *(u32*)(v[0].data+4), ret );
+			dbgprintf( DEBUG_DEBUG, "DIP:DVDOpenPartition(0x%08X):%d\n", *(u32*)(v[0].data+4), ret );
 
 		} break;
 		default:
@@ -1792,6 +1785,3 @@ int DIP_Ioctlv(struct ipcmessage *msg)
 
 	return ret;
 }
-
-
-

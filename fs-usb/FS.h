@@ -38,13 +38,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 enum FSError
 {
-        FS_SUCCESS              =       0,
-        FS_INVALID              =       -4,
+        FS_SUCCESS      =       0,
+        FS_INVALID      =       -4,
         FS_NO_DEVICE    =       -6,
-        FS_FATAL                =       -101,
+        FS_FATAL        =       -101,
         FS_NO_ACCESS    =       -102,
         FS_FILE_EXIST   =       -105,
-        FS_NO_ENTRY             =       -106,
+        FS_NO_ENTRY     =       -106,
         FS_NO_HANDLE    =       -109,
 };
 

@@ -57,6 +57,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define VI_DEBUG_PAL		4
 #define VI_EUR60			5
 
+enum SMenus
+{
+	SMENU_GAME_LIST		= 0,
+	SMENU_DUMP_GAME,
+	SMENU_SNEEK_CONFIG,
+	SMENU_DM_CONFIG,
+	SMENU_PIC_VIEWER,
+
+};
+
 void SMenuInit( u64 TitleID, u16 TitleVersion );
 u32 SMenuFindOffsets( void *ptr, u32 SearchSize );
 void SMenuAddFramebuffer( void );

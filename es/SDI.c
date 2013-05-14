@@ -16,7 +16,7 @@ void SD_Ioctl( struct ipcmessage *msg )
 
 	switch( msg->ioctl.command )
 	{
-#ifdef SDI
+//#ifdef SDI
 		case 0x01:	// Write HC Register
 		{
 			u32 reg = *(u32*)(bufin);
@@ -48,7 +48,7 @@ void SD_Ioctl( struct ipcmessage *msg )
 			*(u32*)(bufout) = 0x9f620000;
 
 			ret = 0;
-			//dbgprintf("SD:Reset(%08x):%d\n", *(u32*)(bufout), ret);
+			dbgprintf("SD:Reset(%08x):%d\n", *(u32*)(bufout), ret);
 		} break;
 		case 0x06:
 		{
@@ -134,7 +134,7 @@ void SD_Ioctl( struct ipcmessage *msg )
 						*(u32*)(bufout) = 0;
 
 					ret=0;
-					//dbgprintf("SD:GetCapabilities():%d\n", ret );
+					dbgprintf("SD:GetCapabilities():%d\n", ret );
 				} break;
 				case 0x41:
 				{
@@ -176,17 +176,17 @@ void SD_Ioctl( struct ipcmessage *msg )
 				} break;
 				default:
 				{
-					dbgprintf("Command:%08X\n", *(u32*)(bufin) );
-					dbgprintf("CMDType:%08X\n", *(u32*)(bufin+4) );
-					dbgprintf("ResType:%08X\n", *(u32*)(bufin+8) );
-					dbgprintf("Argumen:%08X\n", *(u32*)(bufin+0x0C) );
-					dbgprintf("BlockCn:%08X\n", *(u32*)(bufin+0x10) );
-					dbgprintf("SectorS:%08X\n", *(u32*)(bufin+0x14) );
-					dbgprintf("Buffer :%08X\n", *(u32*)(bufin+0x18) );
-					dbgprintf("unkown :%08X\n", *(u32*)(bufin+0x1C) );
-					dbgprintf("unknown:%08X\n", *(u32*)(bufin+0x20) );
+					//dbgprintf("Command:%08X\n", *(u32*)(bufin) );
+					//dbgprintf("CMDType:%08X\n", *(u32*)(bufin+4) );
+					//dbgprintf("ResType:%08X\n", *(u32*)(bufin+8) );
+					//dbgprintf("Argumen:%08X\n", *(u32*)(bufin+0x0C) );
+					//dbgprintf("BlockCn:%08X\n", *(u32*)(bufin+0x10) );
+					//dbgprintf("SectorS:%08X\n", *(u32*)(bufin+0x14) );
+					//dbgprintf("Buffer :%08X\n", *(u32*)(bufin+0x18) );
+					//dbgprintf("unkown :%08X\n", *(u32*)(bufin+0x1C) );
+					//dbgprintf("unknown:%08X\n", *(u32*)(bufin+0x20) );
 
-					dbgprintf("Unhandled command!\n");
+					//dbgprintf("Unhandled command!\n");
 				} break;
 			}
 
@@ -196,18 +196,18 @@ void SD_Ioctl( struct ipcmessage *msg )
 		{
 			*(u32*)(bufout) = *SDStatus;
 			ret = 0;
-			//dbgprintf("SD:GetStatus(%08X):%d\n", *(u32*)(bufout), ret);
+		//	dbgprintf("SD:GetStatus(%08X):%d\n", *(u32*)(bufout), ret);
 		} break;
 		case 0x0C:	//OCRegister
 		{
 			*(u32*)(bufout) = 0x80ff8000;
 			ret = 0;
-			dbgprintf("SD:GetOCRegister(%08X):%d\n", *(u32*)(bufout), ret);
+		//	dbgprintf("SD:GetOCRegister(%08X):%d\n", *(u32*)(bufout), ret);
 		} break;
-#endif
+//#endif
 		default:
 			ret = -1;
-			dbgprintf("SD:IOS_Ioctl( %d 0x%x 0x%p 0x%x 0x%p 0x%x )\n", msg->fd, msg->ioctl.command, bufin, lenin, bufout, lenout);
+		//	dbgprintf("SD:IOS_Ioctl( %d 0x%x 0x%p 0x%x 0x%p 0x%x )\n", msg->fd, msg->ioctl.command, bufin, lenin, bufout, lenout);
 			break;
 	}
 
@@ -223,7 +223,7 @@ void SD_Ioctlv( struct ipcmessage *msg )
 
 	switch(msg->ioctl.command)
 	{
-#ifdef SDI
+//#ifdef SDI
 		case 0x07:
 		{
 			ret = IOS_Ioctlv( FFSHandle, 0x20, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv );
@@ -232,26 +232,26 @@ void SD_Ioctlv( struct ipcmessage *msg )
 			if( ret < 0 )
 			{
 				SDCommand *scmd = (SDCommand *)(v[0].data);
-				dbgprintf("SD:ReadMultipleBlocks( 0x%p, 0x%x, 0x%x):%d\n", scmd->addr, scmd->arg, scmd->blocks, ret );
+				//dbgprintf("SD:ReadMultipleBlocks( 0x%p, 0x%x, 0x%x):%d\n", scmd->addr, scmd->arg, scmd->blocks, ret );
 
-				dbgprintf("cmd    :%08X\n", scmd->command );
-				dbgprintf("type   :%08X\n", scmd->type );
-				dbgprintf("resp   :%08X\n", scmd->rep );
-				dbgprintf("arg    :%08X\n", scmd->arg );
-				dbgprintf("blocks :%08X\n", scmd->blocks );
-				dbgprintf("bsize  :%08X\n", scmd->bsize );
-				dbgprintf("addr   :%08X\n", scmd->addr );
-				dbgprintf("isDMA  :%08X\n", scmd->isDMA );
+				//dbgprintf("cmd    :%08X\n", scmd->command );
+				//dbgprintf("type   :%08X\n", scmd->type );
+				//dbgprintf("resp   :%08X\n", scmd->rep );
+				//dbgprintf("arg    :%08X\n", scmd->arg );
+				//dbgprintf("blocks :%08X\n", scmd->blocks );
+				//dbgprintf("bsize  :%08X\n", scmd->bsize );
+				//dbgprintf("addr   :%08X\n", scmd->addr );
+				//dbgprintf("isDMA  :%08X\n", scmd->isDMA );
 			}
 		} break;
-#endif
+//#endif
 		default:
-			for( i=0; i<InCount+OutCount; ++i)
-			{
-				dbgprintf("data:%p len:%d(0x%X)\n", v[i].data, v[i].len, v[i].len );
-			}
-			dbgprintf("SD:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv);
-			while(1);
+			//for( i=0; i<InCount+OutCount; ++i)
+			//{
+			//	dbgprintf("data:%p len:%d(0x%X)\n", v[i].data, v[i].len, v[i].len );
+			//}
+			//dbgprintf("SD:IOS_Ioctlv( %d 0x%x %d %d 0x%p )\n", msg->fd, msg->ioctlv.command, msg->ioctlv.argc_in, msg->ioctlv.argc_io, msg->ioctlv.argv);
+			//while(1);
 		break;
 	}
 

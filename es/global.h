@@ -9,7 +9,8 @@
 #define DEBUG		0
 #define false		0
 #define true		1
-#define SDI			1
+//#define SDI			1
+//#define CHEATMENU	1
 
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)

@@ -40,7 +40,7 @@ int heapid=0;
 int FFSHandle=0;
 u32 FSUSB=0;
 
-#undef DEBUG
+//#undef DEBUG
 
 extern u16 TitleVersion;
 extern u32 *KeyID;
@@ -54,17 +54,23 @@ int _main( int argc, char *argv[] )
 	struct ipcmessage *message=NULL;
 	u8 MessageHeap[0x10];
 	u32 MessageQueue=0xFFFFFFFF;
+	u32 MessageBuf[4];
+
+	MessageBuf[0] = 0;
+	MessageBuf[1] = 0;
+	MessageBuf[2] = 0;
+	MessageBuf[3] = 0;
 
 	thread_set_priority( 0, 0x79 );	// do not remove this, this waits for FS to be ready!
 	thread_set_priority( 0, 0x50 );
 	thread_set_priority( 0, 0x79 );
 
 #ifdef DEBUG
-	dbgprintf("$IOSVersion: ES: %s %s 64M DEBUG$\n", __DATE__, __TIME__ );
+	dbgprintf("$IOSVersion: ES:%s %s 64M DEBUG$\n", __DATE__, __TIME__ );
 #else
-	dbgprintf("$IOSVersion: ES: %s %s 64M Release$\n", __DATE__, __TIME__ );
+	dbgprintf("$IOSVersion: ES:%s %s 64M Release$\n", __DATE__, __TIME__ );
 #endif
-
+		
 	MessageQueue = ES_Init( MessageHeap );
 	
 	s32 Timer = TimerCreate( 0, 0, MessageQueue, 0xDEADDEAD );
@@ -83,13 +89,13 @@ int _main( int argc, char *argv[] )
 
 		ret = device_register("/dev/sdio", MessageQueue );
 #ifdef DEBUG
-		dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
+		//dbgprintf("ES:DeviceRegister(\"/dev/sdio\"):%d QueueID:%d\n", ret, queueid );
 #endif
 	} else {
 		dbgprintf("ES:Found FS-USB\n");
 		FSUSB = 1;
 	}
-	
+
 	ret = 0;
 	u32 MenuType = 0;
 	u32 StartTimer = 1;
@@ -107,19 +113,19 @@ int _main( int argc, char *argv[] )
 		//MenuType = 2;
 		*SDStatus = 0x00000002;
 	}
-
-	LoadAndRebuildChannelCache();
+	
+	//LoadAndRebuildChannelCache();
 		
 	thread_set_priority( 0, 0x0A );
 
-	dbgprintf("ES:looping!\n");
-		
+	//dbgprintf("ES:looping!\n");	
+	
 	while (1)
 	{
 		ret = mqueue_recv( MessageQueue, (void *)&message, 0);
 		if( ret != 0 )
 		{
-			;//dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", MessageQueue, ret);
+			//dbgprintf("ES:mqueue_recv(%d) FAILED:%d\n", MessageQueue, ret);
 			return 0;
 		}
 	
@@ -134,12 +140,12 @@ int _main( int argc, char *argv[] )
 				{
 					if( !SMenuFindOffsets( (void*)0x01330000, 0x003D0000 ) )
 					{
-						;//dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
 					}
 				} else if( MenuType == 2 ) {
 					if( !SMenuFindOffsets( (void*)0x00000000, 0x01200000 ) )
 					{
+						dbgprintf("ES:Failed to find all menu patches!\n");
 						;//dbgprintf("ES:Failed to find all menu patches!\n");
 						continue;
 					}
@@ -151,14 +157,14 @@ int _main( int argc, char *argv[] )
 			SMenuAddFramebuffer();
 			if( MenuType == 1 )
 			{
-				SMenuDraw();
 				SMenuReadPad();
+				SMenuDraw();
 			}
 #ifdef CHEATMENU
 			else if( MenuType == 2 ) {
 
-				SCheatDraw();
 				SCheatReadPad();
+				SCheatDraw();
 			}
 #endif
 
@@ -166,15 +172,13 @@ int _main( int argc, char *argv[] )
 			continue;
 		}
 
-		//dbgprintf("ES:Command:%02X\n", message->command );
-		//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d ioctlv:\"%X\"\n", queueid, ret, message->command, message->ioctlv.command );
+	//	dbgprintf("ES:Command:%02X\n", message->command );
+	//	dbgprintf("ES:mqueue_recv(%d):%d cmd:%d ioctlv:\"%X\"\n", queueid, ret, message->command, message->ioctlv.command );
 		
 		switch( message->command )
 		{
 			case IOS_OPEN:
 			{
-				//dbgprintf("ES:mqueue_recv(%d):%d cmd:%d device:\"%s\":%d\n", queueid, ret, message->command, message->open.device, message->open.mode );
-				// Is it our device?
 				if( memcmp( message->open.device, "/dev/es", 8 ) == 0 )
 				{
 					ret = ES_FD;
@@ -185,20 +189,19 @@ int _main( int argc, char *argv[] )
 				}
 				
 				mqueue_ack( (void *)message, ret );
-				
 			} break;
 			
 			case IOS_CLOSE:
 			{
 #ifdef DEBUG
-				dbgprintf("ES:IOS_Close(%d)\n", message->fd );
+			//	dbgprintf("ES:IOS_Close(%d)\n", message->fd );
 #endif
 				if( message->fd == ES_FD || message->fd == SD_FD )
 				{
 					mqueue_ack( (void *)message, ES_SUCCESS );
-				} else 
+				} else {
 					mqueue_ack( (void *)message, FS_EINVAL );
-
+				}
 			} break;
 
 			case IOS_READ:
@@ -209,10 +212,12 @@ int _main( int argc, char *argv[] )
 			} break;
 			case IOS_IOCTL:
 			{
-				if( message->fd == SD_FD ) 
+				if( message->fd == SD_FD )
+				{
 					SD_Ioctl( message );
-				else
+				} else {
 					mqueue_ack( (void *)message, FS_EINVAL );
+				}
 
 			} break;
 

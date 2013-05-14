@@ -159,7 +159,7 @@ int _main( int argc, char *argv[] )
 			{
 
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Read(%d, 0x%p, %d):", CMessage->fd, CMessage->read.data, CMessage->read.length );
+				dbgprintf("FFS:IOS_Read(%d, 0x%p, %u):", CMessage->fd, CMessage->read.data, CMessage->read.length );
 #endif
 				ret = FS_Read( CMessage->fd, CMessage->read.data, CMessage->read.length );
 
@@ -172,7 +172,7 @@ int _main( int argc, char *argv[] )
 			case IOS_WRITE:
 			{
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Write(%d, 0x%p, %d)", CMessage->fd, CMessage->write.data, CMessage->write.length );
+				dbgprintf("FFS:IOS_Write(%d, 0x%p, %u)", CMessage->fd, CMessage->write.data, CMessage->write.length );
 #endif
 				ret = FS_Write( CMessage->fd, CMessage->write.data, CMessage->write.length );
 
@@ -184,12 +184,12 @@ int _main( int argc, char *argv[] )
 			case IOS_SEEK:
 			{
 #ifdef DEBUG
-				dbgprintf("FFS:IOS_Seek(%d, %d, %d):", CMessage->fd, CMessage->seek.offset, CMessage->seek.origin );
+				dbgprintf("FFS:IOS_Seek(%d, %x, %d):", CMessage->fd, CMessage->seek.offset, CMessage->seek.origin );
 #endif
 				ret = FS_Seek( CMessage->fd, CMessage->seek.offset, CMessage->seek.origin );
 
 #ifdef DEBUG
-				dbgprintf("%d\n", ret);
+				dbgprintf("%d\n", ret );
 #endif
 				mqueue_ack( (void *)CMessage, ret );
 

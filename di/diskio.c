@@ -34,7 +34,7 @@ DSTATUS disk_initialize (BYTE drv)
 	u32 s_size;
 	u32 s_cnt = USBStorage_Get_Capacity(&s_size);
 	
-	dbgprintf( DEBUG_DEBUG, "DIP: Drive size: %dMB SectorSize:%d\n", s_cnt / 1024 * s_size / 1024, s_size);
+	dbgprintf( DEBUG_DEBUG, "DIP:Drive size: %dMB SectorSize:%d\n", s_cnt / 1024 * s_size / 1024, s_size);
 
 	return r;
 }

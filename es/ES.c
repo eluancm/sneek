@@ -145,7 +145,7 @@ s32 ES_BootSystem( void )
 	//IOS58 is also not supported
 	if( IOSVersion < 28 )
 		IOSVersion = 35;
-	if( IOSVersion == 58 )
+	if( IOSVersion == 58 )	// New usb crap
 		IOSVersion = 56;
 
 	s32 r = LoadModules( IOSVersion );
@@ -247,6 +247,15 @@ s32 LoadModules( u32 IOSVersion )
 		LoadDI = true;
 		dbgprintf("ES:Found di.bin\n");
 	}
+	
+	u32 DIIndex = 1;
+	u32 SDIIndex = 4;
+
+	if( IOSVersion == 59 )
+	{
+		DIIndex = 2;
+		SDIIndex= 5;
+	}
 
 	for( i=0; i < TMD->ContentCount; ++i )
 	{
@@ -254,15 +263,25 @@ s32 LoadModules( u32 IOSVersion )
 		if( TMD->BootIndex == TMD->Contents[i].Index )
 			continue;
 
+		if( IOSVersion == 59 )
+		{
+			if( TMD->Contents[i].Index == 1 )	// EHCI
+				continue;
+			if( TMD->Contents[i].Index == 20 )	// WFSKRN
+				continue;
+			if( TMD->Contents[i].Index == 21 )	// WFSI
+				continue;
+		}
+
 		//Skip SD module if FS module is using SD
-		if( TMD->Contents[i].Index == 4 )
+		if( TMD->Contents[i].Index == SDIIndex )
 		{
 			if( ISFS_IsUSB() == FS_ENOENT2 )
 				continue;
 		}
 
 		//Load special DI module
-		if( TMD->Contents[i].Index == 1 && LoadDI )
+		if( TMD->Contents[i].Index == DIIndex && LoadDI )
 		{
 			_sprintf( path, "/sneek/di.bin" );
 		} else {
@@ -296,14 +315,12 @@ s32 LoadModules( u32 IOSVersion )
 			while(1);
 		}
 		
-		if( TMD->Contents[i].Index == 1 && LoadDI && ISFS_IsUSB() == FS_ENOENT2 )	//Only wait when in SNEEK+DI mode
+		if( TMD->Contents[i].Index == DIIndex && LoadDI && ISFS_IsUSB() != FS_SUCCESS )	//Only wait when in SNEEK+DI mode
 		{
-			dbgprintf("ES:Waiting for DI to init device...");
+			dbgprintf("ES:Waiting for DI to init device...\n");
 
 			while( DVDConnected() != 1 )
 				udelay(5000);
-
-			dbgprintf("done!\n");
 		}
 	}
 
@@ -347,38 +364,13 @@ s32 LoadTitle( u64 *TitleID )
 		return *size;
 	}
 
-//Load PPC
-	//s32 r = LoadPPC( TMD + 0x1BA );
-	//if( r < 0 )
-	//{
-	//	dbgprintf("ES:ES_LaunchSYS->LoadPPC:%d\n", r );
-
-	//	free( size );
-	//	free( path );
-	//	free( TMD );
-	//	return r;
-	//}
-
-//Load Ticket
-	_sprintf( path, "/ticket/%08x/%08x.tik", (u32)(*TitleID>>32), (u32)(*TitleID) );
-
-	u8 *TIK_Data = NANDLoadFile( path, size );
-	if( TIK_Data == NULL )
-	{
-		free( path );
-		free( TMD );
-		return *size;
-	}
-
 	u16 UID = 0;
-	dbgprintf("ES:NANDLoadFile:%p size:%d\n", TIK_Data, *size );
 
 	s32 r = GetUID( TitleID, &UID );
 	if( r < 0 )
 	{
-		dbgprintf("ES:ESP_GetUID:%d\n", r );
+	//	dbgprintf("ES:ESP_GetUID:%d\n", r );
 
-		free( TIK_Data );
 		free( TMD );
 		free( size );
 		free( path );
@@ -388,9 +380,8 @@ s32 LoadTitle( u64 *TitleID )
 	r = SetUID( 0xF, UID );
 	if( r < 0 )
 	{
-		dbgprintf("ES:SetUID( 0xF, 0x%04X ):%d\n", UID, r );
+	//	dbgprintf("ES:SetUID( 0xF, 0x%04X ):%d\n", UID, r );
 
-		free( TIK_Data );
 		free( TMD );
 		free( size );
 		free( path );
@@ -400,9 +391,8 @@ s32 LoadTitle( u64 *TitleID )
 	r = SetGID( 0xF, *(vu16*)((u8*)TMD+0x198) );
 	if( r < 0 )
 	{
-		dbgprintf("SetGID( %d, %04X ):%d\n", 0xF, *(vu16*)((u8*)TMD+0x198), r );
+	//	dbgprintf("SetGID( %d, %04X ):%d\n", 0xF, *(vu16*)((u8*)TMD+0x198), r );
 
-		free( TIK_Data );
 		free( TMD );
 		free( size );
 		free( path );
@@ -438,6 +428,7 @@ s32 LoadTitle( u64 *TitleID )
 			break;
 		}
 	}
+
 	_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(*TitleID>>32), (u32)(*TitleID), i );
 
 	if( (u32)(*TitleID>>32) == 0x00000001 && (u32)(*TitleID) != 0x00000002 )
@@ -450,15 +441,14 @@ s32 LoadTitle( u64 *TitleID )
 	} else {
 		dbgprintf("ES:PPCBoot(\"%s\"):", path );
 		r = PPCBoot( path );
-		dbgprintf("%d\n", r );
+		dbgprintf( "%d\n", r );
 	}
 
-	free( TIK_Data );
 	free( TMD );
 	free( size );
 	free( path );
 
-	return 0;
+	return r;
 }
 s32 CheckBootTitle( char *Path, u64 *TitleID )
 {
@@ -492,8 +482,6 @@ u64 GetTitleID( void )
 {
 	return TitleID;
 }
-
-
 void iCleanUpTikTMD( void )
 {
 	if( iTMD != NULL )
@@ -511,12 +499,12 @@ s32 CreateTitlePath( u64 TitleID )
 {
 	char *path = (char*)malloca( 0x40, 32 );
 
-	//dbgprintf("Creating path for:%08x-%08x\n", (u32)(TitleID>>32), (u32)(TitleID) );
+	dbgprintf("Creating path for:%08x-%08x\n", (u32)(TitleID>>32), (u32)(TitleID) );
 
 	_sprintf( path, "/title/%08x/%08x/data", (u32)(TitleID>>32), (u32)(TitleID) );
 	if( ISFS_GetUsage( path, (u32*)NULL, (u32*)NULL ) != FS_SUCCESS )
 	{
-		//dbgprintf("Path \"/title/%08x/%08x/data\" not found\n", (u32)(TitleID>>32), (u32)(TitleID) );
+		dbgprintf("Path \"/title/%08x/%08x/data\" not found\n", (u32)(TitleID>>32), (u32)(TitleID) );
 
 		_sprintf( path, "/title/%08x", (u32)(TitleID>>32) );
 		ISFS_CreateDir( path, 0, 3, 3, 3 );
@@ -605,7 +593,6 @@ s32 GetTMDView( u64 *TitleID, u8 *oTMDView )
 
 	return ES_SUCCESS;
 }
-
 s32 GetUID( u64 *TitleID, u16 *UID )
 {
 	char *path	= (char*)malloca( 0x40, 32 );
@@ -626,7 +613,7 @@ s32 GetUID( u64 *TitleID, u16 *UID )
 				free( size );
 				return r;
 			} else {
-				dbgprintf("ES:Created new uid.sys!\n");
+			//	dbgprintf("ES:Created new uid.sys!\n");
 				//Create default system menu entry
 				s32 fd = IOS_Open( path, 2 );
 				if( fd < 0 )
@@ -885,8 +872,7 @@ s32 doTicketMagic( Ticket *Ticket )
 
 s32 ESP_OpenContent( u64 TitleID, u32 ContentID )
 {
-	char *path = (char*)malloca( 0x40, 32 );
-	u32 *size = (u32*)malloca( 4, 32 );
+//	dbgprintf("ES:ESP_OpenContent(%08x-%08x,%u)\n", (u32)(TitleID>>32), (u32)TitleID, ContentID );
 
 	_sprintf( path, "/title/%08x/%08x/content/title.tmd", (u32)(TitleID>>32), (u32)TitleID );
 
@@ -894,13 +880,11 @@ s32 ESP_OpenContent( u64 TitleID, u32 ContentID )
 	if( TMD == NULL )
 	{
 		s32 ret = *size;
-		free( size );
-		free( path );
 		return ret;
 	}
 
 	u32 i=0;
-	s32 ret=0;
+	s32 ret=ES_NFOUND;
 	for( i=0; i < TMD->ContentCount; ++i )
 	{
 		if( TMD->Contents[i].Index == ContentID )
@@ -913,7 +897,7 @@ s32 ESP_OpenContent( u64 TitleID, u32 ContentID )
 				{
 					_sprintf( path, "/shared1/%08x.app", ret );
 					ret = IOS_Open( path, 1 );
-					//dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
+					dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
 				} else {
 					dbgprintf("ES:iOpenContent->Fatal Error: tried to open nonexisting content!\n");
 					hexdump( TMD->Contents[i].SHA1, 0x14 );
@@ -923,7 +907,7 @@ s32 ESP_OpenContent( u64 TitleID, u32 ContentID )
 			} else {	// not-shared
 				_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(TitleID>>32), (u32)TitleID, TMD->Contents[i].ID );
 				ret = IOS_Open( path, 1 );
-				//dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
+				dbgprintf("ES:iOpenContent->IOS_Open(\"%s\"):%d\n", path, ret );
 			}
 
 			break;
@@ -931,8 +915,6 @@ s32 ESP_OpenContent( u64 TitleID, u32 ContentID )
 	}
 
 	free( TMD );
-	free( size );
-	free( path );
 
 	return ret;
 }
@@ -949,12 +931,15 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 		{
 			case 0x474D4745:	// Mario Kart GP
 			case 0x474D3245:	// Mario Kart GP 2
+			case 0x4746584a:	// FZeroAX
+			case 0x4756534A:	// VS 4 Ver. 2006 JAPAN
+			case 0x47565345:	// VS 4 Ver. 2006 EXPORT
 			{
 				_sprintf( path, "/sneek/quadforce.bin" );
 				s32 fd = IOS_Open( path, 1 );
 				if( fd >= 0 )
 				{
-					((DML_CFG*)0x01200000)->Version = 1;
+				//	((DML_CFG*)0x01200000)->Version = 1;
 					
 					LoadOK = 1;
 					IOS_Close(fd);
@@ -964,16 +949,21 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 			{
 				if( ISFS_IsUSB() == -106 )	// SNEEK
 				{
-					// Find out if the game is on SD or USB
-					_sprintf( path, "/games/%s/sys/boot.bin", DICfg->GameInfo[DICfg->SlotID]+0x60 );
-
-					s32 fd = IOS_Open( path, 1 );
-					if( fd >= 0 )
+					if( DICfg == (DIConfig*)NULL )	// SNEEK without DI
 					{
-						_sprintf( path, "/sneek/diosmioslite.bin" );
-						IOS_Close(fd);
-					} else {
 						_sprintf( path, "/sneek/diosmios.bin" );
+					} else {
+						// Find out if the game is on SD or USB
+						_sprintf( path, "/games/%s/sys/boot.bin", DICfg->GameInfo[DICfg->SlotID]+0x60 );
+
+						s32 fd = IOS_Open( path, 1 );
+						if( fd >= 0 )
+						{
+							_sprintf( path, "/sneek/diosmioslite.bin" );
+							IOS_Close(fd);
+						} else {
+							_sprintf( path, "/sneek/diosmios.bin" );
+						}
 					}
 
 				} else {							// UNEEK
@@ -1026,7 +1016,7 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 	}
 
 
-	//build launch.sys
+//	build launch.sys
 	u8 *data=(u8*)malloca( 0xE0, 0x40 );
 
 	memcpy( data, TitleID, sizeof(u64) );
@@ -1038,10 +1028,12 @@ s32 ESP_LaunchTitle( u64 *TitleID, u8 *TikView )
 	
 	free( data );
 	free( path );
-	
+
+	dbgprintf("NANDWriteFileSafe():%d\n", r );
+
 	if( r < 0 )
 		return r;
-
+	
 	//now load IOS kernel
 	IOSBoot( "/sneek/kernel.bin", 0, KernelGetVersion() );
 	
@@ -1074,7 +1066,7 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 		} break;
 		default:
 		{
-			//;dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
+			dbgprintf("ES:ISFS_GetUsage(\"%s\"):%d\n", path, r );
 		} break;
 	}
 
@@ -1111,12 +1103,14 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 	if( r < 0 )
 	{
 		dbgprintf("ES:KeyCreate():%d\n", r );
+		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
 		return r;
 	}
 
 	r = KeySetPermissions( *Key, 8 );
 	if( r < 0 )
 	{
+		dbgprintf("ES:keyid:%p:%08x\n", Key, *Key );
 		dbgprintf("ES:KeySetPermissions():%d\n", r);
 		return r;
 	}
@@ -1159,7 +1153,12 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 
 	int i;
 	for( i = 0; i < TMD->ContentCount; ++i )
+	{
+		if( Hashes == NULL )
+			break;
+
 		memcpy( Hashes + i * 20, (u8*)TMD + 0x1F4 + i*0x24, 20 );
+	}
 	
 	DITicket = (u8*)malloca( TICKET_SIZE, 0x40 );
 	
@@ -1175,7 +1174,7 @@ s32 ESP_DIVerify( u64 *TitleID, u32 *Key, TitleMetaData *TMD, u32 tmd_size, char
 	
 	u32 aSize = TMD->ContentCount*0x24 + 0x1E4 + 0xE0;
 	
-	//dbgprintf("ES:disc.sys size:%d\n", aSize );
+	dbgprintf("ES:disc.sys size:%d\n", aSize );
 
 	u8 *DiscSys = (u8*)malloca( aSize, 0x40 );
 	
@@ -1224,6 +1223,7 @@ s32 ES_CreateKey( u8 *Ticket )
 	if( r < 0 )
 	{
 		dbgprintf("CreateKey( %p, %d, %d ):%d\n", KeyID, 0, 0, r );
+		dbgprintf("KeyID:%d\n", KeyID[0] );
 		free( sTitleID );
 		free( encTitleKey );
 		return r;
@@ -1231,7 +1231,7 @@ s32 ES_CreateKey( u8 *Ticket )
 
 	r = KeyInitialize( KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey );
 	if( r < 0 )
-		dbgprintf("KeyInitialize( %d, %d, %d, %d, %d, %p, %p ):%d\n", KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey, r );
+		dbgprintf("syscall_5d( %d, %d, %d, %d, %d, %p, %p ):%d\n", KeyID[0], 0, 4, 1, r, sTitleID, encTitleKey, r );
 
 	free( sTitleID );
 	free( encTitleKey );
@@ -1239,7 +1239,7 @@ s32 ES_CreateKey( u8 *Ticket )
 	return r;
 }
 /*
-	Decrypt and creata a sha1 for the decrypted data
+	Decrypt and create a sha1 for the decrypted data
 */
 s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 {
@@ -1252,6 +1252,7 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 in = IOS_Open( path, 1 );
 	if( in < 0 )
 	{
+		dbgprintf("IOS_Open(\"%s\",1):%d\n", path, in );
 		free( path );
 		if( in == ES_NFOUND )
 			return ES_SUCCESS;
@@ -1262,6 +1263,7 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 r = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( r < 0 )
 	{
+		dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, r );
 		IOS_Close( in );
 		free( path );
 		return r;
@@ -1270,6 +1272,7 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	s32 out = IOS_Open( path, 2 );
 	if( out < 0 )
 	{
+		dbgprintf("IOS_Open(\"%s\",2):%d\n", path, out );
 		IOS_Close( in );
 		free( path );
 		return out;
@@ -1292,12 +1295,14 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 		{
 			*(u16*)iv	= TMD->Contents[i].Index;
 			FileSize	= (u32)TMD->Contents[i].Size;
+			dbgprintf("ES:Found CID:%d Size:%d\n",  TMD->Contents[i].Index, FileSize );
 			break;
 		}
 	}
 
 	if( FileSize == 0 )
 	{
+		dbgprintf("ES:CID not found in TMD!\n");
 		IOS_Close( out );
 		IOS_Close( in );
 		free( path );
@@ -1312,6 +1317,7 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 	r = sha1( SHA1i, 0, 0, SHA_INIT, Object );
 	if( r < 0 )
 	{
+		dbgprintf("ES:sha1():%d\n", r );
 		free( SHA1i );
 		free( hash );
 		free( Object );
@@ -1328,15 +1334,22 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 		r = IOS_Read( in, block, (FileSize+31)&(~31) );
 		if( r < 0 || r < FileSize )
 		{
+			dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, (FileSize+31)&(~31), r );
 			r = ES_EHASH;
 			goto ACF_Fail;
 		}
 
-		aes_decrypt_( *KeyID, iv, block, 0x4000, block );
+		r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
+		if(  r < 0 )
+			dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
 
-		IOS_Write( out, block, FileSize );
+		r = IOS_Write( out, block, FileSize );
+		if( r < 0 || r != FileSize )
+			dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, FileSize, r );
 
-		sha1( SHA1i, block, FileSize, SHA_FINISH, hash );
+		r = sha1( SHA1i, block, FileSize, SHA_FINISH, hash );
+		if( r < 0 )
+			dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, FileSize, SHA_FINISH, hash, r );
 
 	} else {
 
@@ -1346,18 +1359,21 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			r = IOS_Read( in, block, 0x4000 );
 			if( r < 0 || r != 0x4000 )
 			{
+				dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, 0x4000, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
 			r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
 			if(  r < 0 )
 			{
+				dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
 			r = IOS_Write( out, block, 0x4000 );
 			if( r < 0 || r != 0x4000 )
 			{
+				dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, 0x4000, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
@@ -1366,18 +1382,26 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			if( i+1 >= FileSize/0x4000 )
 			{
 				//is last block; now check if there is some data left
+
 				if( (FileSize%0x4000) == 0 )
 				{
 					//finish
-					sha1( SHA1i, block, 0x4000, SHA_FINISH, hash );
+					r = sha1( SHA1i, block, 0x4000, SHA_FINISH, hash );
+					if( r < 0 )
+						dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_FINISH, hash, r );
 
 				} else {
 					//just update
-					sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
+					r = sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
+					if( r < 0 )
+						dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_UPDATE, hash, r );
+
 				}
 			} else {
 				//just update
-				sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
+				r = sha1( SHA1i, block, 0x4000, SHA_UPDATE, hash );
+				if( r < 0 )
+					dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, 0x4000, SHA_UPDATE, hash, r );
 			}
 		}
 
@@ -1389,14 +1413,21 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 			r = IOS_Read( in, block, (readsize+31)&(~31) );
 			if( r < 0 || r < readsize )
 			{
+				dbgprintf("IOS_Read( %d, %p, %d):%d\n", in, block, readsize, r );
 				r = ES_EHASH;
 				goto ACF_Fail;
 			}
-			aes_decrypt_( *KeyID, iv, block, 0x4000, block );
+			r = aes_decrypt_( *KeyID, iv, block, 0x4000, block );
+			if(  r < 0 )
+				dbgprintf("aes_decrypt( %d, %p, %p %x, %p ):%d\n",  *KeyID, iv, block, 0x4000, block, r );
 
-			IOS_Write( out, block, readsize );
+			r = IOS_Write( out, block, readsize );
+			if( r < 0 || r != readsize )
+				dbgprintf("IOS_Write( %d, %p, %d):%d\n", out, block, readsize, r );
 
-			sha1( SHA1i, block, readsize, SHA_FINISH, hash );
+			r = sha1( SHA1i, block, readsize, SHA_FINISH, hash );
+			if( r < 0 )
+				dbgprintf("sha1( %p, %p, %d, %d, %p):%d\n", SHA1i, block, readsize, SHA_FINISH, hash, r );
 		}
 	}
 
@@ -1411,6 +1442,7 @@ s32 ESP_AddContentFinish( u32 cid, u8 *Ticket, TitleMetaData *TMD )
 				r = ES_SUCCESS;
 			else {
 				dbgprintf("ES:Content SHA1 mismatch!\n");
+				dbgprintf("ES:KeyID:%u\n", *KeyID );
 				dbgprintf("ES:TMD HASH (cid:%d):\n", i);
 				hexdump( TMD->Contents[i].SHA1, 0x14 );
 				dbgprintf("ES:CALC HASH:\n");
@@ -1483,15 +1515,16 @@ s32 ES_AddTicket( struct ioctl_vector *Data, u32 In, u32 Out )
 
 				//this function moves the file, overwriting the target
 				ret = ISFS_Rename( path, dstpath );
-				if( ret < 0 )
-					dbgprintf("ES:ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
+				//if( ret < 0 )
+				//	dbgprintf("ES:ISFS_Rename( \"%s\", \"%s\" ):%d\n", path, dstpath, ret );
 
 				free( dstpath );
 			}
 		}
 	}
-
+#ifdef ES_DEBUG
 	dbgprintf("ES:AddTicket(%08x-%08x):%d\n", (u32)(ticket->TitleID>>32), (u32)(ticket->TitleID), ret );
+#endif
 	free( ticket );
 
 	return ret;
@@ -1499,20 +1532,22 @@ s32 ES_AddTicket( struct ioctl_vector *Data, u32 In, u32 Out )
 s32 ES_GetTitleID( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	memcpy( (u8*)(Data[0].data), &TitleID, sizeof(u64) );
-
+#ifdef ES_DEBUG
 	dbgprintf("ES:GetTitleID(%08x-%08x):0\n", (u32)(TitleID>>32), (u32)(TitleID) );
-
+#endif
 	return ES_SUCCESS;
 }
+
 s32 ES_GetTitleDir( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	memcpy( iTitleID, (u8*)(Data[0].data), sizeof(u64) );
 
-	_sprintf( path, "/title/%08x/%08x/data", (u32)(*iTitleID>>32), (u32)(*iTitleID) );
+	_sprintf( path, "/title/%08x/%08x/data", (u32)(TitleID>>32), (u32)(TitleID) );
 
 	memcpy( (u8*)(Data[1].data), path, 32 );
-
+#ifdef ES_DEBUG
 	dbgprintf("ES:GetTitleDataDir(%s):0\n", Data[1].data );
+#endif
 	return ES_SUCCESS;
 }
 /*
@@ -1551,8 +1586,9 @@ s32 ES_GetTitleCount( struct ioctl_vector *Data, u32 In, u32 Out )
 			free( uid );
 		}
 	}
-
+#ifdef ES_DEBUG
 	dbgprintf("ES:GetTitleCount(%u):0\n", *(vu32*)(Data[0].data) );
+#endif
 	return ES_SUCCESS;
 }
 s32 ES_GetTitles( struct ioctl_vector *Data, u32 In, u32 Out )
@@ -1583,7 +1619,7 @@ s32 ES_GetTitles( struct ioctl_vector *Data, u32 In, u32 Out )
 					IOS_Close( fd );
 				}
 			}
-
+			
 			free( uid );
 
 			if( TTitles != NULL )
@@ -1596,9 +1632,9 @@ s32 ES_GetTitles( struct ioctl_vector *Data, u32 In, u32 Out )
 			TCountDirty = 0;
 		}
 	}
-
+#ifdef ES_DEBUG
 	dbgprintf("ES:GetTitles(%u):0\n", TCount );
-
+#endif
 	return ES_SUCCESS;
 }
 /*
@@ -1701,15 +1737,15 @@ s32 ES_OpenTitleContent( struct ioctl_vector *Data, u32 In, u32 Out )
 
 	s32 ret = ESP_OpenContent( *iTitleID, *(u32*)(Data[2].data) );
 
-	dbgprintf("ES:OpenTitleContent( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[2].data), ret );
-
 	return ret;
 }
+
 s32 ES_ReadContent( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	s32 ret = IOS_Read( *(u32*)(Data[0].data), (u8*)(Data[1].data), Data[1].len );
 
-	dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(Data[0].data), Data[1].data, Data[1].len, ret );
+	// dbgprintf("ES:ReadContent( %d, %p, %d ):%d\n", *(u32*)(Data[0].data), Data[1].data, Data[1].len, ret );
+
 
 	return ret;
 }
@@ -1717,7 +1753,7 @@ s32 ES_SeekContent( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	s32 ret = IOS_Seek( *(u32*)(Data[0].data), *(u32*)(Data[1].data), *(u32*)(Data[2].data) );
 	
-	dbgprintf("ES:SeekContent( %d, %d, %d ):%d\n", *(u32*)(Data[0].data), *(u32*)(Data[1].data), *(u32*)(Data[2].data), ret );
+	// dbgprintf("ES:SeekContent( %d, %d, %d ):%d\n", *(u32*)(Data[0].data), *(u32*)(Data[1].data), *(u32*)(Data[2].data), ret );
 
 	return ret;
 }
@@ -1725,7 +1761,7 @@ s32 ES_CloseContent( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	IOS_Close( *(u32*)(Data[0].data) );
 
-	dbgprintf("ES:CloseContent(%d):0\n", *(u32*)(Data[0].data) );
+//	dbgprintf("ES:CloseContent(%d):0\n", *(u32*)(Data[0].data) );
 
 	return ES_SUCCESS;
 }
@@ -1867,19 +1903,19 @@ s32 ES_AddTitleStart( struct ioctl_vector *Data, u32 In, u32 Out )
 	s32 ret = ISFS_CreateFile( path, 0, 3, 3, 3 );
 	if( ret < 0 )
 	{
-		;//dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
+		;dbgprintf("ISFS_CreateFile(\"%s\"):%d\n", path, ret );
 	} else {
 
 		s32 fd = IOS_Open( path, ISFS_OPEN_WRITE );
 		if( fd < 0 )
 		{
-			//dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
+			dbgprintf("IOS_Open(\"%s\"):%d\n", path, fd );
 			ret = fd;
 		} else {
 			ret = IOS_Write( fd, (u8*)(Data[0].data), Data[0].len );
 			if( ret < 0 || ret != Data[0].len )
 			{
-				;//dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, Data[0].data, Data[0].len, ret );
+				;dbgprintf("IOS_Write( %d, %p, %d):%d\n", fd, Data[0].data, Data[0].len, ret );
 			} else {
 				ret = ES_SUCCESS;
 			}
@@ -2005,8 +2041,8 @@ s32 ES_AddTitleFinish( struct ioctl_vector *Data, u32 In, u32 Out )
 //Copy iTMD to content dir
 	if( r == ES_SUCCESS )
 	{
-		_sprintf( path, "/tmp/title.TMD" );
-		_sprintf( pathdst, "/title/%08x/%08x/content/title.TMD", (u32)(iTMD->TitleID>>32), (u32)iTMD->TitleID );
+		_sprintf( path, "/tmp/title.tmd" );
+		_sprintf( pathdst, "/title/%08x/%08x/content/title.tmd", (u32)(iTMD->TitleID>>32), (u32)iTMD->TitleID );
 
 		r = ISFS_Rename( path, pathdst );
 		if( r < 0 )
@@ -2019,7 +2055,7 @@ s32 ES_AddTitleFinish( struct ioctl_vector *Data, u32 In, u32 Out )
 	free( pathdst );
 
 	//Get iTMD for the CID names and delete!
-	_sprintf( path, "/tmp/title.TMD" );
+	_sprintf( path, "/tmp/title.tmd" );
 	ISFS_Delete( path );
 
 	for( i=0; i < iTMD->ContentCount; ++i )
@@ -2111,7 +2147,7 @@ s32 ES_GetTicketViewCount( struct ioctl_vector *Data, u32 In, u32 Out )
 		IOS_Close( fd );
 	}
 
-	dbgprintf("ES:GetTicketViewCount( %08x-%08x, %d):0\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data) );
+//	dbgprintf("ES:GetTicketViewCount( %08x-%08x, %d):0\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data) );
 	
 	return ES_SUCCESS;
 }
@@ -2137,7 +2173,7 @@ s32 ES_GetTicketViews( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:GetTicketViews( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
+//	dbgprintf("ES:GetTicketViews( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
 	
 	return ret;
 }
@@ -2160,7 +2196,7 @@ s32 ES_GetTMDViewSize( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:GetTMDViewSize( %08x-%08x, %d ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
+//	dbgprintf("ES:GetTMDViewSize( %08x-%08x, %d ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
 
 	return ret;
 }
@@ -2170,7 +2206,7 @@ s32 ES_GetTMDView( struct ioctl_vector *Data, u32 In, u32 Out )
 
 	s32 ret = GetTMDView( iTitleID, (u8*)(Data[2].data) );
 
-	dbgprintf("ES:GetTMDView( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)*iTitleID, ret );
+//	dbgprintf("ES:GetTMDView( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)*iTitleID, ret );
 	
 	return ret;
 }
@@ -2211,7 +2247,7 @@ s32 ES_GetTitleContentCount( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = *size;
 	}
 
-	dbgprintf("ES:GetTitleContentCount( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
+//	dbgprintf("ES:GetTitleContentCount( %08x-%08x, %d):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
 	
 	return ret;
 }
@@ -2257,7 +2293,7 @@ s32 ES_GetTitleContentsOnCard( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = *size;
 	}
 
-	dbgprintf("ES:GetTitleContentsOnCard( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
+//	dbgprintf("ES:GetTitleContentsOnCard( %08x-%08x ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
 	
 	return ret;
 }
@@ -2278,7 +2314,7 @@ s32 ES_GetSharedContentCount( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:ES_GetSharedContentCount(%d):%d\n", *(vu32*)(Data[0].data), ret );
+//	dbgprintf("ES:ES_GetSharedContentCount(%d):%d\n", *(vu32*)(Data[0].data), ret );
 
 	return ret;
 }
@@ -2301,7 +2337,7 @@ s32 ES_GetSharedContents( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:ES_GetSharedContents():%d\n", ret );
+//	dbgprintf("ES:ES_GetSharedContents():%d\n", ret );
 
 	return ret;
 	
@@ -2314,7 +2350,7 @@ s32 ES_LaunchTitle( struct ioctl_vector *Data, u32 In, u32 Out )
 
 	s32 ret = ESP_LaunchTitle( (u64*)(Data[0].data), (u8*)(Data[1].data) );
 
-	dbgprintf("ES_LaunchTitle Failed with:%d\n", ret );	
+//	dbgprintf("ES_LaunchTitle Failed with:%d\n", ret );	
 
 	return ret;
 }
@@ -2322,7 +2358,7 @@ s32 ES_GetConsumption( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	*(u32*)(Data[2].data) = 0;
 
-	dbgprintf("ES:ES_GetConsumption():0\n" );
+//	dbgprintf("ES:ES_GetConsumption():0\n" );
 
 	return ES_SUCCESS;
 }
@@ -2330,15 +2366,15 @@ s32 ES_DIVerify( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	s32 ret = ESP_DIVerify( &TitleID, (u32*)(Data[4].data), (TitleMetaData*)(Data[3].data), Data[3].len, (char*)(Data[2].data), (char*)(Data[5].data) );
 
-	dbgprintf("ES:ES_DIVerify():%d\n", ret );
+//	dbgprintf("ES:ES_DIVerify():%d\n", ret );
 
 	return ret;
 }
 s32 ES_GetBoot2Version( struct ioctl_vector *Data, u32 In, u32 Out )
 {
-	*(u32*)(Data[0].data) = 4;
+	*(u32*)(Data[0].data) = 0;
 
-	dbgprintf("ES:GetBoot2Version():0\n" );
+//	dbgprintf("ES:GetBoot2Version():0\n" );
 
 	return ES_SUCCESS;	
 }
@@ -2355,7 +2391,7 @@ s32 ES_GetDeviceCert( struct ioctl_vector *Data, u32 In, u32 Out )
 		free( data );
 	}
 
-	dbgprintf("ES:GetDeviceCert():0\n" );
+//	dbgprintf("ES:GetDeviceCert():0\n" );
 
 	return ES_SUCCESS;
 
@@ -2385,35 +2421,35 @@ s32 ES_GetDeviceID( struct ioctl_vector *Data, u32 In, u32 Out )
 		free( data );
 	}
 
-	dbgprintf("ES:ES_GetDeviceID( 0x%08x ):0\n", *(u32*)(Data[0].data) );
+//	dbgprintf("ES:ES_GetDeviceID( 0x%08x ):0\n", *(u32*)(Data[0].data) );
 
 	return ES_SUCCESS;
 }
 s32 ES_ImportBoot( struct ioctl_vector *Data, u32 In, u32 Out )
 {
-	dbgprintf("ES:ImportBoot():0\n" );
+//	dbgprintf("ES:ImportBoot():0\n" );
 	return ES_SUCCESS;	
 }
 s32 ES_KoreanKeyCheck( struct ioctl_vector *Data, u32 In, u32 Out )
 {
-	dbgprintf("ES:KoreanKeyCheck():-1017\n");
+//	dbgprintf("ES:KoreanKeyCheck():-1017\n");
 	return ES_FATAL;
 }
 s32 ES_VerifySign( struct ioctl_vector *Data, u32 In, u32 Out )
 {
-	dbgprintf("ES:VerifySign():0\n" );		
+//	dbgprintf("ES:VerifySign():0\n" );		
 	return ES_SUCCESS;
 }
 s32 ES_Decrypt( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	s32 ret = aes_decrypt_( *(u32*)(Data[0].data), (u8*)(Data[1].data), (u8*)(Data[2].data), Data[2].len, (u8*)(Data[4].data) );
-	dbgprintf("ES:Decrypt():%d\n", ret );
+//	dbgprintf("ES:Decrypt():%d\n", ret );
 	return ret;
 }
 s32 ES_Encrypt( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	s32 ret = aes_encrypt( *(u32*)(Data[0].data), (u8*)(Data[1].data), (u8*)(Data[2].data), Data[2].len, (u8*)(Data[4].data) );
-	dbgprintf("ES:Encrypt():%d\n", ret );
+//	dbgprintf("ES:Encrypt():%d\n", ret );
 	return ret;
 }
 s32 ES_GetDITicketViews( struct ioctl_vector *Data, u32 In, u32 Out )
@@ -2433,7 +2469,7 @@ s32 ES_GetDITicketViews( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:GetDITicketViews( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)TitleID, ret );
+//	dbgprintf("ES:GetDITicketViews( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)TitleID, ret );
 
 	return ret;
 }
@@ -2516,7 +2552,7 @@ s32 ES_GetStoredTMDSize( struct ioctl_vector *Data, u32 In, u32 Out )
 		free( status );
 	}
 
-	dbgprintf("ES:GetStoredTMDSize( %08x-%08x, %d ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
+//	dbgprintf("ES:GetStoredTMDSize( %08x-%08x, %d ):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), *(u32*)(Data[1].data), ret );
 
 	return ret;	
 }
@@ -2538,7 +2574,7 @@ s32 ES_GetStoredTMD( struct ioctl_vector *Data, u32 In, u32 Out )
 		IOS_Close( fd );
 	}
 
-	dbgprintf("ES:GetStoredTMD(%08x-%08x):%d\n", (u32)((*(u64*)(Data[0].data))>>32), (u32)((*(u64*)(Data[0].data))), ret );
+//	dbgprintf("ES:GetStoredTMD(%08x-%08x):%d\n", (u32)((*(u64*)(Data[0].data))>>32), (u32)((*(u64*)(Data[0].data))), ret );
 
 	return ret;	
 }
@@ -2565,7 +2601,7 @@ s32 ES_GetTmdContentsOnCardCount( struct ioctl_vector *Data, u32 In, u32 Out )
 		}
 	}
 
-	dbgprintf("ES:GetTmdContentsOnCardCount(%d):0\n", *(u32*)(Data[1].data) );
+//	dbgprintf("ES:GetTmdContentsOnCardCount(%d):0\n", *(u32*)(Data[1].data) );
 
 	return ES_SUCCESS;
 }
@@ -2594,7 +2630,7 @@ s32 ES_ListTmdContentsOnCard( struct ioctl_vector *Data, u32 In, u32 Out )
 		}
 	}
 
-	dbgprintf("ES:ListTmdContentsOnCard():0\n" );
+//	dbgprintf("ES:ListTmdContentsOnCard():0\n" );
 
 	return ES_SUCCESS;
 }
@@ -2614,14 +2650,14 @@ s32 ES_DIGetStoredTMDSize( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ISFS_GetFileStats( fd, status );
 		if( ret < 0 )
 		{
-			;//dbgprintf("ES:ISFS_GetFileStats(%d, %p ):%d\n", fd, status, ret );
+			;dbgprintf("ES:ISFS_GetFileStats(%d, %p ):%d\n", fd, status, ret );
 		} else
 			*(u32*)(Data[0].data) = status->Size;
 
 		free( status );
 	}
 
-	dbgprintf("ES:DIGetStoredTMDSize( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)(TitleID), ret );
+//	dbgprintf("ES:DIGetStoredTMDSize( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)(TitleID), ret );
 			
 	return ret;
 }
@@ -2641,7 +2677,7 @@ s32 ES_DIGetStoredTMD( struct ioctl_vector *Data, u32 In, u32 Out )
 		free( data );
 	}
 
-	dbgprintf("ES:DIGetStoredTMD( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)(TitleID), ret );
+//	dbgprintf("ES:DIGetStoredTMD( %08x-%08x ):%d\n", (u32)(TitleID>>32), (u32)(TitleID), ret );
 
 	return ret;
 }
@@ -2669,7 +2705,7 @@ s32 ES_ExportTitleInit( struct ioctl_vector *Data, u32 In, u32 Out )
 		ret = ES_SUCCESS;
 	}
 
-	dbgprintf("ES:ExportTitleInit(%08x-%08x):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
+//	dbgprintf("ES:ExportTitleInit(%08x-%08x):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
 
 	return ret;
 }
@@ -2686,7 +2722,7 @@ s32 ES_ExportContentBegin( struct ioctl_vector *Data, u32 In, u32 Out )
 
 	ret = IOS_Open( path, 1 );
 
-	dbgprintf("ES:ExportContentBegin():%d\n", ret );
+//	dbgprintf("ES:ExportContentBegin():%d\n", ret );
 
 	return ret;
 }
@@ -2699,7 +2735,7 @@ s32 ES_ExportContentData( struct ioctl_vector *Data, u32 In, u32 Out )
 	else
 		ret = ES_FATAL;
 
-	dbgprintf("ES:ExportContentData(%u,%p,%u):%d\n", *(s32*)(Data[0].data), (void*)(Data[1].data), Data[1].len, ret );
+//	dbgprintf("ES:ExportContentData(%u,%p,%u):%d\n", *(s32*)(Data[0].data), (void*)(Data[1].data), Data[1].len, ret );
 
 	return ret;
 }
@@ -2707,20 +2743,19 @@ s32 ES_ExportContentEnd( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	IOS_Close( *(s32*)(Data[0].data) );
 
-	dbgprintf("ES:ExportContentEnd(%u):0\n", *(s32*)(Data[0].data) );
+//	dbgprintf("ES:ExportContentEnd(%u):0\n", *(s32*)(Data[0].data) );
 
 	return ES_SUCCESS;
 }
 s32 ES_ExportTitleDone( struct ioctl_vector *Data, u32 In, u32 Out )
 {
-	dbgprintf("ES:ExportTitleDone()\n" );
+//	dbgprintf("ES:ExportTitleDone()\n" );
 
 	if( iTMD != NULL )
 		free( iTMD );
 
 	return ES_SUCCESS;
 }
-
 s32 ES_DeleteTitleContent( struct ioctl_vector *Data, u32 In, u32 Out )
 {
 	memcpy( iTitleID, (u8*)(Data[0].data), sizeof(u64) );
@@ -2731,7 +2766,7 @@ s32 ES_DeleteTitleContent( struct ioctl_vector *Data, u32 In, u32 Out )
 	if( ret >= 0 )
 		ISFS_CreateDir( path, 0, 3, 3, 3 );
 	
-	dbgprintf("ES:DeleteTitleContent(%08x-%08x):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
+//	dbgprintf("ES:DeleteTitleContent(%08x-%08x):%d\n", (u32)(*iTitleID>>32), (u32)(*iTitleID), ret );
 
 	return ret;
 }
@@ -2778,7 +2813,7 @@ ESIoctlv ESIoctlvs[0x46] = {
 	ES_SeekContent,			//	0x23
 	ES_OpenTitleContent,	//	0x24
 	ES_Invalid,				//	0x25	ES_LaunchBC
-	ES_Invalid,				//	0x26	ES_ExportTitleInit
+	ES_ExportTitleInit,		//	0x26	ES_ExportTitleInit
 	ES_ExportContentBegin,	//	0x27
 	ES_ExportContentData,	//	0x28
 	ES_ExportContentEnd,	//	0x29
@@ -2800,8 +2835,8 @@ ESIoctlv ESIoctlvs[0x46] = {
 	ES_DIGetStoredTMDSize,	//	0x39
 	ES_DIGetStoredTMD,		//	0x3a
 	ES_Invalid,				//	0x3b
-	ES_Invalid,				//	0x3c
-	ES_Invalid,				//	0x3d
+	ES_Invalid,		//	0x3c
+	ES_Invalid,		//	0x3d
 	ES_Invalid,				//	0x3e
 	ES_Invalid,				//	0x3f
 	ES_Invalid,				//	0x40
@@ -2813,16 +2848,17 @@ ESIoctlv ESIoctlvs[0x46] = {
 };
 
 void ES_IoctlvN( struct ipcmessage *IPCMessage )
-{
+{	
 	if( IPCMessage->ioctlv.command > 0x45 )
 	{
 		mqueue_ack( IPCMessage, -1017 );
 	} else {
 #ifdef DEBUG
 		s32 ret = ESIoctlvs[ IPCMessage->ioctlv.command ]( IPCMessage->ioctlv.argv, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io );
-
-		//if( ret < 0 )
-		//	dbgprintf("ES:ES_Ioctlv() Ioctlv:%02X In:%u Out:%u Data:%p failed with %d\n", IPCMessage->ioctlv.command, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io, IPCMessage->ioctlv.argv, ret );
+			
+		if( ret < 0 )
+			dbgprintf("ES:ES_Ioctlv() Ioctlv:%02X In:%u Out:%u Data:%p failed with %d\n", IPCMessage->ioctlv.command, IPCMessage->ioctlv.argc_in, IPCMessage->ioctlv.argc_io, IPCMessage->ioctlv.argv, ret );
+			
 
 		mqueue_ack( IPCMessage, ret );
 #else

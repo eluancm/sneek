@@ -31,46 +31,31 @@ u8 *NANDLoadFile( char *path, u32 *Size )
 		*Size = fd;
 		return (u8*)NULL;
 	}
-
 	//dbgprintf("ES:NANDLoadFile->IOS_Open(\"%s\", 1 ):%d\n", path, fd );
 
-	fstats *status = (fstats*)heap_alloc_aligned( 0, sizeof(fstats), 0x40 );
-
-	s32 r = ISFS_GetFileStats( fd, status );
-	//dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(\"%s\", 1 ):%d\n", path, r );
-	if( r < 0 )
-	{
-		//dbgprintf("ES:NANDLoadFile->ISFS_GetFileStats(%d, %p ):%d\n", fd, status, r );
-		heap_free( 0, status );
-		*Size = r;
-		IOS_Close( fd );
-		return (u8*)NULL;
-	}
-
-	*Size = status->Size;
+	*Size = IOS_Seek( fd, 0, SEEK_END );
 	//dbgprintf("ES:NANDLoadFile->Size:%d\n", *Size );
 
-	u8 *data = (u8*)heap_alloc_aligned( 0, status->Size, 0x40 );
+	IOS_Seek( fd, 0, 0 );
+
+	u8 *data = (u8*)heap_alloc_aligned( 0, *Size, 0x40 );
 	if( data == NULL )
 	{
 		//dbgprintf("ES:NANDLoadFile(\"%s\")->Failed to alloc %d bytes!\n", path, status->Size );
-		heap_free( 0, status );
 		IOS_Close( fd );
 		return (u8*)NULL;
 	}
 
-	r = IOS_Read( fd, data, status->Size );
+	s32 r = IOS_Read( fd, data, *Size );
 	//dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
 	if( r < 0 )
 	{
 		//dbgprintf("ES:NANDLoadFile->IOS_Read():%d\n", r );
-		heap_free( 0, status );
 		*Size = r;
 		IOS_Close( fd );
 		return (u8*)NULL;
 	}
 
-	heap_free( 0, status );
 	IOS_Close( fd );
 
 	return data;

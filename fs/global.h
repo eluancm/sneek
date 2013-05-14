@@ -1,11 +1,13 @@
 #ifndef __GLOBAL_H__
 #define __GLOBAL_H__
 
+#define P2C(x)			((x)&0x7FFFFFFF)
+
 #define UINT_MAX ((unsigned int)0xffffffff)
 #define MEM2_BSS __attribute__ ((section (".bss.mem2")))
 
 
-#define DEBUG		0
+#define DEBUG		1
 #define false		0
 #define true		1
 

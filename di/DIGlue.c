@@ -38,7 +38,6 @@ void DVDInit( void )
 
 	Entries = (char*)NULL;
 
-
 	// Probe for UNEEK
 	switch( ISFS_IsUSB() )
 	{
@@ -84,7 +83,7 @@ void DVDInit( void )
 					default:
 					case FR_DISK_ERR:
 					{
-						dbgprintf( DEBUG_ERROR, "DIP: Disk error\n", fres );
+						dbgprintf( DEBUG_ERROR, "DIP:Disk error\n", fres );
 						f_mount(0,0);
 						udelay(500000);
 					} break;
@@ -105,7 +104,8 @@ void DVDInit( void )
 		case FS_SUCCESS:
 		{
 			dbgprintf( DEBUG_INFO, "DIP:Found FS-USB\n");
-			FSMode = UNEEK;
+			FSMode = UNEEK;			
+			HardDriveConnected = 1;
 		} break;
 	}
 

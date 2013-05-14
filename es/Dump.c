@@ -78,7 +78,7 @@ void ExtractFile( u64 PartDataOffset, u64 FileOffset, u32 Size, char *FileName )
 
 		if( DVDLowRead( encdata, PartDataOffset+roffset, 0x8000 ) != 0 )
 		{
-			dbgprintf("DVDLowRead(%04X) failed!\n", DVDLowRequestError() );
+		//	dbgprintf("DVDLowRead(%04X) failed!\n", DVDLowRequestError() );
 			ReadRetry++;
 		} else {
 			roffset += 0x8000;
@@ -100,7 +100,7 @@ void ExtractFile( u64 PartDataOffset, u64 FileOffset, u32 Size, char *FileName )
 
 		if( ReadRetry > 5 )
 		{
-			dbgprintf("ES:Failed to read the disc, maybe dirty?\n");
+		//	dbgprintf("ES:Failed to read the disc, maybe dirty?\n");
 			break;
 		}
 	}
@@ -133,7 +133,7 @@ void DecryptRead( u64 PartDataOffset, u64 FileOffset, u32 Size, char *Buffer )
 
 		if( DVDLowRead( encdata, PartDataOffset+roffset, 0x8000 ) != 0 )
 		{
-			dbgprintf("DVDLowRead(%04X) failed!\n", DVDLowRequestError() );
+		//	dbgprintf("DVDLowRead(%04X) failed!\n", DVDLowRequestError() );
 			ReadRetry++;
 		} else {
 			roffset += 0x8000;
@@ -154,7 +154,7 @@ void DecryptRead( u64 PartDataOffset, u64 FileOffset, u32 Size, char *Buffer )
 
 		if( ReadRetry > 5 )
 		{
-			dbgprintf("ES:Failed to read the disc, maybe dirty?\n");
+		//	dbgprintf("ES:Failed to read the disc, maybe dirty?\n");
 			break;
 		}
 	}
@@ -225,7 +225,7 @@ u32 DumpDoTick( u32 CurrentFB )
 					{
 						//dbgprintf("DVDLowReadDiscID():%d\n", r );
 						DVDError = DVDLowRequestError();
-						dbgprintf("DVDLowRequestError():%X\n", DVDError );
+					//	dbgprintf("DVDLowRequestError():%X\n", DVDError );
 					} else {
 
 						hexdump( (void*)0, 0x20);
@@ -409,7 +409,7 @@ u32 DumpDoTick( u32 CurrentFB )
 							} else {
 
 								//dbgprintf("\nES:DVDLowRead():%d\n", ret );
-								dbgprintf("ES:DVDError:%X\n", DVDError );
+								//dbgprintf("ES:DVDError:%X\n", DVDError );
 								break;
 
 							}
@@ -418,7 +418,7 @@ u32 DumpDoTick( u32 CurrentFB )
 						ret = DVDWrite( DVDHandle, DVDBuffer, READSIZE );
 						if( ret != READSIZE )
 						{
-							dbgprintf("\nES:DVDWrite():%d\n", ret );
+						//	dbgprintf("\nES:DVDWrite():%d\n", ret );
 							DVDError = DI_FATAL|(ret<<16);
 							break;
 						}
