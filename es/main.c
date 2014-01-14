@@ -72,7 +72,7 @@ int _main( int argc, char *argv[] )
 #endif
 		
 	MessageQueue = ES_Init( MessageHeap );
-	
+		
 	s32 Timer = TimerCreate( 0, 0, MessageQueue, 0xDEADDEAD );
 	
 //SD Card 
@@ -107,6 +107,7 @@ int _main( int argc, char *argv[] )
 	
 	if( GetTitleID() == 0x0000000100000002LL )
 	{
+		*SDStatus = 0x00000001;
 		MenuType = 1;
 		
 	} else if ( (GetTitleID() >> 32) ==  0x00010001LL ) {

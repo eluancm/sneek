@@ -12,6 +12,8 @@
 //#define SDI			1
 //#define CHEATMENU	1
 
+#define IsWiiU (( (*(u32*)0x0d8005A0 >> 16 ) == 0xCAFE )?1:0)
+
 #define	SHARED_PTR	((void *)0x13600000)
 #define	SHARED_SIZE	(0x18000)
 

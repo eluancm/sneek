@@ -68,11 +68,11 @@ u32 ES_Init( u8 *MessageHeap )
 	dbgprintf("ES:KernelVersion:%08X, %d\n", version, (version<<8)>>0x18 );
 
 	ISFS_Init();
-
+	
 	ES_BootSystem();
 
 	dbgprintf("ES:TitleID:%08x-%08x version:%d\n", (u32)((TitleID)>>32), (u32)(TitleID), TitleVersion );
-
+			
 	SMenuInit( TitleID, TitleVersion );
 	
 	return MessageQueue;
@@ -418,30 +418,83 @@ s32 LoadTitle( u64 *TitleID )
 	if( DICfg->Config & CONFIG_FAKE_CONSOLE_RG )
 		Config_ChangeSystem( TMD->TitleID, TMD->TitleVersion );
 
-//Find boot index
-	u32 i;
-	for( i=0; i < TMD->ContentCount; ++i )
+	if(	(*(u32*)0x0d8005A0 >> 16 ) == 0xCAFE )	// Wii U
 	{
-		if( TMD->BootIndex == TMD->Contents[i].Index )
+		if( *TitleID == 0x0000000100000002LL )
 		{
-			i = TMD->Contents[i].ID;
-			break;
-		}
-	}
+			u32 i;
+			for( i=0; i < TMD->ContentCount; ++i )
+			{
+				if( TMD->BootIndex == TMD->Contents[i].Index )
+				{
+					i = TMD->Contents[i].ID;
+					break;
+				}
+			}
 
-	_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(*TitleID>>32), (u32)(*TitleID), i );
+			_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(*TitleID>>32), (u32)(*TitleID), i );
 
-	if( (u32)(*TitleID>>32) == 0x00000001 && (u32)(*TitleID) != 0x00000002 )
-	{
-		if( *TitleID >= 0x0000000100000100LL )
-		{
-			if( IOSBoot( path, 0, KernelGetVersion() ) < 0 )
-				return ES_FATAL;
+		} else {
+
+	//Load BC-NAND TMD
+			_sprintf( path, "/title/%08x/%08x/content/title.tmd", 1, 512 );
+
+			TitleMetaData *BCTMD = (TitleMetaData*)NANDLoadFile( path, size );
+			if( BCTMD == NULL )
+			{
+				free( path );
+				return *size;
+			}
+
+			u32 i;
+			for( i=0; i < BCTMD->ContentCount; ++i )
+			{
+				if( BCTMD->BootIndex == BCTMD->Contents[i].Index )
+				{
+					i = BCTMD->Contents[i].ID;
+					break;
+				}
+			}
+
+			free(BCTMD);
+		
+			_sprintf( path, "/title/%08x/%08x/content/%08x.app", 1, 512, i );			
 		}
-	} else {
+
 		dbgprintf("ES:PPCBoot(\"%s\"):", path );
 		r = PPCBoot( path );
-		dbgprintf( "%d\n", r );
+		dbgprintf("%d\n", r );	
+
+		r = LoadPPC( (u8*)TMD + 0x1BA );
+		dbgprintf("ES:>LoadPPC():%d\n", r );
+		
+	} else {	// Wii
+
+	//Find boot index
+		u32 i;
+		for( i=0; i < TMD->ContentCount; ++i )
+		{
+			if( TMD->BootIndex == TMD->Contents[i].Index )
+			{
+				i = TMD->Contents[i].ID;
+				break;
+			}
+		}
+
+		_sprintf( path, "/title/%08x/%08x/content/%08x.app", (u32)(*TitleID>>32), (u32)(*TitleID), i );
+
+		if( (u32)(*TitleID>>32) == 0x00000001 && (u32)(*TitleID) != 0x00000002 )
+		{
+			if( *TitleID >= 0x0000000100000100LL )
+			{
+				if( IOSBoot( path, 0, KernelGetVersion() ) < 0 )
+					return ES_FATAL;
+			}
+		} else {
+			dbgprintf("ES:PPCBoot(\"%s\"):", path );
+			r = PPCBoot( path );
+			dbgprintf( "%d\n", r );
+		}	
 	}
 
 	free( TMD );

@@ -153,6 +153,13 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 			{
 				r13 = ((*(u32*)(ptr+i)) & 0xFFFF) << 16;
 				r13|= (*(u32*)(ptr+i+4)) & 0xFFFF;
+
+				if( IsWiiU )
+				{
+					//Wii-Disc Region free hack
+					*(u32*)0x0137E2C8 = 0x4800001C;
+					*(u32*)0x0137EC44 = 0x38000001;
+				}
 			}
 
 			if( memcmp( ptr+i, VISetFB, sizeof(VISetFB) ) == 0 && FBEnable == 0 )
@@ -243,6 +250,10 @@ void SMenuInit( u64 TitleID, u16 TitleVersion )
 
 	for( i=0; i < MAX_FB; ++i )
 		FB[i] = 0;
+
+	if( IsWiiU )	// Systemmenu is encrypt so we have to patch it later
+		return;	
+
 //Patches and SNEEK Menu
 	switch( TitleID )
 	{

@@ -289,33 +289,40 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 	return str-buf;
 }
 
-static char buffer[1024] ALIGNED(32);
 int dbgprintf( const char *fmt, ...)
 {
-	if ( (*(vu32*)(0xd800070) & 1) == 0)
-		return 0;
-
 	va_list args;
 	int i;
+		
+	char *buffer = (char*)heap_alloc_aligned( 0, 2048, 32 );	
 
 	va_start(args, fmt);
 	i = vsprintf(buffer, fmt, args);
 	va_end(args);
 
-	//FIL f;
-	//if( f_open( &f, "log.txt", FA_WRITE|FA_OPEN_ALWAYS ) == FR_OK )
-	//{
-	//	f_lseek( &f, f.fsize );
-	//	u32 read=0;
-	//	f_write( &f, buffer, strlen(buffer), &read );  
-	//	f_close( &f);
-	//}
-	//GeckoSendBuffer( buffer );
+	if( IsWiiU )
+	{
+		s32 file = IOS_Open( "/ndebug.log", 2 );
+		if( file >= 0 )
+		{
+			IOS_Seek( file, 0, SEEK_END );
+			IOS_Write( file, buffer, strlen(buffer) );
+			IOS_Close( file );
+		}
 
-	svc_write(buffer);
+	} else {
 
-	return i;
+		if ( (*(vu32*)(0xd800070) & 1) == 0)
+			return 0;
+
+		svc_write(buffer);
+	}
+
+	heap_free( 0, buffer );
+
+	return 0;
 }
+
 void fatal(const char *fmt, ...)
 {
 	//va_list args;
