@@ -64,9 +64,9 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 	{
 		vector *v = (vector*)halloca( sizeof(vector)*2, 0x40 );
 
-		v[0].data = (u32)filepath;
+		*v[0].data = (u32)filepath;
 		v[0].len  = sizeof( char * );
-		v[1].data = (u32)num;
+		*v[1].data = (u32)num;
 		v[1].len  = sizeof( u32 * );
 
 		s32 r = IOS_Ioctlv( FSHandle, ISFS_IOCTL_READDIR, 1, 1, v );
@@ -78,14 +78,14 @@ s32 ISFS_ReadDir( const char *filepath, char *name_list, u32 *num )
 
 		vector *v = (vector*)halloca( sizeof(vector)*4, 0x40 );
 
-		v[0].data = (u32)filepath;
+		*v[0].data = (u32)filepath;
 		v[0].len  = sizeof( char * );
-		v[1].data = (u32)num;
+		*v[1].data = (u32)num;
 		v[1].len  = sizeof( u32 * );
 
-		v[2].data = (u32)name_list;
+		*v[2].data = (u32)name_list;
 		v[2].len  = *num*64;
-		v[3].data = (u32)num;
+		*v[3].data = (u32)num;
 		v[3].len  = sizeof( u32 * );
 
 		s32 r = IOS_Ioctlv( FSHandle, ISFS_IOCTL_READDIR, 2, 2, v );

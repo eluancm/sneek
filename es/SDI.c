@@ -9,9 +9,9 @@ extern int FFSHandle;
 void SD_Ioctl( struct ipcmessage *msg )
 {
 	u8  *bufin  = (u8*)msg->ioctl.buffer_in;
-	u32 lenin   = msg->ioctl.length_in;
+	//(void) u32 lenin   = msg->ioctl.length_in;
 	u8  *bufout = (u8*)msg->ioctl.buffer_io;
-	u32 lenout  = msg->ioctl.length_io;
+	//(void) u32 lenout  = msg->ioctl.length_io;
 	s32 ret = -1;
 
 	switch( msg->ioctl.command )
@@ -215,11 +215,11 @@ void SD_Ioctl( struct ipcmessage *msg )
 }
 void SD_Ioctlv( struct ipcmessage *msg )
 {
-	u32 InCount		= msg->ioctlv.argc_in;
-	u32 OutCount	= msg->ioctlv.argc_io;
+	//u32 InCount		= msg->ioctlv.argc_in;
+	//u32 OutCount	= msg->ioctlv.argc_io;
 	vector *v		= (vector*)(msg->ioctlv.argv);
 	s32 ret=-1017;
-	u32 i;
+	//u32 i;
 
 	switch(msg->ioctl.command)
 	{
@@ -231,7 +231,7 @@ void SD_Ioctlv( struct ipcmessage *msg )
 
 			if( ret < 0 )
 			{
-				SDCommand *scmd = (SDCommand *)(v[0].data);
+				//SDCommand *scmd = (SDCommand *)(v[0].data);
 				//dbgprintf("SD:ReadMultipleBlocks( 0x%p, 0x%x, 0x%x):%d\n", scmd->addr, scmd->arg, scmd->blocks, ret );
 
 				//dbgprintf("cmd    :%08X\n", scmd->command );

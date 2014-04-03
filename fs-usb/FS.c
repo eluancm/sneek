@@ -19,6 +19,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 */
 #include "FS.h"
+#include "utils.h"
+
+extern void memset32(void *dst, u32 value, u32 size);
+extern void hexdump(void *d, int len);
 
 static FIL fd_stack[MAX_FILE] ALIGNED(32);
 

@@ -16,7 +16,7 @@ Copyright (C) 2008, 2009	Haxx Enterprises <bushing@gmail.com>
 #ifndef MEM2_BSS
 #define MEM2_BSS
 #endif
-
+extern int sdmmc_write(u32 blk_start, u32 blk_count, void *data);
 static u8 buffer[512] MEM2_BSS ALIGNED(32);
 
 // Initialize a Drive
@@ -54,6 +54,7 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count) {
 #if _READONLY == 0
 DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count) {
 	int i;
+	(void) drv;
 
 	for (i = 0; i < count; i++) {
 		memcpy(buffer, buff + i * 512, 512);

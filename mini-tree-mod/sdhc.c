@@ -683,6 +683,8 @@ int
 sdhc_wait_intr_debug(const char *funcname, int line, struct sdhc_host *hp, int mask, int timo)
 {
 	int status;
+	(void) funcname;
+	(void) line;
 
 	mask |= SDHC_ERROR_INTERRUPT;
 	mask |= SDHC_ERROR_TIMEOUT;

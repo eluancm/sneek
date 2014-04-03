@@ -13,6 +13,8 @@ Copyright (C) 2008, 2009	Haxx Enterprises <bushing@gmail.com>
 #include "string.h"
 #include "sdmmc.h"
 #include "syscalls.h"
+#include "sdhc.h"
+#include "utils.h"
 
 DSTATUS disk_initialize( BYTE drv )
 {
@@ -54,7 +56,7 @@ DRESULT disk_read( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 	return RES_OK;
 }
 // Write Sector(s)
-DRESULT disk_write( BYTE drv, const BYTE *buff, DWORD sector, BYTE count )
+DRESULT disk_write( BYTE drv, BYTE *buff, DWORD sector, BYTE count )
 {
 	u8 *buffer = (u8*)heap_alloc_aligned( 0, count*512, 0x40 );
 

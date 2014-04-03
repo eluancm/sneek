@@ -837,7 +837,6 @@ FRESULT dir_find (
 /* Read an object from the directory                                     */
 /*-----------------------------------------------------------------------*/
 #if _FS_MINIMIZE <= 2
-static
 FRESULT dir_read (
 	DIR *dj			/* Pointer to the directory object to store read object name */
 )

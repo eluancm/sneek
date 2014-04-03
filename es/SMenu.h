@@ -57,6 +57,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #define VI_DEBUG_PAL		4
 #define VI_EUR60			5
 
+/*
+Hacks for vWii System Menus.
+Switch from true/false to enable/disable hacks
+*/
+// Region free Wii games (USA/EUR Only)
+#define HACKS_RFW	true
+// Region free Everything
+#define HACKS_RFE	false
+// Auto-press A at Health Screen (USA/EUR Only)
+#define HACKS_APA	false
+// No Background Music (USA Only)
+#define HACKS_NBM	false
+// Move disc channel (USA Only)
+#define HACKS_MDC	false
+
+
 enum SMenus
 {
 	SMENU_GAME_LIST		= 0,

@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "string.h"
 #include "ehci.h"
 #include "alloc.h"
+#include "tiny_ehci_glue.h"
 
 #ifndef MEM2_BSS
 #define MEM2_BSS
@@ -73,9 +74,9 @@ DRESULT disk_read (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 	return RES_OK;
 }
 
-DRESULT disk_write (BYTE drv, const BYTE *buff, DWORD sector, BYTE count)
+DRESULT disk_write (BYTE drv, BYTE *buff, DWORD sector, BYTE count)
 {
-	int i;
+	//int i;
 	u32 *buffer = malloca( count*512, 0x40 );
 	memcpy( buffer, buff, count*512 );
 

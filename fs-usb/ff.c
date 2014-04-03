@@ -739,8 +739,8 @@ void fit_lfn (
 #if _USE_LFN
 void gen_numname (
 	BYTE *dst,			/* Pointer to genartated SFN */
-	const BYTE *src,	/* Pointer to source SFN to be modified */
-	const WCHAR *lfn,	/* Pointer to LFN */
+	BYTE *src,	/* Pointer to source SFN to be modified */
+	WCHAR *lfn,	/* Pointer to LFN */
 	WORD num			/* Sequense number */
 )
 {
@@ -1779,7 +1779,7 @@ FRESULT f_read (
 
 FRESULT f_write (
 	FIL *fp,			/* Pointer to the file object */
-	const void *buff,	/* Pointer to the data to be written */
+	void *buff,			/* Pointer to the data to be written */
 	UINT btw,			/* Number of bytes to write */
 	UINT *bw			/* Pointer to number of bytes written */
 )
@@ -1787,7 +1787,7 @@ FRESULT f_write (
 	FRESULT res;
 	DWORD clst, sect;
 	UINT wcnt, cc;
-	const BYTE *wbuff = buff;
+	BYTE *wbuff = buff;
 
 
 	*bw = 0;

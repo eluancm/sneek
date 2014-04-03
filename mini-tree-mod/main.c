@@ -37,7 +37,7 @@ FATFS fatfs;
 u32 _main(void *base)
 {
 	FRESULT fres;
-	int res;
+	//int res;
 	u32 vector;
 	(void)base;
 
@@ -106,7 +106,7 @@ u32 _main(void *base)
 	gecko_printf("Shutting down IPC...\n");
 	ipc_shutdown();
 
-shutdown:
+//shutdown:
 	gecko_printf("Shutting down interrupts...\n");
 	irq_shutdown();
 	gecko_printf("Shutting down caches and MMU...\n");

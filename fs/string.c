@@ -7,6 +7,7 @@
 #include "string.h"
 #include "gecko.h"
 #include "vsprintf.h"
+#include "utils.h"
 
 size_t strnlen(const char *s, size_t count)
 {
@@ -48,7 +49,7 @@ char * strstr ( const char *str1, const char *str2)
 
 	return(NULL);
 }
-size_t strlcpy(char *dest, const char *src, size_t maxlen)
+size_t strlcpy(char *dest, char *src, size_t maxlen)
 {
 	size_t len,needed;
 

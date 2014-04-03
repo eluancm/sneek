@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #include "diskio.h"
 #include "ff.h"
 #include "sdhcvar.h"
+#include "sdhc.h"
 #include "FS.h"
 
 FATFS fatfs;
@@ -36,6 +37,7 @@ int QueueID = 0;
 int HeapID=0;
 
 #undef DEBUG
+extern void	sdhc_init(void);
 
 s32 RegisterDevices( void )
 {

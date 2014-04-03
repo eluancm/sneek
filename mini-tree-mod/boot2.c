@@ -310,9 +310,11 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo)
 {
 	u8 *ptr;
 	FIL f;
-	u32 i, num_matches=0;
+	//u32 i, num_matches=0;
 	ioshdr *hdr;
 	unsigned int read;
+	(void) tid_hi;
+	(void) tid_lo;
 	
 	gecko_printf("booting /sneek/kernel.bin\n");
 	mem_protect(1, (void *)0x11000000, (void *)0x13FFFFFF);
@@ -322,7 +324,7 @@ u32 boot2_run(u32 tid_hi, u32 tid_lo)
 	if( fres == FR_OK )
 	{
 		fres = f_read( &f, (void*)0x11000000, f.fsize, &read );
-		gecko_printf("f_read( %p, %p, %d, %d):%d\n", &f, (void*)0x11000000, f.fsize, read, fres );
+		gecko_printf("f_read( %p, %p, %u, %d):%d\n", &f, (void*)0x11000000, (u32)f.fsize, read, fres );
 		f_close( &f );
 	} 
 
