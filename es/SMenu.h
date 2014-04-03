@@ -65,7 +65,7 @@ Switch from true/false to enable/disable hacks
 #define HACKS_RFW	true
 // Region free Everything
 #define HACKS_RFE	false
-// Auto-press A at Health Screen (USA/EUR Only)
+// Auto-press A at Health Screen
 #define HACKS_APA	false
 // No Background Music (USA Only)
 #define HACKS_NBM	false

@@ -159,75 +159,77 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 				{
 					if( GetTitleID() == 0x0000000100000002LL ) {
 						switch( TitleVersion ) {
-						case 512: //4.3J
-						case 544:
-							if (HACKS_RFE) {
-							*(u32*)0x0137D90C = 0x38000001;
-							*(u32*)0x0137DBD0 = 0x38000001;
-							*(u32*)0x0137DBF0 = 0x4800001C;
-							*(u32*)0x0137E444 = 0x60000000;
-							*(u32*)0x0137FC60 = 0x38600001;
-							*(u32*)0x013B6A6C = 0x48000028;
-							*(u32*)0x015587D4 = 0x60000000;
-							*(u32*)0x01558CBC = 0x38000001;
-							*(u32*)0x0155C358 = 0x4E800020;
-							}
-							break;
-						case 513: //4.3U
-						case 545:
-							//Region free Wii games
-							if (HACKS_RFW) {
-								*(u32*)0x0137E2C8 = 0x4800001C;
-								*(u32*)0x0137EC44 = 0x38000001;
-							}
-							//Auto-Press A at Health Screen
-							if (HACKS_APA) *(u32*)0x013BE360 = 0x48000034;
+							case 544: //4.3J
+								//Auto-Press A at Health Screen
+								if (HACKS_APA) *(u32*)0x013BD640 = 0x48000034; 
+								
+								//Region free everything
+								if (HACKS_RFE) {
+									*(u32*)0x0137D90C = 0x38000001;
+									*(u32*)0x0137DBD0 = 0x38000001;
+									*(u32*)0x0137DBF0 = 0x4800001C;
+									*(u32*)0x0137E444 = 0x60000000;
+									*(u32*)0x0137FC60 = 0x38600001;
+									*(u32*)0x013B6A6C = 0x48000028;
+									*(u32*)0x015587D4 = 0x60000000;
+									*(u32*)0x01558CBC = 0x38000001;
+									*(u32*)0x0155C358 = 0x4E800020;
+								}
+								break;
+							case 545: //4.3U
+								//Region free Wii games
+								if (HACKS_RFW) {
+									*(u32*)0x0137E2C8 = 0x4800001C;
+									*(u32*)0x0137EC44 = 0x38000001;
+								}
+								
+								//Auto-Press A at Health Screen
+								if (HACKS_APA) *(u32*)0x013BE360 = 0x48000034;
 
-							//Region free everything
-							if (HACKS_RFE) {
-								*(u32*)0x0137E458 = 0x38000001;
-								*(u32*)0x0137E71C = 0x38000001;
-								*(u32*)0x0137E73C = 0x4800001C;
-								*(u32*)0x0137EF90 = 0x60000000;
-								*(u32*)0x013807AC = 0x38600001;
-								*(u32*)0x013B7780 = 0x48000028;
-								*(u32*)0x0152F894 = 0x60000000;
-								*(u32*)0x0152FD7C = 0x38000001;
-								*(u32*)0x01533418 = 0x4E800020;
-							}
+								//Region free everything
+								if (HACKS_RFE) {
+									*(u32*)0x0137E458 = 0x38000001;
+									*(u32*)0x0137E71C = 0x38000001;
+									*(u32*)0x0137E73C = 0x4800001C;
+									*(u32*)0x0137EF90 = 0x60000000;
+									*(u32*)0x013807AC = 0x38600001;
+									*(u32*)0x013B7780 = 0x48000028;
+									*(u32*)0x0152F894 = 0x60000000;
+									*(u32*)0x0152FD7C = 0x38000001;
+									*(u32*)0x01533418 = 0x4E800020;
+								}
 
-							//No Background Music
-							if (HACKS_NBM) *(u32*)0x0136BD5C = 0x4E800020;
+								//No Background Music
+								if (HACKS_NBM) *(u32*)0x0136BD5C = 0x4E800020;
 
-							//Move disc channel
-							if (HACKS_MDC) *(u32*)0x013B099C = 0x60000000;
-							break;
-						case 514: //4.3E
-						case 546:
-							//Region free Wii games
-							if (HACKS_RFW) {
-								*(u32*)0x0137E370 = 0x4800001C;
-								*(u32*)0x0137EE04 = 0x38000001;
-							}
-							
-							//Auto-Press A at Health Screen
-							if (HACKS_APA) *(u32*)0x013BE45C = 0x48000034;
+								//Move disc channel
+								if (HACKS_MDC) *(u32*)0x013B099C = 0x60000000;
+								break;
+							case 546: //4.3E
+								//Region free Wii games
+								if (HACKS_RFW) {
+									*(u32*)0x0137E370 = 0x4800001C;
+									*(u32*)0x0137EE04 = 0x38000001;
+								}
+								
+								//Auto-Press A at Health Screen
+								if (HACKS_APA) *(u32*)0x013BE45C = 0x48000034;
 
-							//Region free everything
-							if (HACKS_RFE) {
-								*(u32*)0x0137E500 = 0x38000001;
-								*(u32*)0x0137E7C4 = 0x38000001;
-								*(u32*)0x0137E7E4 = 0x4800001C;
-								*(u32*)0x0137F038 = 0x60000000;
-								*(u32*)0x01380854 = 0x38600001;
-								*(u32*)0x013B787C = 0x48000028;
-								*(u32*)0x0152F990 = 0x60000000;
-								*(u32*)0x0152FE78 = 0x38000001;
-								*(u32*)0x01533514 = 0x4E800020;
-							}
-							break;
-						default:
-							break;
+								//Region free everything
+								if (HACKS_RFE) {
+									*(u32*)0x0137E500 = 0x38000001;
+									*(u32*)0x0137E7C4 = 0x38000001;
+									*(u32*)0x0137E7E4 = 0x4800001C;
+									*(u32*)0x0137F038 = 0x60000000;
+									*(u32*)0x01380854 = 0x38600001;
+									*(u32*)0x013B787C = 0x48000028;
+									*(u32*)0x0152F990 = 0x60000000;
+									*(u32*)0x0152FE78 = 0x38000001;
+									*(u32*)0x01533514 = 0x4E800020;
+								}
+								break;
+							default:
+								break;
 						}
 					}
 				}
