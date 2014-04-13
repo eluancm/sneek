@@ -175,6 +175,9 @@ u32 SMenuFindOffsets( void *ptr, u32 SearchSize )
 									*(u32*)0x01558CBC = 0x38000001;
 									*(u32*)0x0155C358 = 0x4E800020;
 								}
+
+								//Move disc channel
+								if (HACKS_MDC) *(u32*)0x013AFC88 = 0x60000000;
 								break;
 							case 545: //4.3U
 								//Region free Wii games

@@ -129,7 +129,7 @@ int	sdhc_wait_intr_debug(const char *func, int line, struct sdhc_host *, int, in
 void	sdhc_transfer_data(struct sdhc_host *, struct sdmmc_command *);
 void	sdhc_read_data(struct sdhc_host *, u_char *, int);
 void	sdhc_write_data(struct sdhc_host *, u_char *, int);
-//#define SDHC_DEBUG 1
+
 #ifdef SDHC_DEBUG
 int sdhcdebug = 2;
 #define DPRINTF(n,s)	do { if ((n) <= sdhcdebug) gecko_printf s; } while (0)

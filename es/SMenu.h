@@ -69,7 +69,7 @@ Switch from true/false to enable/disable hacks
 #define HACKS_APA	false
 // No Background Music (USA Only)
 #define HACKS_NBM	false
-// Move disc channel (USA Only)
+// Move disc channel (USA/JPN Only)
 #define HACKS_MDC	false
 
 
