@@ -302,6 +302,7 @@ int dbgprintf( const char *fmt, ...)
 
 	if( IsWiiU )
 	{
+#if 0
 		s32 file = IOS_Open( "/ndebug.log", 2 );
 		if( file >= 0 )
 		{
@@ -309,7 +310,7 @@ int dbgprintf( const char *fmt, ...)
 			IOS_Write( file, buffer, strlen(buffer) );
 			IOS_Close( file );
 		}
-
+#endif
 	} else {
 
 		if ( (*(vu32*)(0xd800070) & 1) == 0)

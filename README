@@ -1,0 +1,9 @@
+Some notes, in addition to several already existing guides:
+
+-To compile for vWii, you need /title/00000001/00000050/content/0000000d.app from your vWii renamed to 0000000e.app in the sneek directory.
+-Edit IsWiiU in es/global.h to select if bulding for Wii or for vWii running under Wii U. (the old check doesn't work anymore for the latest vWii update - find a new one! Nintendont probably has it)
+-To compile, visual c++ 32-bit runtime must be installed for vc++ 2010 and vc++ 2011
+-If running on a WiiU, ALWAYS use a vwii dump - using a wii dump or generating one with modmii WON'T WORK! The system is DIFFERENT!
+-vWii patches are disabled by default because I HAVE NOT tested them against the latest update and I have no out of region games to test.
+-The patch in fs-usb/ehci.c to wait for the hdd to initialize will probably generate long delays if the hdd isn't on port 0 - make it optional?
+-To boot on vWii, embed armboot.bin into nswitch.

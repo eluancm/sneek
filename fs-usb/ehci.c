@@ -632,7 +632,15 @@ int ehci_reset_port(int port)
     struct ehci_device *dev = &ehci->devices[port];
     u32 status = ehci_readl(status_reg);
     int retval = 0;
+    int retries = 30;
     dev->id = 0;
+    while (!(PORT_CONNECT&status) && retries > 0)
+    {
+        msleep(1000);  // sleep 1 second
+        status = ehci_readl(status_reg);
+        ehci_dbg ( "port %d status at retry %d %X \n", port,retries,status);
+        retries--;
+    }
     if ((PORT_OWNER&status) || !(PORT_CONNECT&status))
     {
 		ehci_writel( PORT_OWNER, status_reg);

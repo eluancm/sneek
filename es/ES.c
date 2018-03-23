@@ -418,7 +418,7 @@ s32 LoadTitle( u64 *TitleID )
 	if( DICfg->Config & CONFIG_FAKE_CONSOLE_RG )
 		Config_ChangeSystem( TMD->TitleID, TMD->TitleVersion );
 
-	if(	(*(u32*)0x0d8005A0 >> 16 ) == 0xCAFE )	// Wii U
+	if( IsWiiU )
 	{
 		if( *TitleID == 0x0000000100000002LL )
 		{

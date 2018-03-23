@@ -723,9 +723,15 @@ void SMenuReadPad ( void )
 {
 	s32 EntryCount=0;
 
-	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
+	if ( IsWiiU )
+	{
+		GCPad.Buttons = 0;
+		GCPad.Sticks = 0;
+	}
+	else
+		memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
 
-	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
+	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FF1F ) == 0 )
 	{
 		SLock = 0;
 		return;
@@ -1638,9 +1644,15 @@ void SCheatReadPad ( void )
 {
 	int i;
 
-	memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
+	if ( IsWiiU )
+	{
+		GCPad.Buttons = 0;
+		GCPad.Sticks = 0;
+	}
+	else
+		memcpy( &GCPad, (u32*)0xD806404, sizeof(u32) * 2 );
 
-	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FFFF ) == 0 )
+	if( ( GCPad.Buttons & 0x1F3F0000 ) == 0 && ( *WPad & 0x0000FF1F ) == 0 )
 	{
 		SLock = 0;
 		return;

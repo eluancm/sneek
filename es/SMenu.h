@@ -62,7 +62,7 @@ Hacks for vWii System Menus.
 Switch from true/false to enable/disable hacks
 */
 // Region free Wii games (USA/EUR Only)
-#define HACKS_RFW	true
+#define HACKS_RFW	false
 // Region free Everything
 #define HACKS_RFE	false
 // Auto-press A at Health Screen

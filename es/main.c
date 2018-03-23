@@ -109,14 +109,12 @@ int _main( int argc, char *argv[] )
 	{
 		*SDStatus = 0x00000001;
 		MenuType = 1;
-		
+		LoadAndRebuildChannelCache();
 	} else if ( (GetTitleID() >> 32) ==  0x00010001LL ) {
 		//MenuType = 2;
 		*SDStatus = 0x00000002;
 	}
 	
-	//LoadAndRebuildChannelCache();
-		
 	thread_set_priority( 0, 0x0A );
 
 	//dbgprintf("ES:looping!\n");	
